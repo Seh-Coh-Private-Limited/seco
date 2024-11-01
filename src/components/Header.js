@@ -22,7 +22,7 @@ const Header = () => {
             seco
           </h6>
           <a
-            href="#https://twisteddco.wixstudio.io/getseco"
+            href="https://twisteddco.wixstudio.io/getseco"
             className="hidden sm:inline text-slate-100"
             style={{ fontSize: '16px', fontWeight: '500' }}
           >
