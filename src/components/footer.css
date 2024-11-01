@@ -1,19 +1,18 @@
-.footer {
-    background-color: #12163f; /* Dark blue background */
-    color: #c3c8ff; /* Light blue text */
-    padding: 40px 80px; /* Padding for the entire footer */
-    font-family: 'Arial', sans-serif;
-  }
+
   
-  .footer-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center; /* Align items at the top */
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 20px; 
-  }
-  
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Align items at the top */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px; 
+}
+
+.footer-text {
+  color: white; /* Sets text color to white */
+}
+
   /* Left section */
   .footer-left {
     display: flex;
@@ -21,53 +20,7 @@
     align-items: flex-start;
   }
   
-  .footer-logo-img {
-    height: 114px;
-    max-width: 366px; /* Adjust size of logo */
-    opacity: 0.8; /* Set the opacity */
-    filter: brightness(0) saturate(100%) invert(87%) sepia(20%) saturate(447%) hue-rotate(184deg) brightness(105%) contrast(95%);
-    /* This filter approximates the color #A5BCFD */
-  }
-  .footer-social {
-    margin-top: 240px;
-  }
-  
-  .footer-social a {
-    color: #c3c8ff;
-    margin-right: 10px;
-    font-size: 24px;
-  }
-  
-  .footer-copyright {
-    margin-top: 20px;
-    font-size: 14px;
-  }
-  
-  /* Right section */
-  .footer-right {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-  }
-  
-  .footer-links ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    align-items: start;
-  }
-  
-  .footer-links li {
-    margin: 10px 0;
-    align-items: start;
-  }
-  
-  .footer-links a {
-    align-items: start;
-    color: #c3c8ff;
-    text-decoration: none;
-  }
-  
+ 
   .footer-waitlist {
     margin-top: 140px;
     text-align: left;
@@ -128,4 +81,14 @@
     cursor: pointer;
     font-size: 16px;
   }
-  
+  @media (min-width: 768px) {
+    .footer-links {
+        margin-top: 340px;
+    }
+}
+
+@media (max-width: 767px) {
+    .footer-links {
+        margin-top: 10px;
+    }
+}

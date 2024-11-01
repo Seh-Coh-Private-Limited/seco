@@ -2,6 +2,7 @@
 .header {
     display: flex;
     align-items: center;
+    z-index: 10; /* Ensure header is on top of other elements */
     justify-content: space-between; /* Space between logo, nav, and button */
     background-color: #EBF4FB; /* Header background color */
     padding: 10px 60px; /* Padding for the header (30px on left and right) */

@@ -1,6 +1,6 @@
 .app-container {
   font-family: Arial, sans-serif;
-  padding: 20px;
+  padding-top: 20px;
   text-align: center;
   background-color: #fff; /* White background */
   color: #000; /* Black text */
@@ -19,6 +19,7 @@
   padding-left: 180px;
   padding-right: 180px;
   display: grid;
+  z-index: 0;
   grid-template-columns: repeat(3, 1fr); /* 3 columns */
   gap: 20px;
 }
@@ -105,4 +106,59 @@
   border-radius: 5px;
   background-color: #fff;
   cursor: pointer;
+}
+/* Discover.css */
+
+/* Base styles remain unchanged */
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+  .app-container {
+    padding-top: 10px; /* Add some padding */
+  }
+
+  .heading {
+    font-size: 32px; /* Smaller font size for smaller screens */
+    text-align: center;
+    margin-bottom: 20px; /* Center align the heading */
+  }
+
+  .filters-container {
+    display: flex;
+    flex-direction: column; /* Stack filters vertically */
+    align-items: flex-center; /* Align filters to start */
+  }
+
+  .filter-dropdown {
+    width: 100%; /* Full width dropdowns */
+    margin-bottom: 10px; /* Space between dropdowns */
+  }
+
+  .articles-container {
+    padding-left: 10px;
+    padding-right: 10px;
+    display: flex;
+    flex-direction: column; /* Stack program cards vertically */
+    align-items: center; /* Center align cards */
+  }
+
+  .h-section {
+    height: 450px; /* Allow height to adjust based on content */
+    padding: 0px; /* Add padding */
+  }
+
+  .main-heading {
+    font-size: 28px; /* Smaller font size for smaller screens */
+    text-align: center; /* Center align the main heading */
+  }
+
+  .subheading {
+    font-size: 16px; /* Smaller font size for smaller screens */
+    text-align: center; /* Center align the subheading */
+  }
+
+  .button {
+    font-size: 14px; /* Smaller button font size */
+    padding: 10px 20px; /* Adjust button padding */
+  }
 }

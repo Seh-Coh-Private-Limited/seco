@@ -4,22 +4,12 @@ import './ProgramCard.css';
 import Popup from './Popup'; // Import Popup component
 
 const ProgramCard = ({
+  id,
   title,
   image,
   description,
   category,
   location,
-  startDate,
-  endDate,
-  resultDate,
-  eligibility,
-  incentives,
-  organizerDetails,
-  contactInfo,
-  portfolioCompanies,
-  logos,
-  faqs,
-  id,
   orientation,
 }) => {
   const [showPopup, setShowPopup] = useState(false); // State to control popup visibility
@@ -44,13 +34,22 @@ const ProgramCard = ({
           <div>
             <img alt={title} className="card-image" src={image} />
             <div>
-              <h3 className="card-title">{title}</h3>
-              <p className="card-description">{description}</p> {/* Description with truncation */}
+              <h3 className="card-title"style={{
+                    fontFamily: 'CFont',
+                    fontSize: '22px',
+                    }}>{title}</h3>
+              <p className="card-description"style={{
+                    fontFamily: 'CFont',
+                    fontSize: '14px',
+                    }}>{description}</p> {/* Description with truncation */}
             </div>
           </div>
 
           {/* Footer with only one category and location */}
-          <div className="card-footer">
+          <div className="card-footer"style={{
+                    fontFamily: 'CFont',
+                    fontSize: '14px',
+                    }}>
             <div className="card-meta">
               {firstCategory} &bull; {location}
             </div>
@@ -67,22 +66,7 @@ const ProgramCard = ({
           isOpen={showPopup} // Ensure to pass the correct state for controlling popup visibility
           onClose={closePopup} // Close function
           programDetails={{
-            title,
-            image,
-            description,
-            category,
-            location,
-            startDate,
-            endDate,
-            resultDate,
-            eligibility,
-            incentives,
-            organizerDetails,
-            contactInfo,
-            portfolioCompanies,
-            logos,
             id,
-            faqs,
           }} // Pass program details to the popup
         />
       )}

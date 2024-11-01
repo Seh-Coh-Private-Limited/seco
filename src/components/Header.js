@@ -1,20 +1,41 @@
-// src/components/Header.js
 import React from 'react';
-import './Header.css'; // Add your CSS for the header here
 
 const Header = () => {
   return (
-    <header className="header">
-      <img src={require('../assets/seco.png')} alt="Logo" className="logo" />
-      <nav className="nav">
-        <ul className="nav-list">
-          <li className="nav-item">Features</li>
-          <li className="nav-item">Discover</li>
-          <li className="nav-item">FAQ</li>
-          <li className="nav-item">About</li>
-        </ul>
-      </nav>
-      <button className="waitlist-button">Join Waitlist</button>
+    <header
+      className="fixed top-0 w-full flex items-center justify-between px-6 md:px-16 transition-all duration-300"
+      style={{
+        height: '75px', // Header height
+        backgroundColor: 'rgba(0, 0, 0, 1)', // Fixed opacity
+      }}
+    >
+      {/* Logo section */}
+      <div className="flex items-center space-x-2">
+        <h6
+          className="text-white font-bold"
+          style={{
+            fontFamily: 'CustomFont',
+            fontSize: '24px', // Adjust font size for mobile
+            paddingRight: '20px', // Smaller padding for mobile
+          }}
+        >
+          seco
+        </h6>
+        <span
+          className="hidden sm:inline text-slate-100"
+          style={{ fontSize: '16px', fontWeight: '500' }}
+        >
+          home
+        </span>
+      </div>
+
+      {/* Button with responsive size */}
+      <button
+        className="bg-white text-black rounded-full px-4 py-2 md:px-5 md:py-3 hover:bg-gray-100 transition duration-300 text-sm md:text-base"
+        style={{ fontWeight: '400' }}
+      >
+        join waitlist
+      </button>
     </header>
   );
 };

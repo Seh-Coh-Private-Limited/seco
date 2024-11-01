@@ -1,6 +1,4 @@
 /* General Card Styling */
-
-
 .program-card {
   display: block;
   width: 100%;
@@ -14,6 +12,7 @@
   transition: transform 0.3s ease, border-color 0.3s ease;
   position: relative; /* Allow absolute positioning inside the card */
 }
+
 .card-description {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -21,8 +20,9 @@
   overflow: hidden; /* Hide overflow */
   text-overflow: ellipsis; /* Show ellipsis */
   margin-bottom: 10px; /* Space below description */
-  font-family:graphik;
+  font-family: graphik;
 }
+
 .program-card:hover {
   transform: scale(1.02); /* Slight scaling effect on hover */
   border-color: black;
@@ -112,7 +112,12 @@
   height: 125px; /* Smaller image height for horizontal card */
 }
 
+.card-horizontal .card-description {
+  display: none; /* Hide description for horizontal card */
+}
+
 .card-horizontal .card-title {
+  padding-top: 14px;
   font-size: 18px; /* Smaller font size for horizontal card */
 }
 
@@ -127,9 +132,54 @@
   height: 424px; /* Full height */
   max-width: 100%;
 }
+
 .card-vertical p {
   font-size: 12px; /* Adjust padding for vertical card */
 }
+
+.card-vertical .card-title {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
 .card-vertical .card-image {
   height: 220px; /* Larger image for vertical card */
+}
+
+/* Responsive Design for Smaller Screens */
+@media (max-width: 768px) {
+  .program-card {
+    flex: 1 1 100%; /* Stack cards vertically */
+    margin: 0px 0; /* Add margin for spacing */
+    min-width: 3px; /* Remove max-width for better flexibility */
+    height: auto; /* Set height to auto for flexibility */
+  }
+  
+  .card-horizontal {
+    height: auto; /* Allow height to adjust based on content */
+  }
+
+  .card-vertical {
+    height: auto; /* Allow height to adjust based on content */
+  }
+  .card-description {
+    margin-bottom: 70px; /* Hide description for vertical card */
+  }
+.card-image {
+    margin-bottom: auto; /* Larger image for vertical card */
+  }
+  .card-horizontal .card-image {
+    height: 200px; /* Maintain image height for horizontal card */
+  }
+
+  .card-horizontal .card-footer {
+    opacity: 0; /* Maintain hidden footer for horizontal card */
+  }
+}
+
+@media (min-width: 769px) {
+  .program-card {
+    flex: 1 1 45%; /* Adjust cards to take 45% of the row in larger screens */
+    margin: 10px; /* Add margin for spacing */
+  }
 }

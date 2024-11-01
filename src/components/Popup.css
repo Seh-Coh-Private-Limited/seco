@@ -6,11 +6,10 @@
   top: 0;
   width: 38%; /* Covers 30% of the width */
   height: 100%; /* Full height */
-  background-color: rgba(255, 255, 255, 0.9);
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 255, 255, 1);
   z-index: 1000;
   overflow-y: auto; /* Enable vertical scroll */
-  overflow-x:hidden; /* Enable vertical scroll if needed */
+  overflow-x: hidden; /* Enable vertical scroll if needed */
 }
 
 .popup.show {
@@ -18,23 +17,43 @@
 }
 
 .popup-content {
-  padding: 20px; /* Add padding for content */
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+ /* Adjust width as needed */
+  position: relative;  /* Add padding for content */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+.border-line {
+  border-top: 2px solid black; /* Border line style */
+  margin: 10px 0; /* Margin for spacing */
+}
+
 
 .panel-header {
   position: fixed;
   top: 0;
   width: 100%;
-  z-index: 10;
-  background: var(--modal-bg-color);
+  z-index: 20;
+  background: white;
   border-bottom: 1px solid var(--divider-color);
   padding: 0.5rem 0.75rem;
   min-height: 3rem;
-  border-top-left-radius: 0.5rem; /* Set border radius as needed */
-  border-top-right-radius: 0.5rem; /* Set border radius as needed */
+  /* Set border radius as needed */
+  text-align: left; /* Align heading to the left */
 }
-
-
 
 .close-popup-button {
   background: grey;
@@ -42,6 +61,7 @@
   font-size: 30px;
   cursor: pointer;
 }
+
 .location-map {
   position: relative;
   width: 100%;
@@ -119,25 +139,34 @@
   display: flex;
   align-items: center;
 }
+
 .date-border {
   border: 1px solid #ccc; /* Border color */
-  border-radius: 5px;     /* Rounded corners */
-  padding: 10px;          /* Padding inside the border */
-  display: flex;          /* Flexbox to align items */
-  align-items: center;    /* Center align items vertically */
+  border-radius: 5px; /* Rounded corners */
+  padding: 10px; /* Padding inside the border */
+  display: flex; /* Flexbox to align items */
+  align-items: center; /* Center align items vertically */
 }
-
+.header-line {
+  position: sticky; /* Keeps the line fixed to the top when scrolling */
+  top: 0;
+  height: 2px;
+  background-color: #dcdcdc;
+  width: 100%;
+  z-index: 1;
+}
 .month, .day {
   font-size: 1rem; /* Adjust size as necessary */
-  margin: 0 5px;   /* Margin on left and right */
+  margin: 0 5px; /* Margin on left and right */
 }
 
 .separator {
-  width: 40px;            /* Width of the horizontal line */
-  height: 1px;            /* Height of the line */
+  width: 40px; /* Width of the horizontal line */
+  height: 1px; /* Height of the line */
   background-color: #888; /* Color of the line */
-  margin: 0 10px;        /* Margin around the separator */
+  margin: 0 10px; /* Margin around the separator */
 }
+
 .location-and-dates {
   display: flex; /* Use flexbox for layout */
   justify-content: space-between; /* Space between date and location */
@@ -148,10 +177,86 @@
   display: flex; /* Make date and location display in a row */
   align-items: center; /* Center items vertically */
 }
-
-.date-display {
-  margin-right: 240px; /* Space between date and location */
+.svg-border {
+  border: 2px solid rgb(80, 79, 79); /* Black border around the SVG */
+  border-radius: 5px; /* Rounded corners for the border */
+  padding: 5px; /* Padding around the SVG */
+  display: inline-block; /* Allows the border to fit tightly around the SVG */
 }
+.loc{
+
+  font-weight: bold;
+  display:inline;
+  align-items: center;
+  margin-left: 10px;
+}
+/* Container for the entire timeline */
+body {
+  background-color: #ffffff; /* Overall background color */
+}
+
+.timeline-container {
+  display: flex;
+  align-items: center; /* Center items vertically */
+  justify-content: center; /* Center items horizontally */
+  padding: 10; 
+  padding-right: 230px;/* Padding around the container */
+}
+
+.date-section {
+  position: relative;
+  margin: 0 10px; /* Reduced spacing between sections */
+}
+
+.icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.calendar-card {
+  background-color: #2e2e2e; /* Dark background color for card */
+  border-radius: 8px; /* Rounded corners */
+  width: 50px; /* Width of the card */
+  height: 50px; /* Height of the card */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Center content vertically */
+  align-items: center; /* Center content horizontally */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); /* Optional shadow for depth */
+}
+
+.month {
+  background-color: #4a4a4a; /* Slightly lighter background for month */
+  color: #ffffff; /* White text color */
+  padding: 2px 0; /* Reduced padding for month */
+  width: 100%; /* Full width */
+  text-align: center; /* Center text */
+  font-family:monospace;
+  font-size: 8px; /* Smaller font size for month */
+  border-top-left-radius: 8px; /* Rounded top-left corner */
+  border-top-right-radius: 8px; /* Rounded top-right corner */
+}
+
+.day {
+  color: #ffffff; /* White text color for day */
+  font-size: 20px; /* Larger font size for day */
+  padding: 2px 0; /* Reduced padding for day */
+}
+
+.label {
+  text-align: center;
+  margin-top: 5px; /* Space between label and icon */
+  color: #000000; /* Black color for the label */
+  font-size: 12px; /* Font size for the label */
+}
+
+.timeline-connector {
+  height: 80px; /* Height of the connector */
+  width: 2px; /* Width of the connector */
+  background-color: #5e5d5d; /* Color of the connector */
+}
+
 
 .location-icon {
   display: flex; /* Flexbox for icon and text */
@@ -159,37 +264,37 @@
 }
 
 .location-icon svg {
-  margin-right: 5px; /* Space between icon and location text */
+  margin-right: 0px; /* Space between icon and location text */
 }
 
 .deadline-heading {
   margin-right: 15px; /* Adjust space between heading and border */
-  font-size: 1.2rem;  /* Adjust as necessary */
+  font-size: 1.2rem; /* Adjust as necessary */
 }
 
 .date-border {
   border: 1px solid #ccc; /* Border color */
-  border-radius: 5px;     /* Rounded corners */
-  padding: 10px;          /* Padding inside the border */
-  display: flex;          /* Flexbox to align items */
+  border-radius: 5px; /* Rounded corners */
+  padding: 10px; /* Padding inside the border */
+  display: flex; /* Flexbox to align items */
   flex-direction: column; /* Column layout for date details */
 }
 
 .month, .day, .full-date {
   font-size: 1rem; /* Adjust size as necessary */
-  margin: 2px 0;   /* Space between date components */
+  margin: 2px 0; /* Space between date components */
 }
-
 
 /* Additional Styles */
 .translucent {
   opacity: 0.9; /* Translucent effect */
 }
+
 .flex-center {
   display: flex;
-   /* Center items vertically */
-  justify-content: left; /* Center items horizontally */
+  justify-content: left; /* Align items to the left */
 }
+
 .event-button {
   padding-left: 40px;
   display: flex;
@@ -207,6 +312,7 @@
 .event-button:hover {
   background-color: #e0e0e0; /* Slightly darker grey on hover */
 }
+
 .map-placeholder {
   width: 100%;
   height: 200px;
@@ -234,25 +340,46 @@
 
 .timeline-item h4 {
   margin: 0;
+  text-align: left; /* Align timeline heading to the left */
 }
 
-.eligibility,
-.incentives,
-.organizer-info,
-.contact-info {
-  padding: 15px; /* Padding around each section */
-  background-color: #ffffff; /* White background for contrast */
-  border-radius: 8px; /* Rounded corners */
-  margin-bottom: 15px; /* Spacing between sections */
-  border: 1px solid #e0e0e0; /* Optional light border for separation */
+.about-section {
+  background-color: transparent; /* No background */
+  padding: 20px; /* Optional padding for spacing */
+  font-family: Arial, sans-serif; /* Simple, clean font */
+  font-size: 14px; /* Decrease font size */
+  text-align: left; /* Ensure content aligns to the left */
+  margin: 0; /* Remove default margins */
 }
 
-.section-title {
-  font-size: 20px; /* Font size for headings */
-  color: #333; /* Dark color for headings */
-  margin-bottom: 10px; /* Space below headings */
-  text-align: left; /* Align headings to the left */
+.about-section h2 {
+  font-size: 20px; /* Title size */
+  margin: 0 0 10px 0; /* Ensure spacing only below */
+  text-align: left; /* Align title to the left */
 }
+
+.about-section h3 {
+  font-size: 16px; /* Section title size */
+  margin: 5px 0; /* Consistent spacing above and below */
+  text-align: left; /* Align section titles to the left */
+}
+
+.about-section p {
+  margin: 0 0 10px 0; /* Ensure consistent spacing between paragraphs */
+  text-align: left; /* Align paragraphs to the left */
+}
+
+/* Optional: Style for links */
+.about-section a {
+  color: #151515; /* Link color */
+  text-decoration: none; /* Remove underline */
+}
+
+.about-section a:hover {
+  text-decoration: underline; /* Underline on hover */
+}
+
+
 
 .separator {
   border: none; /* Remove default border */
@@ -261,93 +388,54 @@
 }
 
 .calendar-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 50px;
-  height: 50px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f0f0f0;
-  margin: 5px;
+  display: flex; /* Flexbox for layout */
+  flex-direction: column; /* Column layout */
+  align-items: center; /* Center items */
 }
 
 .calendar-month {
-  font-size: 12px;
-  font-weight: bold;
-  color: #666;
+  font-size: 1.2rem; /* Month text size */
+  margin-bottom: 5px; /* Space below month text */
+  text-align: center; /* Center month text */
 }
 
-.calendar-day-number {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-.container {
-  background-color: #222;
-  color: white;
-  font-family: sans-serif;
-  padding: 20px;
-  border-radius: 5px;
+.calendar-date {
+  font-size: 2rem; /* Date text size */
+  font-weight: bold; /* Bold date */
+  color: #007BFF; /* Color for date */
+  text-align: center; /* Center date text */
 }
 
-.title {
-  font-size: 1.2em;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.message {
-  margin-bottom: 20px;
-}
-
-.button {
-  background-color: #4CAF50;
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-.calendar-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 60px; /* Adjust width as necessary */
-  height: 60px; /* Adjust height as necessary */
-  border: 1px solid #e0e0e0; /* Light border */
+.information-section {
+  background-color: #f8f9fa; /* Light gray background for section */
   border-radius: 8px; /* Rounded corners */
-  background-color: #fff; /* White background */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-  transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
-  cursor: pointer; /* Pointer cursor on hover */
+  padding: 20px; /* Padding around section */
+  margin: 20px 0; /* Margin around section */
 }
 
-.calendar-day:hover {
-  background-color: #f0f0f0; /* Light grey background on hover */
-  transform: scale(1.05); /* Slightly larger on hover */
+.information-section h2 {
+  font-size: 1.5rem; /* Main title size */
+  margin-bottom: 10px; /* Space below the title */
+  text-align: left; /* Align title to the left */
 }
 
-.calendar-day .day-number {
-  font-size: 1.5rem; /* Larger font for day number */
-  font-weight: bold; /* Bold text */
-  color: #333; /* Dark text color */
+.information-section p {
+  margin: 0; /* Remove default margin */
+  text-align: left; /* Align paragraph to the left */
 }
 
-.calendar-day .event-indicator {
-  width: 8px; /* Width of the event indicator */
-  height: 8px; /* Height of the event indicator */
-  border-radius: 50%; /* Circular indicator */
-  background-color: #4caf50; /* Green color for events */
-  margin-top: 4px; /* Spacing above the indicator */
+.information-section a {
+  color: #007BFF; /* Link color */
 }
 
-.calendar-day .event-indicator.hidden {
-  display: none; /* Hide indicator if no events */
+.information-section a:hover {
+  text-decoration: underline; /* Underline on hover */
+}
+/* Media query for smaller screens */
+@media (max-width: 768px) { /* Adjust the max-width value as necessary */
+  .popup {
+    width: 100%; /* Full width for smaller screens */
+    height: 100%; /* Full height */
+    border-radius: 0; /* Remove border radius for full-screen effect */
+  }
 }

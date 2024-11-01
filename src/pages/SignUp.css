@@ -1,0 +1,70 @@
+/* SignUp.css */
+
+/* Main container for the signup page */
+.signup-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 100vh; /* Full height of the viewport */
+    padding: 20px;
+    background-color: #ffffff; /* Light background for the page */
+  }
+  
+  /* Container for the form (SignIn component) */
+  .form-container {
+    flex: 1; /* Take up equal space */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    max-width: 500px;
+    background-color: #fff; /* White background for the form */
+/* box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); Subtle shadow */
+    border-radius: 12px; /* Rounded corners */
+    margin-right: 20px; /* Space between form and illustration */
+  }
+  
+  /* Style for the Logout button */
+  .logout-button {
+    background-color: #f56565; /* Red color for logout button */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .logout-button:hover {
+    background-color: #e53e3e; /* Darker red on hover */
+  }
+  
+  /* Container for the SVG illustration */
+  .illustration-container {
+    flex: 1; /* Take up equal space */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .illustration-container svg {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .signup-container {
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+  
+    .form-container {
+      margin-right: 0;
+      margin-bottom: 20px;
+    }
+  }
+  
