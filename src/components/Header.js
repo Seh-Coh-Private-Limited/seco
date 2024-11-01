@@ -31,13 +31,13 @@ const Header = () => {
           </div>
 
           {/* Button with responsive size */}
-      <button
+      <a
       href="https://twisteddco.wixstudio.io/getseco/contact"
         className="bg-white text-black rounded-full px-4 py-2 md:px-5 md:py-3 hover:bg-gray-100 transition duration-300 text-sm md:text-base"
         style={{ fontWeight: '400' }}
       >
         join waitlist
-      </button>
+      </a>
     </header>
   );
 };
