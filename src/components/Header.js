@@ -17,19 +17,20 @@ const Header = () => {
             fontFamily: 'CustomFont',
             fontSize: '24px', // Adjust font size for mobile
             paddingRight: '20px', // Smaller padding for mobile
-          }}
-        >
-          seco
-        </h6>
-        <span
-          className="hidden sm:inline text-slate-100"
-          style={{ fontSize: '16px', fontWeight: '500' }}
-        >
-          home
-        </span>
-      </div>
+            }}
+          >
+            seco
+          </h6>
+          <a
+            href="#https://twisteddco.wixstudio.io/getseco"
+            className="hidden sm:inline text-slate-100"
+            style={{ fontSize: '16px', fontWeight: '500' }}
+          >
+            home
+          </a>
+          </div>
 
-      {/* Button with responsive size */}
+          {/* Button with responsive size */}
       <button
         className="bg-white text-black rounded-full px-4 py-2 md:px-5 md:py-3 hover:bg-gray-100 transition duration-300 text-sm md:text-base"
         style={{ fontWeight: '400' }}
