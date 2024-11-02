@@ -29,7 +29,7 @@ const Header = () => {
             home
           </a>
           <a
-            href="https://twisteddco.wixstudio.io/getseco"
+            href="https://seco-theta.vercel.app/Discover"
             className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
           >
