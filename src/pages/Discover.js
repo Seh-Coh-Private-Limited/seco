@@ -201,7 +201,10 @@ function App() {
                     }}>Discover Programs</h1>
       {/* Dropdown Filters Section */}
       <div className="filters-container">
-        <p>Show me</p>
+        <p style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>Show me</p>
         <div className="filter-dropdown">
           <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
             <option value="all">All</option>
@@ -213,7 +216,10 @@ function App() {
             <option value="Retail">Retail</option>
           </select>
         </div>
-        <p>programs, active in</p>
+        <p style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>programs, active in</p>
         <div className="filter-dropdown">
           <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
             <option value="any city">Any City</option>
