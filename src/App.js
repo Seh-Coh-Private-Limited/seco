@@ -18,7 +18,7 @@ function App() {
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
     <Router>
-      <Header />
+     
       
       
     
@@ -46,7 +46,7 @@ function App() {
 
         
       </Routes>
-      <Footer />
+   
       
 				
     </Router>

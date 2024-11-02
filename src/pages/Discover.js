@@ -150,6 +150,8 @@ import './Discover.css';
 import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
 import Pagination from '../components/Pagination'; // Import the Pagination component
 import { fetchPrograms } from '../components/fetchPrograms';
+import Header from '../components/Header';
+import Footer from '../components/footer';
 
 function App() {
   const [programs, setPrograms] = useState([]);
@@ -190,6 +192,7 @@ function App() {
   const currentPrograms = filteredPrograms.slice(indexOfFirstProgram, indexOfLastProgram);
 
   return (
+    <div><Header />
     <div className="app-container mt-20">
       
       <h1 className="heading"style={{
@@ -284,7 +287,8 @@ function App() {
 
   {/* Dropdown Section */}
 </div>
-
+</div>
+<Footer />
     </div>
   );
 }

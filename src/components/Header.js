@@ -3,7 +3,7 @@ import React from 'react';
 const Header = () => {
   return (
     <header
-      className="fixed top-0 w-full flex items-center justify-between px-6 md:px-16 transition-all duration-300"
+      className="fixed top-0 z-10 w-full ml-39px mr-49px flex items-center justify-between px-6 md:px-16 transition-all duration-300"
       style={{
         height: '75px', // Header height
         backgroundColor: 'rgba(0, 0, 0, 1)', // Fixed opacity
@@ -15,18 +15,25 @@ const Header = () => {
           className="text-white font-bold"
           style={{
             fontFamily: 'CustomFont',
-            fontSize: '24px', // Adjust font size for mobile
-            paddingRight: '20px', // Smaller padding for mobile
+            fontSize: '30px', // Adjust font size for mobile
+            paddingRight: '60px', // Smaller padding for mobile
             }}
           >
             seco
           </h6>
           <a
             href="https://twisteddco.wixstudio.io/getseco"
-            className="hidden sm:inline text-slate-100"
+            className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' }}
           >
             home
+          </a>
+          <a
+            href="https://twisteddco.wixstudio.io/getseco"
+            className="hidden sm:inline text-slate-200"
+            style={{ fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
+          >
+            discover
           </a>
           </div>
 

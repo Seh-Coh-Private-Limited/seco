@@ -192,6 +192,8 @@ import { useLocation } from 'react-router-dom';
 import { fetchProgramById } from '../components/fetchProgram';
 
 import { Link } from 'react-scroll';
+import Footer from '../components/footer';
+import Header from '../components/Header';
 
 const ProgramDetail = () => {
   const loc = useLocation(); // Get the location object
@@ -293,6 +295,8 @@ const ProgramDetail = () => {
   };
 
   return (
+    <div>
+      <Header />
     <div className='bg-white h-full w-full font-poppins justify-center mt-36'>
       
       <div className='w-full flex justify-center mt-4 '>
@@ -760,9 +764,10 @@ const ProgramDetail = () => {
 
   </div>
 </div>
-
+</div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
