@@ -174,7 +174,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 <div
   className="about-section"
   style={{
-    border: '2px solid #000', // Adjust the thickness and color as needed
+    border: '2px solid #ccc', // Adjust the thickness and color as needed
     borderRadius: '8px', // Optional: adds rounded corners
     padding: '16px', // Optional: adds space inside the border
   }}
