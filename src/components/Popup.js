@@ -77,7 +77,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       <span className="mr-2 text-gray-700 text-sm"style={{
                     fontFamily: 'CFont',
                     
-                    }}>Event Page</span>
+                    }}>event page</span>
       <FontAwesomeIcon 
         icon={faArrowRight} 
         style={{ transform: 'rotate(305deg)' }} 
@@ -92,7 +92,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       <span className="mr-2 text-gray-700 text-sm"style={{
                     fontFamily: 'CFont',
                     
-                    }}>Copy Link</span>
+                    }}>copy link</span>
       <FontAwesomeIcon 
         icon={faCopy} 
       className="w-4 h-4" 
@@ -143,7 +143,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
                     
-                    }}>Deadline</p>
+                    }}>deadline</p>
     </div>
   </div>
 
@@ -160,7 +160,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       <p className="font-medium"style={{
                     fontFamily: 'CFont',
                     
-                    }}>Location</p>
+                    }}>location</p>
       <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
                     
@@ -183,7 +183,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
               <p className='font-bold text-3xl'style={{
                     fontFamily: 'CFont',
                     
-                    }}>About the Program</p>
+                    }}>about the program</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'style={{
                     fontFamily: 'CFont',
@@ -199,7 +199,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
               <p className='font-bold'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Eligibility</p>
+                    }}>eligibility</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 <p>{eligibility[0]}</p>
@@ -219,7 +219,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
    )) : null}
                 </p>
                 
-                <p>For:</p>
+                <p>for:</p>
                 <p>
   {eligibility[2] && typeof eligibility[2] === 'string' ? (
     <div className="flex flex-wrap gap-6"> {/* Use flex layout with gap */}
@@ -249,7 +249,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
               <p className='font-bold'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Incentives</p>
+                    }}>incentives</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 
@@ -280,7 +280,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   <p className='mb-2 font-bold'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Contact the host</p>
+                    }}>contact the host</p>
   <hr className='my-4 border-t border-gray-300' />
 
   <div className='mb-4'> {/* Added margin for spacing */}
@@ -351,7 +351,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                     fontFamily: 'CFont',
                     
                     }}>
-    Apply
+    apply
   </button>
 </div>
 

@@ -320,7 +320,7 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     
                     }}>
-        Featured in <span className='font-medium'style={{
+        featured in <span className='font-medium'style={{
                     fontFamily: 'CFont',
                     
                     }}>{tag}</span>
@@ -349,7 +349,7 @@ const ProgramDetail = () => {
               
               }}
           >
-            Details
+            details
           </Link>
           <Link 
             to="eligibility" 
@@ -363,7 +363,7 @@ const ProgramDetail = () => {
               
               }}
           >
-            Eligibility
+            eligibility
           </Link>
           <Link 
             to="incentives" 
@@ -377,7 +377,7 @@ const ProgramDetail = () => {
               
               }}
           >
-            Incentives
+            incentives
           </Link>
           <Link 
             to="portfolio" 
@@ -391,7 +391,7 @@ const ProgramDetail = () => {
               
               }}
           >
-            Portfolio
+            portfolio
           </Link>
           
             <Link 
@@ -406,7 +406,7 @@ const ProgramDetail = () => {
                 
                 }}
             >
-              FAQs
+              faqs
             </Link>
           
         </div>
@@ -418,13 +418,13 @@ const ProgramDetail = () => {
             <div id='details' className='mt-6'>
               <p className='font-medium'style={{
                     fontFamily: 'CFont',
-                    
-                    }}>Details</p>
+                    textTransform: 'lowercase' 
+                    }}>details</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>{description}</p>
                 
                
@@ -434,23 +434,23 @@ const ProgramDetail = () => {
             <div id='eligibility' className='mt-6'>
               <p className='font-medium'style={{
                     fontFamily: 'CFont',
-                    
-                    }}>Eligibility</p>
+                    textTransform: 'lowercase' 
+                    }}>eligibility</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>{eligibility[0]}</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    
-                    }}>Startup Stage for Applications:</p>
+                    textTransform: 'lowercase' 
+                    }}>startup stage for applications:</p>
                 <p>
    {eligibility[1] && typeof eligibility[1] === 'string' ? eligibility[1].split('+').map((item, index) => (
      <span key={index}style={{
       fontFamily: 'CFont',
-      
+      textTransform: 'lowercase' 
       }}>
        -{item}
        <br />
@@ -460,7 +460,7 @@ const ProgramDetail = () => {
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>For:</p>
                 <p>
   {eligibility[2] && typeof eligibility[2] === 'string' ? (
@@ -491,29 +491,29 @@ const ProgramDetail = () => {
               <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Incentives</p>
+                    }}>incentives</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 
                 <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Fiscal Incentives:</p>
+                    }}>fiscal incentives:</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>
                   -{incentives.fiscal}
                 </p>
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
-                    }}>Non-Fiscal Incentives:</p>
+                    textTransform: 'lowercase' 
+                    }}>non-fiscal incentives:</p>
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>-{incentives.nonFiscal}</p>
               </div>
             </div>
@@ -521,23 +521,23 @@ const ProgramDetail = () => {
               <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Portfolio</p>
+                    }}>portfolio</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>About:</p>
+                    }}>about:</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>
 {organizerDetails}                </p>
                 
                 <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Portfolio Companies:</p>
+                    }}>portfolio companies:</p>
                 <p style={{
                     fontFamily: 'CFont',
                     
@@ -546,7 +546,7 @@ const ProgramDetail = () => {
       <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Logos:</p>
+                    }}>logos:</p>
       <Slider {...settings}>
         {logos.map((logo, index) => (
           <div key={index} className="p-4">
@@ -566,7 +566,7 @@ const ProgramDetail = () => {
       <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
-                    }}>FAQs</p>
+                    }}>faqs</p>
       <hr className='my-4 border-t border-gray-300' />
       <div className='flex flex-col gap-6'>
         {faqs.map((faq, index) => (
@@ -577,6 +577,7 @@ const ProgramDetail = () => {
             >
               <p className='font-semibold'style={{
                     fontFamily: 'CFont',
+                    textTransform: 'lowercase' 
                     
                     }}>{faq.question}</p>
               <span className={`transform transition-transform ${openIndex === index ? 'rotate-180' : ''}`}>
@@ -586,7 +587,7 @@ const ProgramDetail = () => {
             {openIndex === index && (
               <div className='mt-2 text-gray-600'style={{
                 fontFamily: 'CFont',
-                
+                textTransform: 'lowercase' 
                 }}>
                 {faq.answer}
               </div>
@@ -610,7 +611,7 @@ const ProgramDetail = () => {
           <p className='text-sm'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Organised by</p>
+                    }}>organised by</p>
           <p className='font-medium text-md'style={{
                     fontFamily: 'CFont',
                     
@@ -622,7 +623,7 @@ const ProgramDetail = () => {
   className="rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-8"
   style={{ fontFamily: 'CFont' }}
 >
-  Apply
+  apply
 </button>
 
     </div>
@@ -651,7 +652,7 @@ const ProgramDetail = () => {
         <p className='text-sm text-gray-500'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Deadline</p>
+                    }}>deadline</p>
       </div>
     </div>
 
@@ -663,7 +664,7 @@ const ProgramDetail = () => {
         <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Location</p>
+                    }}>location</p>
         <p className='text-sm text-gray-500'style={{
                     fontFamily: 'CFont',
                     
@@ -677,7 +678,7 @@ const ProgramDetail = () => {
       <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Industry</p>
+                    }}>industry</p>
       <hr className='my-4 border-t border-slate-300' />
       <div className='flex flex-wrap gap-2'style={{
                     fontFamily: 'CFont',
@@ -696,7 +697,7 @@ const ProgramDetail = () => {
   <p className='mb-2'style={{
                     fontFamily: 'CFont',
                     
-                    }}>Contact the host</p>
+                    }}>contact the host</p>
   <hr className='my-4 border-t border-gray-300' />
 
   <div className='mb-4'> {/* Added margin for spacing */}
@@ -704,7 +705,7 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     
                     }}> {/* Added margin bottom */}
-      Person In Charge: 
+      person In Charge: 
       <a className='text-sm text-gray-500 ml-2'style={{
                     fontFamily: 'CFont',
                     
@@ -714,7 +715,7 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     
                     }}> {/* Added margin bottom */}
-      Designation: 
+      designation: 
       <a className='text-sm text-gray-500 ml-2'style={{
                     fontFamily: 'CFont',
                     
@@ -724,7 +725,7 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     
                     }}> {/* Added margin bottom */}
-      Email ID:
+      email ID:
       <a href='mailto:atoms@accel.com' className='text-sm text-gray-500 ml-2'style={{
                     fontFamily: 'CFont',
                     
@@ -734,7 +735,7 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     
                     }}> {/* Added margin bottom */}
-      Website:
+      website:
       <a href='https://atoms.accel.com/' target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2'style={{
                     fontFamily: 'CFont',
                     
@@ -760,7 +761,7 @@ const ProgramDetail = () => {
   <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Report Event</p>
+                    }}>report event</p>
 </div>
 
 
