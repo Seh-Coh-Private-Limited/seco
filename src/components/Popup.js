@@ -121,14 +121,14 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     <div className="w-10 border-2 border-slate-300 rounded-md h-10">
       <div className="bg-slate-300 text-xs text-center"style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>
         {formatMonth(formattedEndDate)}
       </div>
       <div>
         <p className="text-center text-sm"style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>{formatDay(formattedEndDate)}</p>
       </div>
     </div>
@@ -142,7 +142,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       </p>
       <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>deadline</p>
     </div>
   </div>
@@ -159,11 +159,11 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     <div>
       <p className="font-medium"style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>location</p>
       <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>{location}</p>
     </div>
   </div>
@@ -182,12 +182,12 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 <div id='details' className='mt-6'>
               <p className='font-bold text-3xl'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>about the program</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>
                 <p>{description}</p>
                 
@@ -198,20 +198,21 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
             <div id='eligibility' className='mt-6'>
               <p className='font-bold'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>eligibility</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
-                <p>{eligibility[0]}</p>
+                <p style={{ fontFamily: 'CFont',
+                  textTransform: 'lowercase' }}>{eligibility[0]}</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>Startup Stage for Applications:</p>
                 <p>
    {eligibility[1] && typeof eligibility[1] === 'string' ? eligibility[1].split('+').map((item, index) => (
      <span key={index} style={{
       fontFamily: 'CFont',
-      
+      textTransform: 'lowercase' 
       }}>
        -{item}
        <br />
@@ -228,7 +229,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
           key={index} 
           className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
             fontFamily: 'CFont',
-            
+            textTransform: 'lowercase' 
             }}
         >
           {item}
@@ -248,30 +249,30 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
             <div id='incentives' className='mt-6'>
               <p className='font-bold'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>incentives</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>Fiscal Incentives:</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>
                   -{incentives.fiscal}
                 </p>
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>Non-Fiscal Incentives:</p>
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>-{incentives.nonFiscal}</p>
               </div>
             </div>
@@ -279,14 +280,14 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
             <div className='text-sm mt-2'>
   <p className='mb-2 font-bold'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>contact the host</p>
   <hr className='my-4 border-t border-gray-300' />
 
   <div className='mb-4'> {/* Added margin for spacing */}
     <p className='font-medium mb-4'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}> {/* Added margin bottom */}
       Person In Charge: 
       <a className='text-sm text-gray-500 ml-2'style={{
@@ -296,7 +297,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     </p>
     <p className='font-medium mb-4'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}> {/* Added margin bottom */}
       Designation: 
       <a className='text-sm text-gray-500 ml-2'style={{
@@ -306,7 +307,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     </p>
     <p className='font-medium mb-4'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}> {/* Added margin bottom */}
       Email ID:
       <a href='mailto:atoms@accel.com' className='text-sm text-gray-500 ml-2'style={{
@@ -316,7 +317,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     </p>
     <p className='font-medium mb-4'style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}> {/* Added margin bottom */}
       Website:
       <a href='https://atoms.accel.com/' target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2'style={{
@@ -343,7 +344,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 
   <p style={{
                     fontFamily: 'CFont',
-                    
+                    textTransform: 'lowercase' 
                     }}>Report Event</p>
 </div>
 <div className="flex justify-center mb-8"> {/* Use flex to center the button */}

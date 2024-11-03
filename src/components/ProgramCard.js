@@ -43,6 +43,7 @@ const ProgramCard = ({
                     fontFamily: 'CFont',
                     fontSize: '14px',
                     textAlign:'left',
+                    textTransform: 'lowercase' 
                     }}>{description}</p> {/* Description with truncation */}
             </div>
           </div>
