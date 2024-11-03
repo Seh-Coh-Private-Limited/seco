@@ -12,6 +12,7 @@ const Header = () => {
       {/* Logo section */}
       <div className="flex items-center space-x-2">
         <h6
+        href="https://twisteddco.wixstudio.io/getseco"
           className="text-white font-bold"
           style={{
             fontFamily: 'CustomFont',

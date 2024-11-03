@@ -617,12 +617,14 @@ const ProgramDetail = () => {
                     }}>{orgname}</p>
         </div>
       </div>
-      <button className='rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-8'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-        Apply
-      </button>
+      <button
+  onClick={() => window.location.href = 'https://twisteddco.wixstudio.io/getseco/contact-1'}
+  className="rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-8"
+  style={{ fontFamily: 'CFont' }}
+>
+  Apply
+</button>
+
     </div>
 
     <div id='date' className='flex flex-row gap-2 mb-6 mt-6'> {/* Added bottom margin */}

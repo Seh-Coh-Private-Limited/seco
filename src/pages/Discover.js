@@ -146,12 +146,12 @@
 
 
 import React, { useEffect, useState } from 'react';
-import './Discover.css';
-import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
-import Pagination from '../components/Pagination'; // Import the Pagination component
-import { fetchPrograms } from '../components/fetchPrograms';
 import Header from '../components/Header';
+import Pagination from '../components/Pagination'; // Import the Pagination component
+import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
+import { fetchPrograms } from '../components/fetchPrograms';
 import Footer from '../components/footer';
+import './Discover.css';
 
 function App() {
   const [programs, setPrograms] = useState([]);
@@ -198,22 +198,22 @@ function App() {
       <h1 className="heading"style={{
                     fontFamily: 'CFont',
                     fontSize: '48px',
-                    }}>Discover Programs</h1>
+                    }}>discover programs</h1>
       {/* Dropdown Filters Section */}
       <div className="filters-container">
         <p style={{
                     fontFamily: 'CFont',
                     
-                    }}>Show me</p>
+                    }}>show me</p>
         <div className="filter-dropdown">
           <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
-            <option value="all">All</option>
-            <option value="Finance">Finance</option>
-            <option value="Technology">Technology</option>
-            <option value="Education">Education</option>
-            <option value="Healthcare & Lifesciences">Healthcare & Lifesciences</option>
-            <option value="Media & Entertainment">Media & Entertainment</option>
-            <option value="Retail">Retail</option>
+            <option value="all">all</option>
+            <option value="Finance">finance</option>
+            <option value="Technology">technology</option>
+            <option value="Education">education</option>
+            <option value="Healthcare & Lifesciences">healthcare & lifesciences</option>
+            <option value="Media & Entertainment">media & entertainment</option>
+            <option value="Retail">retail</option>
           </select>
         </div>
         <p style={{
@@ -222,7 +222,7 @@ function App() {
                     }}>programs, active in</p>
         <div className="filter-dropdown">
           <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
-            <option value="any city">Any City</option>
+            <option value="any city">any city</option>
             <option value="remote">Remote</option>
             <option value="New York">New York</option>
             <option value="San Francisco">San Francisco</option>
@@ -258,17 +258,18 @@ function App() {
 
       {/* Header Section (Below Cards) */}
       <div className="h-section bg-[#F99F31] w-full h-96 flex flex-col items-center -mb-12 justify-center">
-  <h1 className="main-heading text-black text-center text-4xl font-bold mb-4 px-4"style={{
+  <h1 className="main-heading text-black text-center text-2xl font-bold mr-5 ml-5 mb-4 px-4"style={{
                     fontFamily: 'CFont',
                     
                     }}>
-    We have a lot of exciting startup opportunities and candidates — only a few are perfect for you.
+    built to empower founders, seco brings all your interactions with incubators, accelerators, events into one intuitive platform.
   </h1>
   <p className="subheading text-black text-center text-lg mb-6 px-4"style={{
                     fontFamily: 'CFont',
                     
-                    }}>We’ll help you find the few.</p>
-  <button
+                    }}>be the first to access.</p>
+  <a
+  href="https://twisteddco.wixstudio.io/getseco/contact"    
                     className="flex items-center bg-white text-black px-4 py-2 rounded-full"
                     style={{
                     fontFamily: 'CFont',
@@ -289,7 +290,7 @@ function App() {
                     >
                     <span className="material-icons">chevron_right</span>
                     </span>
-                  </button>
+                  </a>
 
   {/* Dropdown Section */}
 </div>

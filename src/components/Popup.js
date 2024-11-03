@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchProgramById } from '../components/fetchProgram'; // Adjust the import path based on your project structure
 import './Popup.css'; // Ensure CSS styles for the popup
+import { FaWindowClose } from 'react-icons/fa';
 
 const Popup = ({ isOpen, onClose, programDetails }) => {
   const navigate = useNavigate();
@@ -64,11 +65,8 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       onClick={onClose} 
       className="flex items-center justify-center w-8 h-8"
     >
-      <img 
-        src={require('../assets/doubleright.png')} 
-        alt="Close" 
-        className="w-5 h-5" 
-      />
+    <i class="far fa-times-circle"></i>
+     
     </button>
 
     {/* Event Page Button */}

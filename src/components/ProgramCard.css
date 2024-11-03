@@ -4,7 +4,7 @@
   width: 100%;
   max-width: 424px;
   height: 424px;
-  border: 2px solid #808080;
+  border: 1.5px solid #ccc;
   border-radius: 8px;
   overflow: hidden;
   text-decoration: none;
@@ -25,7 +25,7 @@
 
 .program-card:hover {
   transform: scale(1.02); /* Slight scaling effect on hover */
-  border-color: black;
+  border-color: solid black;
 }
 
 /* Layout of the content inside the card */
@@ -104,12 +104,12 @@
 .card-horizontal {
   grid-column: span 1; /* Spans one column */
   grid-row: span 1; /* Spans one row */
-  height: 200px; /* Horizontal card should have a smaller height */
+  height: 252px; /* Horizontal card should have a smaller height */
   max-width: 100%; /* Full width */
 }
 
 .card-horizontal .card-image {
-  height: 125px; /* Smaller image height for horizontal card */
+  height: 180px; /* Smaller image height for horizontal card */
 }
 
 .card-horizontal .card-description {
@@ -118,7 +118,7 @@
 
 .card-horizontal .card-title {
   padding-top: 14px;
-  font-size: 18px; /* Smaller font size for horizontal card */
+  font-size: 16px; /* Smaller font size for horizontal card */
 }
 
 .card-horizontal .card-footer {
@@ -129,7 +129,7 @@
 .card-vertical {
   grid-column: span 1; /* Spans one column */
   grid-row: span 2; /* Spans two rows */
-  height: 424px; /* Full height */
+  height: 434px; /* Full height */
   max-width: 100%;
 }
 
@@ -143,7 +143,7 @@
 }
 
 .card-vertical .card-image {
-  height: 220px; /* Larger image for vertical card */
+  height: 200px; /* Larger image for vertical card */
 }
 
 /* Responsive Design for Smaller Screens */

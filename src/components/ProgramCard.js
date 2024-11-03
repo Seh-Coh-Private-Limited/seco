@@ -37,10 +37,12 @@ const ProgramCard = ({
               <h3 className="card-title"style={{
                     fontFamily: 'CFont',
                     fontSize: '22px',
+                    textAlign:'left',
                     }}>{title}</h3>
               <p className="card-description"style={{
                     fontFamily: 'CFont',
                     fontSize: '14px',
+                    textAlign:'left',
                     }}>{description}</p> {/* Description with truncation */}
             </div>
           </div>
