@@ -348,7 +348,9 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                     }}>Report Event</p>
 </div>
 <div className="flex justify-center mb-8"> {/* Use flex to center the button */}
-  <button className='rounded-md text-xl text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-10 font-medium' style={{
+  <button 
+  onClick={() => window.location.href = 'https://twisteddco.wixstudio.io/getseco/contact-1'}
+  className='rounded-md text-xl text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-10 font-medium' style={{
                     fontFamily: 'CFont',
                     
                     }}>
