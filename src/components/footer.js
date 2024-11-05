@@ -34,7 +34,7 @@ const Footer = () => {
     fontSize: '16px',
     borderRadius: '30px',
     padding: '6px',
-    paddingRight: '10px',
+    paddingRight: '6px',
     paddingLeft: '30px',
   }}
 >
