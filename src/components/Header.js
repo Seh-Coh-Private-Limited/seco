@@ -40,7 +40,7 @@ const Header = () => {
 
           {/* Button with responsive size */}
       <a
-      href="getseco./contact"
+      href="https://www.getseco.com/contact"
         className="bg-white text-black rounded-full px-4 py-2 md:px-5 md:py-3 hover:bg-gray-100 transition duration-300 text-sm md:text-base"
         style={{ fontWeight: '400' }}
       >
