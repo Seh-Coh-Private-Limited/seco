@@ -673,7 +673,7 @@ const ProgramDetail = () => {
         <p className='text-sm text-gray-500'style={{
                     fontFamily: 'CFont',
                     
-                    }}>startdate</p>
+                    }}>Start Date</p>
       </div>
     </div>
 
@@ -702,7 +702,7 @@ const ProgramDetail = () => {
       <p className='text-sm text-gray-500'style={{
                     fontFamily: 'CFont',
                     
-                    }}>endate</p>
+                    }}>End Date</p>
       
         
       </div>
