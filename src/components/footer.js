@@ -27,33 +27,38 @@ const Footer = () => {
             </p>
             <button
   onClick={() => window.location.href = 'https://getseco.com/contact'}
-  className="flex items-center bg-white text-black px-4 py-2 rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white"
+  className="flex items-center bg-white text-black rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white join-waitlist-btn"
   style={{
+    alignItems: 'center',
     fontFamily: 'CFont',
     fontSize: '16px',
-    borderRadius: '30px', // Ensures the button has rounded corners
-    padding: '12px 24px',
+    borderRadius: '30px',
+    padding: '6px',
+    paddingRight: '10px',
+    paddingLeft: '30px',
   }}
 >
-  contact us
+  join waitlist
   <span
-    className="ml-2 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
+    className="ml-6 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
     style={{
-      width: '24px',
-      height: '24px',
-      borderRadius: '50%', // Make the span circular
+      width: '38px',
+      height: '38px', // Increase height here
+      borderRadius: '50%',
+      display: 'flex', // Use flex for better alignment
+      alignItems: 'center', // Center the icon vertically
+      justifyContent: 'center', // Center the icon horizontally
     }}
   >
-    <span className="material-icons">chevron_right</span>
+    <span className="material-icons" style={{ fontSize: '30px' }}>chevron_right</span>
   </span>
 </button>
 
-
 <style jsx>{`
-  button:hover span {
-  border-radius: 50%;
-    background-color: white; /* Invert background color of span on hover */
-    color: black; /* Invert text color of span on hover */
+  .join-waitlist-btn:hover span {
+    border-radius: 50%;
+    background-color: white;
+    color: black;
   }
 `}</style>
 

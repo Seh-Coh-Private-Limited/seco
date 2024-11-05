@@ -57,70 +57,70 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
     <div className={`overlay ${isOpen ? 'show' : ''}`}>
 <div className={`popup ${isOpen ? 'show' : ''}`}>
   <div className="popup-content">
-      <div className="pane-header flex flex-col  p-4 sticky top-8 z-20 mb-0">
+  <div className="pane-header flex flex-col p-4 sticky top-8 z-20 mb-0">
   <div className="flex items-center gap-4">
-  {/* Close Button */}
-  <button 
-    id="close-button" // Unique ID for the close button
-    aria-label="Close" 
-    onClick={onClose} 
-    className="w-5 h-5 flex items-center justify-center rounded-full transition-colors duration-300 hover:bg-gray-200"
-  >
-    <i className="far fa-times-circle text-black text-lg"></i>
-  </button>
+    {/* Close Button */}
+    <button 
+      id="close-button"
+      aria-label="Close" 
+      onClick={onClose} 
+      className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full transition-colors duration-300 hover:bg-gray-200"
+    >
+      <i className="far fa-times-circle text-black text-sm sm:text-lg"></i>
+    </button>
 
-  {/* Event Page Button */}
-  <button 
-    id="event-page-button" // Unique ID for the event page button
-    onClick={handleEventPageClick} 
-    className="flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out"
-    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'} // light gray for hover
-    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'} // original background color
-  >
-    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
-      event page
-    </span>
-    <FontAwesomeIcon 
-      icon={faArrowRight} 
-      style={{ transform: 'rotate(305deg)' }} 
-    />
-  </button>
+    {/* Event Page Button */}
+    <button 
+      id="event-page-button"
+      onClick={handleEventPageClick} 
+      className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
+      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
+      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+    >
+      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+        event page
+      </span>
+      <FontAwesomeIcon 
+        icon={faArrowRight} 
+        style={{ transform: 'rotate(305deg)' }} 
+        className="w-3 h-3 sm:w-4 sm:h-4"
+      />
+    </button>
 
-  {/* Copy Link Button */}
-  <button 
-    id="copy-link-button" // Unique ID for the copy link button
-    onClick={handleCopyLink} 
-    className="flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out"
-    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
-    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
-  >
-    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
-      copy link
-    </span>
-    <FontAwesomeIcon 
-      icon={faCopy} 
-      className="w-4 h-4" 
-    />
-  </button>
+    {/* Copy Link Button */}
+    <button 
+      id="copy-link-button"
+      onClick={handleCopyLink} 
+      className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
+      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
+      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+    >
+      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+        copy link
+      </span>
+      <FontAwesomeIcon 
+        icon={faCopy} 
+        className="w-3 h-3 sm:w-4 sm:h-4"
+      />
+    </button>
 
-  {/* Apply Button */}
-  <button 
-    id="apply-button" // Unique ID for the apply button
-    onClick={() => window.location.href = 'https://getseco.com/contact-1'}
-    className='flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out'
-    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
-    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
-  >
-    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
-      apply
-    </span>
-    <FontAwesomeIcon 
-      icon={faNewspaper} 
-      className="w-4 h-4" 
-    />
-  </button>
-</div>
-
+    {/* Apply Button */}
+    <button 
+      id="apply-button"
+      onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+      className="flex items-center bg-[#F99F31] px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
+      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
+      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+    >
+      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+        apply
+      </span>
+      <FontAwesomeIcon 
+        icon={faNewspaper} 
+        className="w-3 h-3 sm:w-4 sm:h-4"
+      />
+    </button>
+  </div>
 
   {/* Manual Line */}
   <div className="w-full h-px bg-black mt-2 mb-0" style={{ marginLeft: '-32px', marginRight: '-16px' }}></div>
@@ -177,13 +177,14 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
  
 </div>
 <div id="location" className="flex flex-row gap-2 mb-10">
-    <div className="w-10 border-2 border-slate-300 rounded-md h-10">
-      <img
-        src="../../location.png"
-        alt="location"
-        className="w-14 h-8 mt-1"
-      />
-    </div>
+<div className="w-10 border-2 border-slate-300 rounded-md h-10 flex items-center justify-center"> {/* Added flex properties */}
+  <img
+    src="../../location.png"
+    alt="location"
+    className="w-6 h-6"
+  />
+</div>
+
     <div>
       <p className="font-medium"style={{
                     fontFamily: 'CFont',
@@ -207,10 +208,10 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   }}
 >
 <div id='details' className='mt-6'>
-              <p className='font-bold text-3xl'style={{
+              <p className='font-bold'style={{
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
-                    }}>about the program</p>
+                    }}>about</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'style={{
                     fontFamily: 'CFont',

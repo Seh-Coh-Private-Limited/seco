@@ -333,13 +333,16 @@ const ProgramDetail = () => {
               {title}
             </p>
 
-            <nav className="bg-white border-b border-gray-300  rounded-3xl">
-      <div className="max-w-6xl mx-auto px-4 py-2 flex">
-        <div className="flex w-full justify-between ml-2">
+            <nav className="bg-white rounded-3xl">
+  <div className="max-w-6xl mx-auto px-4 py-2">
+    <div className="flex justify-start ml-0 space-x-6">
+      <div className="flex border-b border-gray-300 rounded-3xl"> {/* Added space-x-4 for spacing */}
+    
           <Link 
             to="details" 
             smooth={true} 
             duration={500} 
+            offset={-80}
             className={`text-gray-700 text-sm hover:text-blue-600 relative mx-2 ${activeTab === 'Details' ? 'border-blue-600 pb-1' : ''}`}
 
             onSetActive={() => handleSetActive('Details')}
@@ -354,6 +357,7 @@ const ProgramDetail = () => {
             to="eligibility" 
             smooth={true} 
             duration={500} 
+            offset={-80}
             className={`text-sm text-gray-500  hover:text-blue-600 relative
             ${activeTab === 'Eligibility' ? 'border-blue-600 pb-1' : ''} mx-2`}
             onSetActive={() => handleSetActive('Eligibility')}
@@ -368,6 +372,7 @@ const ProgramDetail = () => {
             to="incentives" 
             smooth={true} 
             duration={500} 
+            offset={-80}
             className={`text-sm text-gray-500 hover:text-blue-600 relative
             ${activeTab === 'Incentives' ? 'border-blue-600 pb-1' : ''}    mx-2`}
             onSetActive={() => handleSetActive('Incentives')}
@@ -397,6 +402,7 @@ const ProgramDetail = () => {
               to="faq" 
               smooth={true} 
               duration={500} 
+              offset={-80}
               className={`text-sm text-gray-500  hover:text-blue-600 relative
               ${activeTab === 'FAQs' ? 'border-blue-600 pb-1' : ''} mx-2`}
               onSetActive={() => handleSetActive('FAQs')}
@@ -407,7 +413,7 @@ const ProgramDetail = () => {
             >
               faqs
             </Link>
-          
+          </div>
         </div>
       </div>
     </nav>
@@ -578,7 +584,7 @@ const ProgramDetail = () => {
               className='flex justify-between cursor-pointer'
               onClick={() => toggleAnswer(index)}
             >
-              <p className='font-semibold'style={{
+              <p className='font'style={{
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
                     
@@ -613,7 +619,7 @@ const ProgramDetail = () => {
           <div className='flex justify-between mb-4'>
   <button
     onClick={() => window.location.href = 'https://getseco.com/contact-1'}
-    className="rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 w-full h-12 px-8" // Use w-full for full width and h-12 for increased height
+    className="rounded-xl text-sm text-slate-700 bg-[#F99F31] hover:text-gray-100 hover:bg-slate-700 w-full h-12 px-8" // Use w-full for full width and h-12 for increased height
     style={{ fontFamily: 'CFont' }}
   >
     apply
@@ -702,9 +708,14 @@ const ProgramDetail = () => {
     </div>
 
     <div id='location' className='flex  flex-row gap-2 mb-6'> {/* Added bottom margin */}
-      <div className='w-10 border-2 flex  border-slate-300 rounded-md h-10'>
-        <img src='../../location.png' alt='location' className='w-7 h-6 ml-1 mt-2' />
-      </div>
+    <div className="w-10 border-2 border-slate-300 rounded-md h-10 flex items-center justify-center"> {/* Added flex properties */}
+  <img
+    src="../../location.png"
+    alt="location"
+    className="w-6 h-6"
+  />
+</div>
+
       <div>
         <p className='font-medium'style={{
                     fontFamily: 'CFont',

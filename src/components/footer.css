@@ -71,7 +71,7 @@
 }
 
   
-  .footer-waitlist button {
+  /* .footer-waitlist button {
     background-color: #ffffff;
     color: #12163f;
     border: none;
@@ -79,7 +79,7 @@
     border-radius: 12px;
     cursor: pointer;
     font-size: 16px;
-  }
+  } */
   @media (min-width: 768px) {
     .footer-links {
         margin-top: 340px;
