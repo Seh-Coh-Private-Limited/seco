@@ -11,8 +11,8 @@ const Header = () => {
     >
       {/* Logo section */}
       <div className="flex items-center space-x-2">
-     <a href="https://www.getseco.com/">   <h6
-        
+        <h6
+        href="https://www.getseco.com/"
           className="text-white font-bold"
           style={{
             fontFamily: 'CustomFont',
@@ -21,7 +21,7 @@ const Header = () => {
             }}
           >
             seco
-          </h6></a>
+          </h6>
           <a
             href="https://www.getseco.com/"
             className="hidden sm:inline text-slate-200"
