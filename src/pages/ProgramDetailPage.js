@@ -334,8 +334,8 @@ const ProgramDetail = () => {
             </p>
 
             <nav className="bg-white rounded-3xl">
-  <div className="max-w-6xl mx-auto px-4 py-2">
-    <div className="flex justify-start ml-0 space-x-6">
+  <div className="max-w-6xl mx-auto  py-2">
+    <div className="flex justify-start space-x-6">
       <div className="flex border-b border-gray-300 rounded-3xl"> {/* Added space-x-4 for spacing */}
     
           <Link 
@@ -619,7 +619,7 @@ const ProgramDetail = () => {
           <div className='flex justify-between mb-4'>
   <button
     onClick={() => window.location.href = 'https://getseco.com/contact-1'}
-    className="rounded-xl text-sm text-slate-700 bg-[#F99F31] hover:text-gray-100 hover:bg-slate-700 w-full h-12 px-8" // Use w-full for full width and h-12 for increased height
+    className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8" // Use w-full for full width and h-12 for increased height
     style={{ fontFamily: 'CFont' }}
   >
     apply
@@ -659,10 +659,7 @@ const ProgramDetail = () => {
                     }}>{formatDay(formattedStartDate)}</p></div>
       </div>
       <div>
-      <p className='text-sm text-gray-500'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>startdate</p>
+      
         <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
@@ -673,7 +670,10 @@ const ProgramDetail = () => {
           day: 'numeric',
           weekday: 'long',
         })}</p>
-        
+        <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>startdate</p>
       </div>
     </div>
 
@@ -689,11 +689,7 @@ const ProgramDetail = () => {
                     }}>{formatDay(formattedEndDate)}</p></div>
       </div>
       <div>
-      <p className='text-sm text-gray-500'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>endate</p>
-        <p className='font-medium'style={{
+      <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
                     }}>
@@ -703,6 +699,11 @@ const ProgramDetail = () => {
           day: 'numeric',
           weekday: 'long',
         })}</p>
+      <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>endate</p>
+      
         
       </div>
     </div>

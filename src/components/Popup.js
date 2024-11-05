@@ -106,20 +106,19 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 
     {/* Apply Button */}
     <button 
-      id="apply-button"
-      onClick={() => window.location.href = 'https://getseco.com/contact-1'}
-      className="flex items-center bg-[#F99F31] px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
-      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
-      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
-    >
-      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
-        apply
-      </span>
-      <FontAwesomeIcon 
-        icon={faNewspaper} 
-        className="w-3 h-3 sm:w-4 sm:h-4"
-      />
-    </button>
+  id="apply-button"
+  onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+  className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
+>
+  <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+    apply
+  </span>
+  <FontAwesomeIcon 
+    icon={faNewspaper} 
+    className="w-3 h-3 sm:w-4 sm:h-4"
+  />
+</button>
+
   </div>
 
   {/* Manual Line */}
@@ -156,11 +155,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       </div>
     </div>
     <div>
-    <p className="text-sm text-gray-500"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase', 
-                    textAlign: 'left'
-                    }}>deadline</p>
+    
       <p className="font-medium" >
         {formattedEndDate.toLocaleDateString("en-US", {
           year: "numeric",
@@ -169,7 +164,11 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
           weekday: "long",
         })}
       </p>
-     
+      <p className="text-sm text-gray-500"style={{
+                    fontFamily: 'CFont',
+                    textTransform: 'lowercase', 
+                    textAlign: 'left'
+                    }}>deadline</p>
     </div>
   </div>
 
@@ -186,15 +185,16 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 </div>
 
     <div>
+      
       <p className="font-medium"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>location</p>
-      <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
                     textTransform: 'lowercase', 
                     textAlign: 'left'
                     }}>{location}</p>
+                    <p className="text-sm text-gray-500"style={{
+                    fontFamily: 'CFont',
+                    textTransform: 'lowercase' 
+                    }}>location</p>
     </div>
   </div>
         
