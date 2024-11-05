@@ -12,7 +12,7 @@ const Header = () => {
       {/* Logo section */}
       <div className="flex items-center space-x-2">
         <h6
-        href="getseco.com"
+        href="https://www.getseco.com/"
           className="text-white font-bold"
           style={{
             fontFamily: 'CustomFont',
@@ -23,14 +23,14 @@ const Header = () => {
             seco
           </h6>
           <a
-            href="getseco.com"
+            href="https://www.getseco.com/"
             className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' }}
           >
             home
           </a>
           <a
-            href="discover.getseco.com"
+            href="https://discover.getseco.com/"
             className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
           >
