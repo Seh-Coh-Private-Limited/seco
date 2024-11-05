@@ -41,7 +41,7 @@
 }
 
 .subheading {
-  color: #666;
+  color: black;
   font-size: 18px;
   margin-bottom: 20px;
 }
@@ -67,6 +67,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 22px;
+  margin-top: 20px;
   gap: 10px;
 }
 .dropdown {

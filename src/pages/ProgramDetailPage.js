@@ -182,7 +182,6 @@
 
 
 
-import Slider from 'react-slick';
 import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 import './ProgramDetailPage.css';
@@ -311,11 +310,11 @@ const ProgramDetail = () => {
 
           </div>
           <div className='col-span-1 mb-0 lg:col-span-2 order-2 lg:order-2 mr-0 lg:mr-6 p-4'> 
-          <div className='text-sm inline-flex items-center gap-2 bg-slate-300 p-1 rounded-md'>
+          {/* <div className='text-sm inline-flex items-center gap-2 bg-slate-300 p-1 rounded-md'>
       <span className="material-icons text-gray-700" style={{ fontSize: '1rem' }}>
         star
       </span>
-      {/* Featured Icon */}
+      
       <p style={{
                     fontFamily: 'CFont',
                     
@@ -325,7 +324,7 @@ const ProgramDetail = () => {
                     
                     }}>{tag}</span>
       </p>
-    </div>
+    </div> */}
 
             <p className='text-4xl font-bold my-4' style={{
                     fontFamily: 'CFont',
@@ -334,7 +333,7 @@ const ProgramDetail = () => {
               {title}
             </p>
 
-            <nav className="bg-white border border-gray-300 rounded-3xl">
+            <nav className="bg-white border-b border-gray-300  rounded-3xl">
       <div className="max-w-6xl mx-auto px-4 py-2 flex">
         <div className="flex w-full justify-between ml-2">
           <Link 
@@ -379,7 +378,7 @@ const ProgramDetail = () => {
           >
             incentives
           </Link>
-          <Link 
+          {/* <Link 
             to="portfolio" 
             smooth={true} 
             duration={500} 
@@ -392,7 +391,7 @@ const ProgramDetail = () => {
               }}
           >
             portfolio
-          </Link>
+          </Link> */}
           
             <Link 
               to="faq" 
@@ -446,17 +445,21 @@ const ProgramDetail = () => {
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
                     }}>startup stage for applications:</p>
-                <p>
-   {eligibility[1] && typeof eligibility[1] === 'string' ? eligibility[1].split('+').map((item, index) => (
-     <span key={index}style={{
-      fontFamily: 'CFont',
-      textTransform: 'lowercase' 
-      }}>
-       -{item}
-       <br />
-     </span>
-   )) : null}
-                </p>
+               <p>
+  {eligibility[1] && typeof eligibility[1] === 'string' ? (
+    <ul className="list-disc pl-0 ml-0">
+      {eligibility[1].split('+').map((item, index) => (
+        <li key={index} className="font-CFont lowercase text-left ml-6"style={{
+          fontFamily: 'CFont',
+          textTransform: 'lowercase' 
+          }}>
+          {item}
+        </li>
+      ))}
+    </ul>
+  ) : null}
+</p>
+
                 
                 <p style={{
                     fontFamily: 'CFont',
@@ -517,7 +520,7 @@ const ProgramDetail = () => {
                     }}>-{incentives.nonFiscal}</p>
               </div>
             </div>
-            <div id='portfolio' className='mt-6'>
+            {/* <div id='portfolio' className='mt-6'>
               <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
@@ -561,8 +564,8 @@ const ProgramDetail = () => {
       </Slider>
     </div>
               </div>
-            </div>
-            <div id='faq' className='mt-6 lg:mb-48'>
+            </div> */}
+            <div id='faq' className='mt-6 lg:mb-44'>
       <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
@@ -599,8 +602,24 @@ const ProgramDetail = () => {
           </div>
 
           
-          <div className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] overflow-auto lg:mb-40 p-4'>
-  <div className='mt-4'>
+          <div 
+  className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] h-auto overflow-y-auto overflow-x-hidden lg:mb-40 p-4'
+  style={{ 
+    '-ms-overflow-style': 'none', // For Internet Explorer and Edge
+    scrollbarWidth: 'none' // For Firefox
+  }}
+>
+          <div className='mt-4'>
+          <div className='flex justify-between mb-4'>
+  <button
+    onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+    className="rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 w-full h-12 px-8" // Use w-full for full width and h-12 for increased height
+    style={{ fontFamily: 'CFont' }}
+  >
+    apply
+  </button>
+</div>
+
     <div className='flex justify-between mb-4'> {/* Added bottom margin */}
       <div className='flex flex-row gap-2'>
         <div className='flex justify-center items-center w-10 h-12 rounded-lg text-gray-800'>
@@ -618,14 +637,38 @@ const ProgramDetail = () => {
                     }}>{orgname}</p>
         </div>
       </div>
-      <button
-  onClick={() => window.location.href = 'https://twisteddco.wixstudio.io/getseco/contact-1'}
-  className="rounded-xl text-sm text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-8"
-  style={{ fontFamily: 'CFont' }}
->
-  apply
-</button>
+   
 
+    </div>
+
+    <div id='date' className='flex flex-row gap-2 mb-6 mt-6'> {/* Added bottom margin */}
+      <div className='w-10 border-2 border-slate-300 rounded-md h-10'>
+        <div className='bg-slate-300 text-xs text-center'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>{formatMonth(formattedStartDate)}</div>
+        <div><p className='text-center text-sm'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>{formatDay(formattedStartDate)}</p></div>
+      </div>
+      <div>
+      <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>startdate</p>
+        <p className='font-medium'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>
+        {formattedStartDate.toLocaleDateString("en-US", {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        })}</p>
+        
+      </div>
     </div>
 
     <div id='date' className='flex flex-row gap-2 mb-6 mt-6'> {/* Added bottom margin */}
@@ -640,6 +683,10 @@ const ProgramDetail = () => {
                     }}>{formatDay(formattedEndDate)}</p></div>
       </div>
       <div>
+      <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>endate</p>
         <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
@@ -647,12 +694,10 @@ const ProgramDetail = () => {
         {formattedEndDate.toLocaleDateString("en-US", {
           year: 'numeric',
           month: 'long',
-          day: 'numeric'
+          day: 'numeric',
+          weekday: 'long',
         })}</p>
-        <p className='text-sm text-gray-500'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>deadline</p>
+        
       </div>
     </div>
 
@@ -721,26 +766,19 @@ const ProgramDetail = () => {
                     
                     }}>{contactInfo.designation}</a> {/* Added margin left */}
     </p>
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {/* Added margin bottom */}
-      email ID:
-      <a href='mailto:atoms@accel.com' className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {contactInfo.email}</a> {/* Added margin left */}
-    </p>
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {/* Added margin bottom */}
-      website:
-      <a href='https://atoms.accel.com/' target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {contactInfo.website}</a> {/* Added margin left */}
-    </p>
+    <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}> {/* Added margin bottom */}
+  email ID:
+  <a href={`mailto:${contactInfo.email}`} className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+    {contactInfo.email}
+  </a> {/* Added margin left */}
+</p>
+<p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}> {/* Added margin bottom */}
+  website:
+  <a href={contactInfo.website} target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+    {contactInfo.website}
+  </a> {/* Added margin left */}
+</p>
+
   </div>
 
   <div className='flex flex-row gap-7 mb-4'>
@@ -758,10 +796,7 @@ const ProgramDetail = () => {
       </a>
     </div>
 
-  <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>report event</p>
+  
 </div>
 
 

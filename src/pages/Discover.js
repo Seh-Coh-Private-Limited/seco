@@ -144,10 +144,8 @@
 
 
 
-
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
-import Pagination from '../components/Pagination'; // Import the Pagination component
 import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
 import { fetchPrograms } from '../components/fetchPrograms';
 import Footer from '../components/footer';
@@ -155,8 +153,6 @@ import './Discover.css';
 
 function App() {
   const [programs, setPrograms] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const programsPerPage = 6; // Set how many programs to display per page
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCity, setFilterCity] = useState('any city');
 
@@ -180,122 +176,112 @@ function App() {
     return matchesCategory && matchesCity;
   });
 
-  const totalPages = Math.ceil(filteredPrograms.length / programsPerPage);
-  
-  const handlePageChange = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
+  // Calculate the number of programs
+  const totalFiltered = filteredPrograms.length;
+  const remainder = totalFiltered % 6;
 
-  const indexOfLastProgram = currentPage * programsPerPage;
-  const indexOfFirstProgram = indexOfLastProgram - programsPerPage;
-  const currentPrograms = filteredPrograms.slice(indexOfFirstProgram, indexOfLastProgram);
+  // Create an array for orientation based on the total number of programs
+  const orientationArray = [];
+  for (let i = 0; i < totalFiltered; i++) {
+    if (i < totalFiltered - remainder) {
+      orientationArray.push(orientationPattern[i % 6]);
+    } else {
+      orientationArray.push('vertical'); // Ensure the last programs are vertical
+    }
+  }
 
   return (
-    <div><Header />
-    <div className="app-container mt-20">
-      
-      <h1 className="heading"style={{
-                    fontFamily: 'CFont',
-                    fontSize: '48px',
-                    }}>discover programs</h1>
-      {/* Dropdown Filters Section */}
-      <div className="filters-container">
-        <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>show me</p>
-        <div className="filter-dropdown">
-          <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
-            <option value="all">all</option>
-            <option value="Finance">finance</option>
-            <option value="Technology">technology</option>
-            <option value="Education">education</option>
-            <option value="Healthcare & Lifesciences">healthcare & lifesciences</option>
-            <option value="Media & Entertainment">media & entertainment</option>
-            <option value="Retail">retail</option>
-          </select>
+    <div>
+      <Header />
+      <div className="app-container mt-20">
+        <h1 className="heading" style={{ fontFamily: 'CFont', fontSize: '48px' }}>
+          discover programs
+        </h1>
+        {/* Dropdown Filters Section */}
+        <div className="filters-container">
+          <p style={{ fontFamily: 'CFont' }}>show me</p>
+          <div className="filter-dropdown">
+            <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
+              <option value="all">all</option>
+              <option value="Finance">finance</option>
+              <option value="Technology">technology</option>
+              <option value="Education">education</option>
+              <option value="Healthcare & Lifesciences">healthcare & lifesciences</option>
+              <option value="Media & Entertainment">media & entertainment</option>
+              <option value="Retail">retail</option>
+            </select>
+          </div>
+          <p style={{ fontFamily: 'CFont' }}>programs, active in</p>
+          <div className="filter-dropdown">
+            <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
+              <option value="any city">any city</option>
+              <option value="remote">Remote</option>
+              <option value="india">India</option>
+              {/* Add more cities as needed */}
+            </select>
+          </div>
         </div>
-        <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>programs, active in</p>
-        <div className="filter-dropdown">
-          <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
-            <option value="any city">any city</option>
-            <option value="remote">Remote</option>
-            <option value="New York">New York</option>
-            <option value="San Francisco">San Francisco</option>
-            {/* Add more cities as needed */}
-          </select>
+
+        <br /><br />
+        <div className="articles-container">
+          {/* Program Cards */}
+          {filteredPrograms.map((program, index) => (
+            <ProgramCard
+              key={program.id} // Add a key for each program
+              id={program.id}
+              title={program.title}
+              image={program.image} // Use the image field
+              location={program.location} // Adjust as necessary
+              description={program.description}
+              category={program.industry.join(', ')} // Join the array for display
+              orientation={orientationArray[index]} // Assign orientation based on the array
+            />
+          ))}
+        </div>
+
+        <br /><br />
+
+        {/* Header Section (Below Cards) */}
+        <div className="h-section bg-[#F99F31] w-full h-96 flex flex-col items-center -mb-12 justify-center">
+          <h1 className="main-heading text-black text-center text-2xl font-bold mr-5 ml-5 mb-4 px-4" style={{ fontFamily: 'CFont' }}>
+            built to empower founders, seco brings all your interactions with incubators, accelerators, events into one intuitive platform.
+          </h1>
+          <p className="subheading text-black text-center text-lg mb-6 px-4" style={{ fontFamily: 'CFont' }}>
+            be the first to access.
+          </p>
+          <button
+            onClick={() => window.location.href = 'https://getseco.com/contact'}
+            className="flex items-center bg-white text-black px-4 py-2 rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white"
+            style={{
+              fontFamily: 'CFont',
+              fontSize: '16px',
+              borderRadius: '30px', // Ensures the button has rounded corners
+              padding: '12px 24px',
+            }}
+          >
+            join waitlist
+            <span
+              className="ml-2 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%', // Make the span circular
+              }}
+            >
+              <span className="material-icons">chevron_right</span>
+            </span>
+          </button>
+
+          <style jsx>{`
+            a:hover span {
+              border-radius: 50%;
+              background-color: white; /* Invert background color of span on hover */
+              color: black; /* Invert text color of span on hover */
+            }
+          `}</style>
         </div>
       </div>
-
-      <br /><br />
-      <div className="articles-container">
-        {/* Program Cards */}
-        {currentPrograms.map((program, index) => (
-           <ProgramCard
-           
-           id={program.id}
-           title={program.title}
-           image={program.image} // Use the image field
-           location={program.location} // Adjust as necessary
-           description={program.description}
-           category={program.industry.join(', ')} // Join the array for display
-           orientation={orientationPattern[index]} // Assign orientation based on the pattern
-         />
-        ))}
-      </div>
-
-      <br /><br />
-      {/* Pagination Component */}
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-      />
-
-      {/* Header Section (Below Cards) */}
-      <div className="h-section bg-[#F99F31] w-full h-96 flex flex-col items-center -mb-12 justify-center">
-  <h1 className="main-heading text-black text-center text-2xl font-bold mr-5 ml-5 mb-4 px-4"style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-    built to empower founders, seco brings all your interactions with incubators, accelerators, events into one intuitive platform.
-  </h1>
-  <p className="subheading text-black text-center text-lg mb-6 px-4"style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>be the first to access.</p>
-  <a
-  href="https://twisteddco.wixstudio.io/getseco/contact"    
-                    className="flex items-center bg-white text-black px-4 py-2 rounded-full"
-                    style={{
-                    fontFamily: 'CFont',
-                    fontSize: '16px',
-                    borderRadius: '30px',
-                    padding: '12px 24px',
-                    backgroundColor: 'white' // Ensure button background is white
-                    }}
-                  >
-                    join waitlist
-                    <span
-                    className="ml-2 bg-black rounded-full p-2 flex items-center justify-center"
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      color: '#f5f8ec',
-                    }}
-                    >
-                    <span className="material-icons">chevron_right</span>
-                    </span>
-                  </a>
-
-  {/* Dropdown Section */}
-</div>
-</div>
-<Footer />
+      <Footer />
     </div>
   );
 }

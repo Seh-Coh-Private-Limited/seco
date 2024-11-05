@@ -1,4 +1,4 @@
-import { faArrowRight, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faCopy, faNewspaper } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -54,50 +54,73 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   
 
   return (
-    <div className={`popup ${isOpen ? 'show' : ''}`}>
-      <div className="popup-content">
-      <div className="panel-header flex flex-col bg-white p-4 sticky top-8 z-20 mb-0">
+    <div className={`overlay ${isOpen ? 'show' : ''}`}>
+<div className={`popup ${isOpen ? 'show' : ''}`}>
+  <div className="popup-content">
+      <div className="pane-header flex flex-col  p-4 sticky top-8 z-20 mb-0">
   <div className="flex items-center gap-4">
-    {/* Close Button */}
-    <button 
-      aria-label="Close" 
-      onClick={onClose} 
-      className="flex items-center justify-center w-8 h-8"
-    >
-    <i class="far fa-times-circle"></i>
-     
-    </button>
+  {/* Close Button */}
+  <button 
+    id="close-button" // Unique ID for the close button
+    aria-label="Close" 
+    onClick={onClose} 
+    className="w-5 h-5 flex items-center justify-center rounded-full transition-colors duration-300 hover:bg-gray-200"
+  >
+    <i className="far fa-times-circle text-black text-lg"></i>
+  </button>
 
-    {/* Event Page Button */}
-    <button 
-      onClick={handleEventPageClick} 
-      className="flex items-center bg-gray-200 px-4 py-2 rounded-xl hover:bg-gray-300 transition"
-    >
-      <span className="mr-2 text-gray-700 text-sm"style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>event page</span>
-      <FontAwesomeIcon 
-        icon={faArrowRight} 
-        style={{ transform: 'rotate(305deg)' }} 
-      />
-    </button>
+  {/* Event Page Button */}
+  <button 
+    id="event-page-button" // Unique ID for the event page button
+    onClick={handleEventPageClick} 
+    className="flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out"
+    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'} // light gray for hover
+    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'} // original background color
+  >
+    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
+      event page
+    </span>
+    <FontAwesomeIcon 
+      icon={faArrowRight} 
+      style={{ transform: 'rotate(305deg)' }} 
+    />
+  </button>
 
-    {/* Copy Link Button */}
-    <button 
-      onClick={handleCopyLink} 
-      className="flex items-center bg-gray-200 px-4 py-2 rounded-xl hover:bg-gray-300 transition"
-    >
-      <span className="mr-2 text-gray-700 text-sm"style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>copy link</span>
-      <FontAwesomeIcon 
-        icon={faCopy} 
+  {/* Copy Link Button */}
+  <button 
+    id="copy-link-button" // Unique ID for the copy link button
+    onClick={handleCopyLink} 
+    className="flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out"
+    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
+    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+  >
+    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
+      copy link
+    </span>
+    <FontAwesomeIcon 
+      icon={faCopy} 
       className="w-4 h-4" 
-      />
-    </button>
-  </div>
+    />
+  </button>
+
+  {/* Apply Button */}
+  <button 
+    id="apply-button" // Unique ID for the apply button
+    onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+    className='flex items-center bg-gray-200 px-4 py-2 rounded-xl transition duration-300 ease-in-out'
+    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
+    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+  >
+    <span className="mr-2 text-gray-700 text-sm" style={{ fontFamily: 'CFont' }}>
+      apply
+    </span>
+    <FontAwesomeIcon 
+      icon={faNewspaper} 
+      className="w-4 h-4" 
+    />
+  </button>
+</div>
+
 
   {/* Manual Line */}
   <div className="w-full h-px bg-black mt-2 mb-0" style={{ marginLeft: '-32px', marginRight: '-16px' }}></div>
@@ -108,19 +131,20 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
         {image && <img src={image} alt={title} className="popup-image mb-6 mt-14" />}
         <p className='text-4xl font-bold my-4 'style={{
                     fontFamily: 'CFont',
-                    
+                    textAlign: 'left',
                     }}>
               {title}
             </p>
 
         
-        <div className="date-and-location flex justify-between items-center mt-6 mb-10">
+        <div className="date-and-location flex justify-between items-center mt-10 mb-10">
   {/* Date Section - Left Aligned */}
   <div id="date" className="flex flex-row gap-2">
     <div className="w-10 border-2 border-slate-300 rounded-md h-10">
       <div className="bg-slate-300 text-xs text-center"style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    textTransform: 'uppercase', 
+                    textAlign: 'center'
                     }}>
         {formatMonth(formattedEndDate)}
       </div>
@@ -132,27 +156,32 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       </div>
     </div>
     <div>
-      <p className="font-medium">
+    <p className="text-sm text-gray-500"style={{
+                    fontFamily: 'CFont',
+                    textTransform: 'lowercase', 
+                    textAlign: 'left'
+                    }}>deadline</p>
+      <p className="font-medium" >
         {formattedEndDate.toLocaleDateString("en-US", {
           year: "numeric",
           month: "long",
           day: "numeric",
+          weekday: "long",
         })}
       </p>
-      <p className="text-sm text-gray-500"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>deadline</p>
+     
     </div>
   </div>
 
   {/* Location Section - Right Aligned */}
-  <div id="location" className="flex flex-row gap-2">
+ 
+</div>
+<div id="location" className="flex flex-row gap-2 mb-10">
     <div className="w-10 border-2 border-slate-300 rounded-md h-10">
       <img
         src="../../location.png"
         alt="location"
-        className="w-7 h-6 ml-1 mt-2"
+        className="w-14 h-8 mt-1"
       />
     </div>
     <div>
@@ -162,20 +191,19 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                     }}>location</p>
       <p className="text-sm text-gray-500"style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    textTransform: 'lowercase', 
+                    textAlign: 'left'
                     }}>{location}</p>
     </div>
   </div>
-</div>
-
         
 
 <div
   className="about-section"
   style={{
-    border: '2px solid #ccc', // Adjust the thickness and color as needed
+    // Adjust the thickness and color as needed
     borderRadius: '8px', // Optional: adds rounded corners
-    padding: '16px', // Optional: adds space inside the border
+    padding: '0px', // Optional: adds space inside the border
   }}
 >
 <div id='details' className='mt-6'>
@@ -207,17 +235,21 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
                     }}>Startup Stage for Applications:</p>
-                <p>
-   {eligibility[1] && typeof eligibility[1] === 'string' ? eligibility[1].split('+').map((item, index) => (
-     <span key={index} style={{
-      fontFamily: 'CFont',
-      textTransform: 'lowercase' 
-      }}>
-       -{item}
-       <br />
-     </span>
-   )) : null}
-                </p>
+               <p>
+  {eligibility[1] && typeof eligibility[1] === 'string' ? (
+    <ul className="list-disc pl-0 ml-0">
+      {eligibility[1].split('+').map((item, index) => (
+        <li key={index} className="font-CFont lowercase text-left ml-6"style={{
+          fontFamily: 'CFont',
+          textTransform: 'lowercase' 
+          }}>
+          {item}
+        </li>
+      ))}
+    </ul>
+  ) : null}
+</p>
+
                 
                 <p>for:</p>
                 <p>
@@ -341,22 +373,10 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       </a>
     </div>
 
-  <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>Report Event</p>
-</div>
-<div className="flex justify-center mb-8"> {/* Use flex to center the button */}
-  <button 
-  onClick={() => window.location.href = 'https://twisteddco.wixstudio.io/getseco/contact-1'}
-  className='rounded-md text-xl text-slate-700 bg-slate-300 hover:text-gray-100 hover:bg-slate-700 px-10 font-medium' style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-    apply
-  </button>
+ 
 </div>
 
+</div>
 </div>
 
       </div>

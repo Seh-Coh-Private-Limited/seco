@@ -10,6 +10,22 @@
   z-index: 1000;
   overflow-y: auto; /* Enable vertical scroll */
   overflow-x: hidden; /* Enable vertical scroll if needed */
+  -ms-overflow-style: none; /* Hides scrollbar in Internet Explorer and Edge */
+  scrollbar-width: none;
+}
+.overlay {
+  display: none; /* Hidden by default */
+  position: fixed;
+  left: 0; /* Aligns to the left */
+  top: 0;
+  width: 70%; /* Covers 70% of the width */
+  height: 100%; /* Full height */
+  background-color: rgba(0, 0, 0, 0.5); /* Black with 50% opacity */
+  z-index: 999; /* Behind the popup */
+}
+
+.overlay.show {
+  display: block; /* Show the overlay when active */
 }
 
 .popup.show {
@@ -42,7 +58,7 @@
 }
 
 
-.panel-header {
+.pane-header {
   position: fixed;
   top: 0;
   width: 100%;
@@ -53,6 +69,7 @@
   min-height: 3rem;
   /* Set border radius as needed */
   text-align: left; /* Align heading to the left */
+  transition: none;
 }
 
 .close-popup-button {

@@ -25,14 +25,14 @@ const Header = () => {
           <a
             href="https://www.getseco.com/"
             className="hidden sm:inline text-slate-200"
-            style={{ fontSize: '16px', fontWeight: '500' }}
+            style={{fontFamily:'CFont', fontSize: '16px', fontWeight: '500' }}
           >
             home
           </a>
           <a
             href="https://discover.getseco.com/"
             className="hidden sm:inline text-slate-200"
-            style={{ fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
+            style={{fontFamily:'CFont', fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
           >
             discover
           </a>
