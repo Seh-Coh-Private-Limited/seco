@@ -203,12 +203,12 @@ function App() {
           <div className="filter-dropdown">
             <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
               <option value="all">all</option>
-              <option value="Finance">finance</option>
-              <option value="Technology">technology</option>
-              <option value="Education">education</option>
-              <option value="Healthcare & Lifesciences">healthcare & lifesciences</option>
-              <option value="Media & Entertainment">media & entertainment</option>
-              <option value="Retail">retail</option>
+              <option value="finance">finance</option>
+              <option value="technology">technology</option>
+              <option value="education">education</option>
+              <option value="healthcare & Lifesciences">healthcare & lifesciences</option>
+              <option value="media & Entertainment">media & entertainment</option>
+              <option value="retail">retail</option>
             </select>
           </div>
           <p style={{ fontFamily: 'CFont' }}>programs, active in</p>
