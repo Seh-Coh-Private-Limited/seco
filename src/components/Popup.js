@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchProgramById } from '../components/fetchProgram'; // Adjust the import path based on your project structure
 import './Popup.css'; // Ensure CSS styles for the popup
-import { FaWindowClose } from 'react-icons/fa';
 
 const Popup = ({ isOpen, onClose, programDetails }) => {
   const navigate = useNavigate();

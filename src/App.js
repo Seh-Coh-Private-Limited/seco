@@ -3,9 +3,7 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import React from 'react';
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import './App.css';
-import './index.css'
-import Footer from './components/footer'; // Make sure Footer is correctly capitalized as well
-import Header from './components/Header';
+import './index.css';
 import Discover from './pages/Discover';
 import ProgramDetail from './pages/ProgramDetailPage';
 import ProgramInsertPage from './pages/programInsertPage'; // Capitalized the component name
@@ -23,7 +21,7 @@ function App() {
       
     
       <Routes>
-        <Route path="/discover" element={<Discover />} />
+        <Route path="/" element={<Discover />} />
         <Route path="/pip" element={<ProgramInsertPage />} /> 
         <Route path="/program/:id" element={<ProgramDetail />} />
         <Route path="/signup" element={<SignUpPage />} />
