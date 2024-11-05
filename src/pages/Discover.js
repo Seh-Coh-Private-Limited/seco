@@ -216,7 +216,7 @@ function App() {
             <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
               <option value="any city">any city</option>
               <option value="remote">Remote</option>
-              <option value="india">India</option>
+              <option value="India">India</option>
               {/* Add more cities as needed */}
             </select>
           </div>
