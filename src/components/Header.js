@@ -12,7 +12,7 @@ const Header = () => {
       {/* Logo section */}
       <div className="flex items-center space-x-2">
         <h6
-        href="https://twisteddco.wixstudio.io/getseco"
+        href="getseco.com"
           className="text-white font-bold"
           style={{
             fontFamily: 'CustomFont',
@@ -23,14 +23,14 @@ const Header = () => {
             seco
           </h6>
           <a
-            href="https://twisteddco.wixstudio.io/getseco"
+            href="getseco.com"
             className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' }}
           >
             home
           </a>
           <a
-            href="https://seco-theta.vercel.app/Discover"
+            href="discover.getseco.com"
             className="hidden sm:inline text-slate-200"
             style={{ fontSize: '16px', fontWeight: '500' ,marginLeft: '30px'}}
           >
@@ -40,7 +40,7 @@ const Header = () => {
 
           {/* Button with responsive size */}
       <a
-      href="https://twisteddco.wixstudio.io/getseco/contact"
+      href="getseco./contact"
         className="bg-white text-black rounded-full px-4 py-2 md:px-5 md:py-3 hover:bg-gray-100 transition duration-300 text-sm md:text-base"
         style={{ fontWeight: '400' }}
       >
