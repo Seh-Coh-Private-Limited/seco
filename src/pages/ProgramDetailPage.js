@@ -718,14 +718,15 @@ const ProgramDetail = () => {
 </div>
 
       <div>
-        <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>location</p>
-        <p className='text-sm text-gray-500'style={{
+      <p className='font-medium'style={{
                     fontFamily: 'CFont',
                     
                     }}>{location}</p>
+        <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>location</p>
+       
       </div>
     </div>
 
