@@ -427,10 +427,26 @@ const ProgramDetail = () => {
                     }}>details</p>
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{description}</p>
+              <p style={{
+        fontFamily: 'CFont',
+    }}>
+    
+
+
+
+{description.split('#').map((item, index) => (
+        <span 
+          key={index} 
+          className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
+            fontFamily: 'CFont',
+            }}
+        >
+          {item}
+          <br />
+        </span>
+      ))}
+</p>
+
                 
                
               </div>

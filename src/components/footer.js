@@ -100,7 +100,7 @@ const Footer = () => {
               <p className="text-lg mb-2 lowercase" style={{ fontFamily: 'CFont' }}>policy</p>
               <ul className="list-none space-y-2">
                 <li><a href="#" className="no-underline" style={{ fontFamily: 'CFont' }}>terms & conditions</a></li>
-                <li><a href="https://twisteddco.wixstudio.io/getseco/privacy-policy" className="no-underline" style={{ fontFamily: 'CFont' }}>privacy policy</a></li>
+                <li><a href="https://www.getseco.com/privacy-policy" className="no-underline" style={{ fontFamily: 'CFont' }}>privacy policy</a></li>
               </ul>
             </div>
           </div>
