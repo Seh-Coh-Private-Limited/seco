@@ -437,7 +437,7 @@ const ProgramDetail = () => {
 {description.split('#').map((item, index) => (
         <span 
           key={index} 
-          className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
+          className=" rounded-3xl p-2 inline-block"style={{
             fontFamily: 'CFont',
             }}
         >
