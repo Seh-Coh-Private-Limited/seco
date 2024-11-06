@@ -164,3 +164,68 @@
     padding: 10px 20px; /* Adjust button padding */
   }
 }
+@media (min-width: 769px) and (max-width: 1500px) {
+  /* App Container Padding */
+  .app-container {
+
+     /* Add some padding */
+  }
+
+  /* Heading Styling */
+  .heading {
+    font-size: 32px; /* Adjust font size for medium screens */
+    text-align: center;
+    margin-bottom: 20px; /* Center align the heading */
+  }
+
+  /* Filters Container Styling */
+  .filters-container {
+    display: flex;
+    flex-direction: column; /* Stack filters vertically */
+    align-items: center; /* Center align filters */
+  }
+
+  .filter-dropdown {
+    width: 100%; /* Full width dropdowns */
+    margin-bottom: 10px; /* Space between dropdowns */
+  }
+
+  /* Articles Container with Grid Layout */
+  .articles-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns for medium screens */
+    gap: 6px 20px; /* Space between rows and columns */
+    padding-left: 120px;
+    padding-right: 120px;
+  }
+
+  /* Program Card Adjustments */
+  .program-card {
+    height: auto; /* Let height adjust based on content */
+    box-sizing: border-box; /* Ensure padding and margin are accounted for */
+  }
+
+  /* Horizontal Section Adjustments */
+  .h-section {
+    height: 450px; /* Adjust height based on content */
+    padding: 0px; /* No padding */
+  }
+
+  /* Main Heading */
+  .main-heading {
+    font-size: 28px; /* Adjust font size for smaller screens */
+    text-align: center;
+  }
+
+  /* Subheading */
+  .subheading {
+    font-size: 16px; /* Smaller font size for subheading */
+    text-align: center;
+  }
+
+  /* Button Adjustments */
+  .button {
+    font-size: 14px; /* Smaller button font size */
+    padding: 10px 20px; /* Adjust button padding */
+  }
+}

@@ -144,6 +144,167 @@
 
 
 
+// import React, { useEffect, useState } from 'react';
+// import Header from '../components/Header';
+// import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
+// import { fetchPrograms } from '../components/fetchPrograms';
+// import Footer from '../components/footer';
+// import './Discover.css';
+
+// function App() {
+//   const [programs, setPrograms] = useState([]);
+//   const [filterCategory, setFilterCategory] = useState('all');
+//   const [filterCity, setFilterCity] = useState('any city');
+
+//   // Fixed orientation pattern
+//   const orientationPattern = ['vertical', 'horizontal', 'vertical', 'vertical', 'horizontal', 'horizontal'];
+
+//   // Fetch programs from Firestore
+//   useEffect(() => {
+//     const loadPrograms = async () => {
+//       const programsList = await fetchPrograms();
+//       setPrograms(programsList);
+//     };
+
+//     loadPrograms();
+//   }, []);
+
+//   // Apply filters based on selected values
+//   const filteredPrograms = programs.filter(program => {
+//     const matchesCategory = filterCategory === 'all' || program.industry.includes(filterCategory);
+//     const matchesCity = filterCity === 'any city' || program.location === filterCity;
+//     return matchesCategory && matchesCity;
+//   });
+
+//   // Calculate the number of programs
+//   const totalFiltered = filteredPrograms.length;
+//   const remainder = totalFiltered % 6;
+
+//   // Create an array for orientation based on the total number of programs
+//   const orientationArray = [];
+//   for (let i = 0; i < totalFiltered; i++) {
+//     if (i < totalFiltered - remainder) {
+//       orientationArray.push(orientationPattern[i % 6]);
+//     } else {
+//       orientationArray.push('vertical'); // Ensure the last programs are vertical
+//     }
+//   }
+
+//   return (
+//     <div>
+//       <Header />
+//       <div className="app-container mt-20">
+//         <h1 className="heading" style={{ fontFamily: 'CFont', fontSize: '48px' }}>
+//           discover programs
+//         </h1>
+//         {/* Dropdown Filters Section */}
+//         <div className="filters-container">
+//           <p style={{ fontFamily: 'CFont' }}>show me</p>
+//           <div className="filter-dropdown">
+//             <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>
+//               <option value="all">all</option>
+//               <option value="finance">finance</option>
+//               <option value="technology">technology</option>
+//               <option value="education">education</option>
+//               <option value="healthcare & Lifesciences">healthcare & lifesciences</option>
+//               <option value="media & Entertainment">media & entertainment</option>
+//               <option value="retail">retail</option>
+//             </select>
+//           </div>
+//           <p style={{ fontFamily: 'CFont' }}>programs, active in</p>
+//           <div className="filter-dropdown">
+//             <select className="dropdown" onChange={e => setFilterCity(e.target.value)}>
+//               <option value="any city">any city</option>
+//               <option value="remote">Remote</option>
+//               <option value="India">India</option>
+//               {/* Add more cities as needed */}
+//             </select>
+//           </div>
+//         </div>
+
+//         <br /><br />
+//         <div className="articles-container">
+//           {/* Program Cards */}
+//           {filteredPrograms.map((program, index) => (
+//             <ProgramCard
+//               key={program.id} // Add a key for each program
+//               id={program.id}
+//               title={program.title}
+//               image={program.image} // Use the image field
+//               location={program.location} // Adjust as necessary
+//               description={program.description}
+//               category={program.industry.join(', ')} // Join the array for display
+//               orientation={orientationArray[index]} // Assign orientation based on the array
+//             />
+//           ))}
+//         </div>
+
+//         <br /><br />
+
+//         {/* Header Section (Below Cards) */}
+//         <div className="h-section bg-[#F99F31] w-full h-96 flex flex-col items-center -mb-12 justify-center">
+//           <h1 className="main-heading text-black text-center text-2xl font-bold mr-5 ml-5 mb-4 px-4" style={{ fontFamily: 'CFont' }}>
+//             built to empower founders, seco brings all your interactions with incubators, accelerators, events into one intuitive platform.
+//           </h1>
+//           <p className="subheading text-black text-center text-lg mb-6 px-4" style={{ fontFamily: 'CFont' }}>
+//             be the first to access.
+//           </p>
+//           <button
+//   onClick={() => window.location.href = 'https://getseco.com/contact'}
+//   className="flex items-center bg-white text-black rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white join-waitlist-btn"
+//   style={{
+//     alignItems: 'center',
+//     fontFamily: 'CFont',
+//     fontSize: '16px',
+//     borderRadius: '30px',
+//     padding: '6px',
+//     paddingRight: '6px',
+//     paddingLeft: '30px',
+//   }}
+// >
+//   join waitlist
+//   <span
+//     className="ml-6 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
+//     style={{
+//       width: '38px',
+//       height: '38px', // Increase height here
+//       borderRadius: '50%',
+//       display: 'flex', // Use flex for better alignment
+//       alignItems: 'center', // Center the icon vertically
+//       justifyContent: 'center', // Center the icon horizontally
+//     }}
+//   >
+//     <span className="material-icons" style={{ fontSize: '30px' }}>chevron_right</span>
+//   </span>
+// </button>
+
+
+
+// <style jsx>{`
+//   .join-waitlist-btn:hover span {
+//     border-radius: 50%;
+//     background-color: white;
+//     color: black;
+//   }
+// `}</style>
+
+//         </div>
+//       </div>
+//       <Footer />
+//     </div>
+//   );
+// }
+
+// export default App;
+
+
+
+
+
+
+
+
+
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
@@ -155,10 +316,11 @@ function App() {
   const [programs, setPrograms] = useState([]);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCity, setFilterCity] = useState('any city');
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
-  // Fixed orientation pattern
+  // Fixed orientation pattern for mod 6
   const orientationPattern = ['vertical', 'horizontal', 'vertical', 'vertical', 'horizontal', 'horizontal'];
-
+ const orientationPattern2 = [ 'horizontal', 'horizontal','vertical'];
   // Fetch programs from Firestore
   useEffect(() => {
     const loadPrograms = async () => {
@@ -167,6 +329,13 @@ function App() {
     };
 
     loadPrograms();
+
+    // Update screen width on resize
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+
+    // Clean up the event listener
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Apply filters based on selected values
@@ -180,15 +349,54 @@ function App() {
   const totalFiltered = filteredPrograms.length;
   const remainder = totalFiltered % 6;
 
-  // Create an array for orientation based on the total number of programs
-  const orientationArray = [];
-  for (let i = 0; i < totalFiltered; i++) {
-    if (i < totalFiltered - remainder) {
-      orientationArray.push(orientationPattern[i % 6]);
-    } else {
-      orientationArray.push('vertical'); // Ensure the last programs are vertical
+  // Create arrays for orientation based on screen size
+  const orientationArrayMod6 = []; // For mod 6 pattern
+  const orientationArrayMod2 = []; // For mod 2 pattern
+
+  // For screens greater than 1500px, use the mod 6 logic
+  if (screenWidth > 1500) {
+    for (let i = 0; i < totalFiltered; i++) {
+      if (i < totalFiltered - remainder) {
+        orientationArrayMod6.push(orientationPattern[i % 6]);
+      } else {
+        orientationArrayMod6.push('vertical'); // Ensure the last programs are vertical
+      }
     }
   }
+
+  // For screens between 769px and 1499px, use the mod 2 alternating logic
+
+  if (screenWidth >= 769 && screenWidth <= 1499) {
+    for (let i = 0; i < totalFiltered; i++) {
+      // Ensure the orientation follows the correct pattern
+      if (i < totalFiltered - remainder) {
+        orientationArrayMod2.push(orientationPattern2[i % 3]);
+      } else {
+        // If it's the last part and not divisible by 3, set the remaining orientations to 'horizontal'
+        orientationArrayMod2.push('horizontal');
+      }
+    }
+  }
+  
+  
+
+  // For smaller screens, default to vertical orientation
+  if (screenWidth < 769) {
+    for (let i = 0; i < totalFiltered; i++) {
+      orientationArrayMod2.push('vertical');
+    }
+  }
+
+  // Choose the correct orientation array based on screen width
+  const getOrientation = (index) => {
+    if (screenWidth > 1500) {
+      return orientationArrayMod6[index];
+    } else if (screenWidth >= 769 && screenWidth <= 1499) {
+      return orientationArrayMod2[index];
+    } else {
+      return 'vertical'; // For smaller screens, default to vertical
+    }
+  };
 
   return (
     <div>
@@ -234,7 +442,7 @@ function App() {
               location={program.location} // Adjust as necessary
               description={program.description}
               category={program.industry.join(', ')} // Join the array for display
-              orientation={orientationArray[index]} // Assign orientation based on the array
+              orientation={getOrientation(index)} // Adjust orientation based on screen width and index
             />
           ))}
         </div>
@@ -250,44 +458,40 @@ function App() {
             be the first to access.
           </p>
           <button
-  onClick={() => window.location.href = 'https://getseco.com/contact'}
-  className="flex items-center bg-white text-black rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white join-waitlist-btn"
-  style={{
-    alignItems: 'center',
-    fontFamily: 'CFont',
-    fontSize: '16px',
-    borderRadius: '30px',
-    padding: '6px',
-    paddingRight: '6px',
-    paddingLeft: '30px',
-  }}
->
-  join waitlist
-  <span
-    className="ml-6 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
-    style={{
-      width: '38px',
-      height: '38px', // Increase height here
-      borderRadius: '50%',
-      display: 'flex', // Use flex for better alignment
-      alignItems: 'center', // Center the icon vertically
-      justifyContent: 'center', // Center the icon horizontally
-    }}
-  >
-    <span className="material-icons" style={{ fontSize: '30px' }}>chevron_right</span>
-  </span>
-</button>
-
-
-
-<style jsx>{`
-  .join-waitlist-btn:hover span {
-    border-radius: 50%;
-    background-color: white;
-    color: black;
-  }
-`}</style>
-
+            onClick={() => window.location.href = 'https://getseco.com/contact'}
+            className="flex items-center bg-white text-black rounded-full transition duration-300 ease-in-out hover:bg-black hover:text-white join-waitlist-btn"
+            style={{
+              alignItems: 'center',
+              fontFamily: 'CFont',
+              fontSize: '16px',
+              borderRadius: '30px',
+              padding: '6px',
+              paddingRight: '6px',
+              paddingLeft: '30px',
+            }}
+          >
+            join waitlist
+            <span
+              className="ml-6 flex items-center justify-center transition duration-300 ease-in-out bg-black text-white"
+              style={{
+                width: '38px',
+                height: '38px', // Increase height here
+                borderRadius: '50%',
+                display: 'flex', // Use flex for better alignment
+                alignItems: 'center', // Center the icon vertically
+                justifyContent: 'center', // Center the icon horizontally
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '30px' }}>chevron_right</span>
+            </span>
+          </button>
+          <style jsx>{`
+            .join-waitlist-btn:hover span {
+              border-radius: 50%;
+              background-color: white;
+              color: black;
+            }
+          `}</style>
         </div>
       </div>
       <Footer />

@@ -172,7 +172,7 @@
     height: 200px; /* Maintain image height for horizontal card */
   }
 .card-title {
-    font-size: 18px; /* Adjust font size for smaller screens */
+    font-size: 11px; /* Adjust font size for smaller screens */
   }
   .card-horizontal .card-footer {
     opacity: 0; /* Maintain hidden footer for horizontal card */
