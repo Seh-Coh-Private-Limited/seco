@@ -434,17 +434,14 @@ const ProgramDetail = () => {
 
 
 
-{description.split('#').map((item, index) => (
-        <span 
-          key={index} 
-          className=" rounded-3xl p-2 inline-block"style={{
-            fontFamily: 'CFont',
-            }}
-        >
-          {item}
-          <br />
-        </span>
-      ))}
+    <div className='flex flex-col gap-6'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>
+                <p>{description}</p>
+                
+               
+              </div>
 </p>
 
                 
