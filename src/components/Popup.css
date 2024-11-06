@@ -21,10 +21,12 @@
   width: 70%; /* Covers 70% of the width */
   height: 100%; /* Full height */
   background-color: rgba(0, 0, 0, 0.5); /* Black with 50% opacity */
+  overflow-y: hidden;
   z-index: 999; /* Behind the popup */
 }
 
 .overlay.show {
+  overflow: hidden;
   display: block; /* Show the overlay when active */
 }
 

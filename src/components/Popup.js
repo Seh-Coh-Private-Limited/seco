@@ -77,7 +77,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
       onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
     >
-      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+      <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
         event page
       </span>
       <FontAwesomeIcon 
@@ -95,7 +95,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
       onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
     >
-      <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+      <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
         copy link
       </span>
       <FontAwesomeIcon 
@@ -110,7 +110,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   onClick={() => window.location.href = 'https://getseco.com/contact-1'}
   className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
 >
-  <span className="mr-1 text-gray-700 text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
+  <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
     apply
   </span>
   <FontAwesomeIcon 
@@ -188,7 +188,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       
       <p className="font-medium"style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase', 
+                    
                     textAlign: 'left'
                     }}>{location}</p>
                     <p className="text-sm text-gray-500"style={{
@@ -215,7 +215,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>
                 <p>{description}</p>
                 
@@ -231,7 +231,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
               <hr className='my-4 border-t border-gray-300' />
               <div className='flex flex-col gap-6'>
                 <p style={{ fontFamily: 'CFont',
-                  textTransform: 'lowercase' }}>{eligibility[0]}</p>
+                   }}>{eligibility[0]}</p>
                 <p style={{
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
@@ -240,9 +240,9 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   {eligibility[1] && typeof eligibility[1] === 'string' ? (
     <ul className="list-disc pl-0 ml-0">
       {eligibility[1].split('+').map((item, index) => (
-        <li key={index} className="font-CFont lowercase text-left ml-6"style={{
+        <li key={index} className="font-CFont text-left ml-6"style={{
           fontFamily: 'CFont',
-          textTransform: 'lowercase' 
+           
           }}>
           {item}
         </li>
@@ -252,16 +252,16 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
 </p>
 
                 
-                <p>for:</p>
+                {/* <p>for:</p>
                 <p>
   {eligibility[2] && typeof eligibility[2] === 'string' ? (
-    <div className="flex flex-wrap gap-6"> {/* Use flex layout with gap */}
+    <div className="flex flex-wrap gap-6"> 
       {eligibility[2].split(';').map((item, index) => (
         <span 
           key={index} 
           className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
             fontFamily: 'CFont',
-            textTransform: 'lowercase' 
+             
             }}
         >
           {item}
@@ -270,7 +270,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
       ))}
     </div>
   ) : null}
-</p>
+</p> */}
 
 
               </div>
@@ -292,7 +292,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                     }}>Fiscal Incentives:</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>
                   -{incentives.fiscal}
                 </p>
@@ -304,7 +304,7 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>-{incentives.nonFiscal}</p>
               </div>
             </div>

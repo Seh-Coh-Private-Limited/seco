@@ -429,7 +429,7 @@ const ProgramDetail = () => {
               <div className='flex flex-col gap-6'>
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>{description}</p>
                 
                
@@ -445,7 +445,7 @@ const ProgramDetail = () => {
               <div className='flex flex-col gap-6'>
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>{eligibility[0]}</p>
                 <p style={{
                     fontFamily: 'CFont',
@@ -455,9 +455,9 @@ const ProgramDetail = () => {
   {eligibility[1] && typeof eligibility[1] === 'string' ? (
     <ul className="list-disc pl-0 ml-0">
       {eligibility[1].split('+').map((item, index) => (
-        <li key={index} className="font-CFont lowercase text-left ml-6"style={{
+        <li key={index} className="font-CFont text-left ml-6"style={{
           fontFamily: 'CFont',
-          textTransform: 'lowercase' 
+          
           }}>
           {item}
         </li>
@@ -467,13 +467,13 @@ const ProgramDetail = () => {
 </p>
 
                 
-                <p style={{
+                {/* <p style={{
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
                     }}>For:</p>
                 <p>
   {eligibility[2] && typeof eligibility[2] === 'string' ? (
-    <div className="flex flex-wrap gap-6"> {/* Use flex layout with gap */}
+    <div className="flex flex-wrap gap-6"> 
       {eligibility[2].split(';').map((item, index) => (
         <span 
           key={index} 
@@ -488,7 +488,7 @@ const ProgramDetail = () => {
       ))}
     </div>
   ) : null}
-</p>
+</p> */}
 
 
               </div>
@@ -510,7 +510,7 @@ const ProgramDetail = () => {
                     }}>fiscal incentives:</p>
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>
                   -{incentives.fiscal}
                 </p>
@@ -522,7 +522,7 @@ const ProgramDetail = () => {
                 
                 <p style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                    
                     }}>-{incentives.nonFiscal}</p>
               </div>
             </div>
@@ -586,7 +586,7 @@ const ProgramDetail = () => {
             >
               <p className='font'style={{
                     fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
+                     
                     
                     }}>{faq.question}</p>
               <span className={`transform transition-transform ${openIndex === index ? 'rotate-180' : ''}`}>
@@ -596,7 +596,7 @@ const ProgramDetail = () => {
             {openIndex === index && (
               <div className='mt-2 text-gray-600'style={{
                 fontFamily: 'CFont',
-                textTransform: 'lowercase' 
+                
                 }}>
                 {faq.answer}
               </div>
@@ -633,14 +633,15 @@ const ProgramDetail = () => {
         </div>
 
         <div className='flex flex-col'>
-          <p className='text-sm'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>organised by</p>
-          <p className='font-medium text-md'style={{
+        <p className='font-medium text-md'style={{
                     fontFamily: 'CFont',
                     
                     }}>{orgname}</p>
+          <p className='text-sm text-gray-500'style={{
+                    fontFamily: 'CFont',
+                    
+                    }}>organised by</p>
+          
         </div>
       </div>
    
