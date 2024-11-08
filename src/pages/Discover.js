@@ -354,7 +354,7 @@ function App() {
   const orientationArrayMod2 = []; // For mod 2 pattern
 
   // For screens greater than 1500px, use the mod 6 logic
-  if (screenWidth > 1500) {
+  if (screenWidth > 1200) {
     for (let i = 0; i < totalFiltered; i++) {
       if (i < totalFiltered - remainder) {
         orientationArrayMod6.push(orientationPattern[i % 6]);
@@ -366,7 +366,7 @@ function App() {
 
   // For screens between 769px and 1499px, use the mod 2 alternating logic
 
-  if (screenWidth >= 769 && screenWidth <= 1499) {
+  if (screenWidth >= 769 && screenWidth <= 1151) {
     for (let i = 0; i < totalFiltered; i++) {
       // Ensure the orientation follows the correct pattern
       if (i < totalFiltered - remainder) {
@@ -389,9 +389,9 @@ function App() {
 
   // Choose the correct orientation array based on screen width
   const getOrientation = (index) => {
-    if (screenWidth > 1500) {
+    if (screenWidth > 1152) {
       return orientationArrayMod6[index];
-    } else if (screenWidth >= 769 && screenWidth <= 1499) {
+    } else if (screenWidth >= 769 && screenWidth <= 1151) {
       return orientationArrayMod2[index];
     } else {
       return 'vertical'; // For smaller screens, default to vertical

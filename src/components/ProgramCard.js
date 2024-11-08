@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
-import './ProgramCard.css';
 import Popup from './Popup'; // Import Popup component
+import './ProgramCard.css';
 
 const ProgramCard = ({
   id,
@@ -36,7 +36,7 @@ const ProgramCard = ({
             <div>
               <h3 className="card-title"style={{
                     fontFamily: 'CFont',
-                    fontSize: '22px',
+                    
                     textAlign:'left',
                     }}>{title}</h3>
               <p className="card-description"style={{

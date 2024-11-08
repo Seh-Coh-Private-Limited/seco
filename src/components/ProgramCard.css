@@ -118,7 +118,7 @@
 
 .card-horizontal .card-title {
   padding-top: 14px;
-  font-size: 16px; /* Smaller font size for horizontal card */
+  font-size: 22px; /* Smaller font size for horizontal card */
 }
 
 .card-horizontal .card-footer {
@@ -140,6 +140,7 @@
 .card-vertical .card-title {
   padding-top: 14px;
   padding-bottom: 14px;
+  font-size: 22px; /* Larger font size for vertical card */
 }
 
 .card-vertical .card-image {
@@ -178,8 +179,21 @@
     opacity: 0; /* Maintain hidden footer for horizontal card */
   }
 }
+@media (min-width: 1200px) and (max-width: 1500px) {
+  
+ .card-horizontal .card-title{
+  font-size: 16px; /* Adjust font size for larger screens */
+  }
+  .card-vertical .card-title{
+  font-size: 16px; /* Adjust font size for larger screens */
+  }
+ }
+  
 
 @media (min-width: 769px) {
+  .card-title {
+    font-size: 22px; /* Adjust font size for larger screens */
+  }
   .program-card {
     flex: 1 1 45%; /* Adjust cards to take 45% of the row in larger screens */
     margin: 10px; /* Add margin for spacing */

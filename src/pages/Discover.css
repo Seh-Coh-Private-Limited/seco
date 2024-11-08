@@ -164,7 +164,7 @@
     padding: 10px 20px; /* Adjust button padding */
   }
 }
-@media (min-width: 769px) and (max-width: 1500px) {
+@media (min-width: 769px) and (max-width: 1151px) {
   /* App Container Padding */
   .app-container {
 
