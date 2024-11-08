@@ -179,17 +179,52 @@
     opacity: 0; /* Maintain hidden footer for horizontal card */
   }
 }
-@media (min-width: 1200px) and (max-width: 1500px) {
+@media (min-width: 1200px) and (max-width: 1325px) {
   
  .card-horizontal .card-title{
-  font-size: 16px; /* Adjust font size for larger screens */
+  font-size: 17px; /* Adjust font size for larger screens */
   }
   .card-vertical .card-title{
-  font-size: 16px; /* Adjust font size for larger screens */
+  font-size: 17px; /* Adjust font size for larger screens */
   }
  }
   
-
+ @media (min-width: 1325px) and (max-width: 1380px) {
+  
+  .card-horizontal .card-title{
+   font-size: 18px; /* Adjust font size for larger screens */
+   }
+   .card-vertical .card-title{
+   font-size: 18px; /* Adjust font size for larger screens */
+   }
+  }
+  @media (min-width: 1380px) and (max-width: 1410px) {
+  
+    .card-horizontal .card-title{
+     font-size: 19px; /* Adjust font size for larger screens */
+     }
+     .card-vertical .card-title{
+     font-size: 19px; /* Adjust font size for larger screens */
+     }
+    }
+    @media (min-width: 1410px) and (max-width: 1460px) {
+  
+      .card-horizontal .card-title{
+       font-size: 19px; /* Adjust font size for larger screens */
+       }
+       .card-vertical .card-title{
+       font-size: 19px; /* Adjust font size for larger screens */
+       }
+      }
+      @media (min-width: 1460px) and (max-width: 1500px) {
+  
+        .card-horizontal .card-title{
+         font-size: 20px; /* Adjust font size for larger screens */
+         }
+         .card-vertical .card-title{
+         font-size: 20px; /* Adjust font size for larger screens */
+         }
+        }
 @media (min-width: 769px) {
   .card-title {
     font-size: 22px; /* Adjust font size for larger screens */
