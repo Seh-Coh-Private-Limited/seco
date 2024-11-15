@@ -1,0 +1,232 @@
+.app-container {
+    font-family: Arial, sans-serif;
+    padding-top: 20px;
+    text-align: center;
+    background-color: #fff; /* White background */
+    color: #000; /* Black text */
+  }
+  
+  .heading {
+    font-size: 48px;
+    font-weight: bold;
+    color: #000; /* Black header */
+  }
+  
+  
+  
+  .articles-container {
+  
+    padding: 3px;
+    padding-left: 50px;
+    padding-right: 50px;
+    display: grid;
+    
+    grid-template-columns: repeat(3, 1fr); /* 3 columns */
+    gap: 6px 20px;
+  }
+  
+  /* General Card Styling */
+  /* Pagination.css */
+  
+  
+  .h-section {
+    margin-top: 40px; /* Space above header section */
+    text-align: center;
+  }
+  
+  .main-heading {
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  .subheading {
+    color: black;
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+  
+  .find-button {
+    background-color:  #12163f;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 30px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .find-button:hover {
+    background-color: #333; /* Slightly lighter black on hover */
+  }
+  
+  .filters-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 22px;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  .dropdown {
+    width: 200px; /* Increase width of the dropdown */
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: pointer;
+    border-radius: 25px; /* Rounded corners for the dropdown */
+  }
+  .dropdown option {
+    padding: 10px;
+    border-radius: 28px; /* Apply border-radius only to the dropdown menu */
+  }
+  .filters-container p {
+    
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif; /* Bold text for filter labels */
+  }
+  .filter-dropdown {
+   
+    padding: 5px;
+  }
+  
+  .dropdowns-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .dropdown {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    cursor: pointer;
+  }
+  /* Discover.css */
+  
+  /* Base styles remain unchanged */
+  
+  /* Media query for smaller screens */
+  @media (max-width: 768px) {
+    .app-container {
+      padding-top: 10px; /* Add some padding */
+    }
+  
+    .heading {
+      font-size: 32px; /* Smaller font size for smaller screens */
+      text-align: center;
+      margin-bottom: 20px; /* Center align the heading */
+    }
+  
+    .filters-container {
+      display: flex;
+      flex-direction: column; /* Stack filters vertically */
+      align-items: flex-center; /* Align filters to start */
+    }
+  
+    .filter-dropdown {
+      width: 100%; /* Full width dropdowns */
+      margin-bottom: 10px; /* Space between dropdowns */
+    }
+  
+    .articles-container {
+      padding-left: 10px;
+      padding-right: 10px;
+      display: flex;
+      flex-direction: column; /* Stack program cards vertically */
+      align-items: center; /* Center align cards */
+    }
+  
+    .h-section {
+      height: 450px; /* Allow height to adjust based on content */
+      padding: 0px; /* Add padding */
+    }
+  
+    .main-heading {
+      font-size: 28px; /* Smaller font size for smaller screens */
+      text-align: center; /* Center align the main heading */
+    }
+  
+    .subheading {
+      font-size: 16px; /* Smaller font size for smaller screens */
+      text-align: center; /* Center align the subheading */
+    }
+  
+    .button {
+      font-size: 14px; /* Smaller button font size */
+      padding: 10px 20px; /* Adjust button padding */
+    }
+  }
+  @media (min-width: 769px) and (max-width: 1151px) {
+    /* App Container Padding */
+    .app-container {
+  
+       /* Add some padding */
+    }
+  
+    /* Heading Styling */
+    .heading {
+      font-size: 32px; /* Adjust font size for medium screens */
+      text-align: center;
+      margin-bottom: 20px; /* Center align the heading */
+    }
+  
+    /* Filters Container Styling */
+    .filters-container {
+      display: flex;
+      flex-direction: column; /* Stack filters vertically */
+      align-items: center; /* Center align filters */
+    }
+  
+    .filter-dropdown {
+      width: 100%; /* Full width dropdowns */
+      margin-bottom: 10px; /* Space between dropdowns */
+    }
+  
+    /* Articles Container with Grid Layout */
+    .articles-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 2 columns for medium screens */
+      gap: 6px 20px; /* Space between rows and columns */
+      padding-left: 120px;
+      padding-right: 120px;
+    }
+  
+    /* Program Card Adjustments */
+    .program-card {
+      height: auto; /* Let height adjust based on content */
+      box-sizing: border-box; /* Ensure padding and margin are accounted for */
+    }
+  
+    /* Horizontal Section Adjustments */
+    .h-section {
+      height: 450px; /* Adjust height based on content */
+      padding: 0px; /* No padding */
+    }
+  
+    /* Main Heading */
+    .main-heading {
+      font-size: 28px; /* Adjust font size for smaller screens */
+      text-align: center;
+    }
+  
+    /* Subheading */
+    .subheading {
+      font-size: 16px; /* Smaller font size for subheading */
+      text-align: center;
+    }
+  
+    /* Button Adjustments */
+    .button {
+      font-size: 14px; /* Smaller button font size */
+      padding: 10px 20px; /* Adjust button padding */
+    }
+  }
+  

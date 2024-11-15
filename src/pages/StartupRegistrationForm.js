@@ -4,6 +4,8 @@ import { Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { redirect } from 'react-router-dom';
 import { db } from '../firebase';
+import { useNavigate } from 'react-router-dom';
+
 
 
 
@@ -15,7 +17,11 @@ const TypeformRegistration = () => {
   const [inputValue, setInputValue] = useState('');
   const [fileURL, setFileURL] = useState(null); // To store the file's download URL
   const [responses, setResponses] = useState({});
-  
+  const [errors, setErrors] = useState({});  // <-- Add this line
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const navigate = useNavigate();
+
+
 
 
   const questions = [
@@ -41,55 +47,74 @@ const TypeformRegistration = () => {
     return () => window.removeEventListener('keypress', handleKeyPress);
   }, [currentStep, answers]);
   const handleSubmit = async () => {
-    // Ensure that the responses state has all the necessary data, including the file URL
-    const fileURL = responses[questions[currentStep].id]; // This should contain the file URL from the file upload
+    const currentQuestion = questions[currentStep];
 
-    if (!fileURL) {
-        setError("Please upload a file before submitting.");
-        return;
+    // Check if the currentQuestion is undefined, and if so, ignore the error and continue
+    if (!currentQuestion) {
+        console.warn("Invalid question at current step, skipping validation.");
     }
 
-    // Prepare the data to be submitted to Firestore
+    // Check if file upload is required and ensure it's included in responses
+    if (currentQuestion && currentQuestion.type === 'file' && !responses[currentQuestion.id]) {
+        console.warn("File upload required but not provided. Skipping validation.");
+    }
+
+    // Generate a custom random ID
+    const randomId = Math.random().toString(36).substr(2, 9) + Date.now();
+
+    // Populate `dataWithTimestamp` with all responses, setting empty fields where data is missing
     const dataWithTimestamp = {
-        ...responses, // Include the answers/responses
- // Add the file URL from file upload
-        timestamp: Timestamp.now() // Add the current timestamp
+        timestamp: Timestamp.now(), // Add the current timestamp
+        customId: randomId, // Add custom random ID
     };
+
+    // Loop through each question to ensure all fields are included in the submission
+    questions.forEach((question) => {
+        // If a response exists, use it; otherwise, use an empty string
+        dataWithTimestamp[question.id] = responses[question.id] || '';
+    });
 
     try {
         // Add the document to Firestore's 'startups' collection
         const docRef = await addDoc(collection(db, 'startups'), dataWithTimestamp);
 
-        // Log the document ID to the console
         console.log('Responses saved with document ID:', docRef.id);
 
-        // Optionally, you could show a success message or redirect to another page
-        setError(""); // Clear any previous errors
-        alert('Your responses have been submitted successfully!'); // Success message
+        // Clear any previous errors and alert the user of success
+        setError("");
+        alert('Your responses have been submitted successfully!');
 
-        // Reset the form or perform any other necessary actions after submission
+        // Redirect to the appropriate dashboard based on the selected category
+        if (selectedCategory === 'Startup') {
+            navigate('/fDashboard');
+        } else {
+            navigate('/dashboard');
+        }
     } catch (error) {
         console.error('Error saving responses:', error);
         setError("Error submitting responses. Please try again.");
     }
 };
 
+
+
+
   
   const handleNext = () => {
     // If it's the last question, do nothing
     if (currentStep === questions.length - 1) {
         handleSubmit();
-        redirect('/dashboard');
+        redirect('/fDashboard');
          // Do nothing for now on the last question
     }
 
     const currentQuestion = questions[currentStep];
 
     // Check if the input is valid for the current question
-    if (!isValidInput()) {
-      setError('This field is required'); // Set error message if invalid input
-      return; // Do not proceed to next step if invalid
-    }
+    // if (!isValidInput()) {
+    //   setError('This field is required'); // Set error message if invalid input
+    //   return; // Do not proceed to next step if invalid
+    // }
 
     setError(null); // Clear any previous errors if input is valid
 
@@ -134,57 +159,89 @@ const TypeformRegistration = () => {
             </label>
           </div>
         );
-      
+    
       case 'textarea':
         return (
           <div className="flex flex-col mb-4">
             <label htmlFor={question.id} className="text-lg text-gray-700 mb-2">
-              {question.label || 'Your Input'}
+              {/* {question.text} */}
             </label>
             <textarea
               id={question.id}
               value={answers[question.id] || ''}
-              onChange={(e) => handleChange(e.target.value)}  // Use handleChange here
+              onChange={(e) => handleChange(question.id, e.target.value)}
               placeholder={question.placeholder || 'Type your answer...'}
               rows={4}
-              className="w-full p-4 text-gray-700 border-b-2 border-gray-400 focus:outline-none focus:ring-0 focus:border-blue-500 placeholder-gray-400 resize-none"
-              style={{
-                background: 'transparent', 
-                boxShadow: 'none', 
-                borderTop: 'none', 
-                borderLeft: 'none', 
-                borderRight: 'none',
-              }}
+              className={`w-full p-4 text-gray-700 border-b-2 bg-transparent ${
+                errors[question.id] ? 'border-red-500' : 'border-gray-400'
+              } focus:outline-none focus:ring-0 focus:border-blue-500 placeholder-gray-400 resize-none`}
             />
+            {errors[question.id] && <span className="text-red-500 text-sm mt-1">{errors[question.id]}</span>}
           </div>
         );
-
+    
       default:
         return (
           <div className="flex flex-col mb-4">
             <label htmlFor={question.id} className="text-lg text-gray-700 mb-2">
-              {question.label || 'Your Input'}
+              {/* {question.text} */}
             </label>
             <input
               id={question.id}
               type={question.type}
               value={answers[question.id] || ''}
-              onChange={(e) => handleChange(e.target.value)}  // Use handleChange here
+              onChange={(e) => handleChange(question.id, e.target.value)}
               placeholder={question.placeholder || 'Type your answer...'}
-              className="w-full p-4 text-gray-700 border-b-2 border-gray-400 focus:outline-none focus:ring-0 focus:border-blue-500 placeholder-gray-400"
-              style={{
-                background: 'transparent', 
-                boxShadow: 'none', 
-                borderTop: 'none', 
-                borderLeft: 'none', 
-                borderRight: 'none',
-              }}
+              className={`w-full p-4 text-gray-700 border-b-2 bg-transparent ${
+                errors[question.id] ? 'border-red-500' : 'border-gray-400'
+              } focus:outline-none focus:ring-0 focus:border-blue-500 placeholder-gray-400`}
             />
+            {errors[question.id] && <span className="text-red-500 text-sm mt-1">{errors[question.id]}</span>}
           </div>
         );
     }
+    
+  
 };
 
+const handleChange = (id, value) => {
+  setAnswers(prev => ({ ...prev, [id]: value }));
+
+  // Validation logic based on the question's id
+  switch (id) {
+      case 'email':
+          if (value && !isValidEmail(value)) {
+              setErrors(prev => ({ ...prev, [id]: 'Please enter a valid email address.' }));
+          } else {
+              setErrors(prev => ({ ...prev, [id]: '' })); // Clear error if valid
+          }
+          break;
+      
+      case 'mobile':
+          if (value && !isValidMobile(value)) {
+              setErrors(prev => ({ ...prev, [id]: 'Please enter a valid 10-digit mobile number.' }));
+          } else {
+              setErrors(prev => ({ ...prev, [id]: '' }));
+          }
+          break;
+
+      case 'website':
+          if (value && !isValidURL(value)) {
+              setErrors(prev => ({ ...prev, [id]: 'Please enter a valid URL.' }));
+          } else {
+              setErrors(prev => ({ ...prev, [id]: '' }));
+          }
+          break;
+
+      default:
+          break;
+  }
+};
+
+// Add validation functions
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidMobile = (mobile) => /^\d{10}$/.test(mobile);
+const isValidURL = (url) => /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(url);
 
 const isValidInput = () => {
     const currentQuestion = questions[currentStep];
@@ -241,14 +298,14 @@ const isValidInput = () => {
   };
 
   const autofillOptions = [
-    'Crunchbase',
-    'Traxcn',
-    'Pitchbook',
+    // 'Crunchbase',
+    // 'Traxcn',
+    // 'Pitchbook',
     'LinkedIn',
-    'Google',
-    'Microsoft',
-    'Google Autofill',
-    'Google Sheet',
+    // 'Google',
+    // 'Microsoft',
+    // 'Google Autofill',
+    // 'Google Sheet',
     'Upload Word/PDF Document with Q&As',
   ];
 
@@ -282,58 +339,81 @@ const isValidInput = () => {
         </div>
       </div>
 
-    {/* Main Content */}
+{/* Main Content */}
 <div className="flex-1 flex bg-white items-center justify-center p-6">
-  <div className="w-full max-w-8xl h-[calc(100vh/1.17)] bg-gray-300 px-16 py-8 rounded-lg shadow-lg flex flex-col items-center justify-center">
-    <div className="w-full px-4 py-6 rounded-md flex flex-col items-center justify-center">
-      {/* Autofill Options or Manual Entry */}
-      {!manualEntry && currentStep === 0 && (
-        <div className="mb-8 text-center">
-          <h2 className="text-xl text-gray-900">Select an autofill method</h2>
-          <div className="mt-4">
-            {autofillOptions.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => setManualEntry(true)} // Directly trigger manual entry when an option is clicked
-                className="px-4 py-2 m-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-              >
-                {option}
-              </button>
-            ))}
-            {/* Manual entry option */}
+<div className="w-full max-w-8xl h-[calc(100vh/1.17)] bg-gray-300 px-16 py-8 rounded-lg shadow-lg flex flex-col items-center justify-center">
+  <div className="w-full px-4 py-6 rounded-md flex flex-col items-center justify-center">
+    {/* Step 1: Select Category */}
+    {!selectedCategory && (
+      <div className="mb-8 text-center">
+        <h2 className="text-xl text-gray-900">Select your category</h2>
+        <div className="mt-4">
+          {["Startup", "Incubator"].map((category, index) => (
             <button
-              onClick={() => setManualEntry(true)}
-              className="mt-4 px-4 py-2 bg-[#F99F31] text-white rounded-md hover:bg-[#F99F38]"
+              key={index}
+              onClick={() => setSelectedCategory(category)}
+              className="px-4 py-2 m-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
             >
-              Enter Manually
+              {category}
             </button>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Display Questions when Manual Entry is selected */}
-      {manualEntry && (
-        <div className="mb-8 text-center">
-          <h2 className="text-xl text-gray-900">
-            <span className="mr-2 text-gray-400 font-light">{currentStep + 1}→</span>
-            {questions[currentStep]?.text}
-          </h2>
-          {renderInput()}
-          {error && <div className="text-red-500 mt-2">{error}</div>}
-          <div className="flex justify-between mt-6">
-            {/* Next button should only be enabled when there is a valid input */}
+    {/* Autofill Options or Manual Entry */}
+    {selectedCategory && !manualEntry && currentStep === 0 && (
+      <div className="mb-8 text-center">
+        <h2 className="text-xl text-gray-900">Select an autofill method</h2>
+        <div className="mt-4">
+          {autofillOptions.map((option, index) => (
             <button
-              className={`bg-[#F99F31] text-white rounded-md py-2 px-6 hover:bg-[#F99F38] ${isValidInput() ? '' : 'opacity-50 cursor-not-allowed'}`}
-              onClick={handleNext}
-              disabled={!isValidInput()} // Disable button if any required input is missing
+              key={index}
+              onClick={() => setManualEntry(true)} // Directly trigger manual entry when an option is clicked
+              className="px-4 py-2 m-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
             >
-              {currentStep === questions.length - 1 ? 'Submit' : 'Next'}
+              {option}
             </button>
-          </div>
+          ))}
+          {/* Manual entry option */}
+          <button
+            onClick={() => setManualEntry(true)}
+            className="mt-4 px-4 py-2 bg-[#F99F31] text-white rounded-md hover:bg-[#F99F38]"
+          >
+            Enter Manually
+          </button>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+
+    {/* Display Questions when Manual Entry is selected */}
+    {manualEntry && (
+      <div className="mb-8 text-center">
+        <h2 className="text-xl text-gray-900">
+          <span className="mr-2 text-gray-400 font-light">{currentStep + 1}→</span>
+          {questions[currentStep]?.text}
+        </h2>
+        {renderInput()}
+        {error && <div className="text-red-500 mt-2">{error}</div>}
+        <div className="flex justify-between mt-6">
+          <button
+            className={`bg-[#F99F31] text-white rounded-md py-2 px-6 hover:bg-[#F99F38]`}
+            onClick={handleNext}
+          >
+            {currentStep === questions.length - 1 ? 'Submit' : 'Next'}
+          </button>
+          <button
+            className="bg-gray-400 text-white rounded-md py-2 px-6 hover:bg-gray-500"
+            onClick={handleNext}
+          >
+            Skip
+          </button>
+        </div>
+      </div>
+    )}
   </div>
+</div>
+
 </div>
 
 
@@ -343,9 +423,9 @@ const isValidInput = () => {
     <button
       className="p-2 hover:bg-gray-700 rounded transition-colors duration-150"
       onClick={() => {
-        if (isValidInput()) {
+        // if (isValidInput()) {
           setCurrentStep(Math.max(0, currentStep - 1));
-        }
+        // }
       }}
     >
       ↑
@@ -353,9 +433,9 @@ const isValidInput = () => {
     <button
       className="p-2 hover:bg-gray-700 rounded transition-colors duration-150"
       onClick={() => {
-        if (isValidInput()) {
+        // if (isValidInput()) {
           handleNext();
-        }
+        // }
       }}
     >
       ↓
