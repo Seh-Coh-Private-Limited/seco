@@ -17,8 +17,8 @@
   .articles-container {
   
     padding: 3px;
-    padding-left: 50px;
-    padding-right: 50px;
+    padding-left: 180px;
+    padding-right: 180px;
     display: grid;
     
     grid-template-columns: repeat(3, 1fr); /* 3 columns */
