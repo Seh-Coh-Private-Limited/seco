@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate,useLocation } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -7,98 +7,212 @@ import {
   RecaptchaVerifier,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
-  signInWithPopup
+  signInWithPopup,
+  signOut,
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase'; // Make sure to import db from firebase config
 
-const SignUp = () => {
-  // Navigation
+const Authentication = () => {
+  // Existing state management code remains the same
   const navigate = useNavigate();
-
-  // State management
-  const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'phone'
+  const [authMethod, setAuthMethod] = useState('email');
   const [isSignIn, setIsSignIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-
-  // Clear error when auth method or sign in/up mode changes
+  const SESSION_TIMEOUT = 40 * 60 * 1000;
+  const location = useLocation();
+  
   useEffect(() => {
-    setError('');
-  }, [authMethod, isSignIn]);
-
-  // Initialize reCAPTCHA verifier
-  const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          console.log('Recaptcha verified');
-        },
-        'expired-callback': () => {
-          setError('reCAPTCHA expired. Please try again.');
-          window.recaptchaVerifier = null;
+    // Set up session timeout
+    const setupSessionTimeout = () => {
+      const sessionData = localStorage.getItem('sessionData');
+      if (sessionData) {
+        const { sessionStartTime } = JSON.parse(sessionData);
+        const timeElapsed = new Date().getTime() - new Date(sessionStartTime).getTime();
+        
+        if (timeElapsed >= SESSION_TIMEOUT) {
+          handleLogout();
+        } else {
+          // Set timeout for remaining time
+          const remainingTime = SESSION_TIMEOUT - timeElapsed;
+          setTimeout(handleLogout, remainingTime);
         }
-      });
+      }
+    };
+
+    setupSessionTimeout();
+
+    // Protect routes from direct URL access
+    const checkAuthentication = async () => {
+      const sessionData = localStorage.getItem('sessionData');
+      if (!sessionData && location.pathname !== '/') {
+        navigate('/');
+      }
+    };
+
+    checkAuthentication();
+  }, [location, navigate]);
+
+
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('sessionData');
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
   };
 
-  // Handle Email/Password authentication
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
+
+
+
+
+  const createUserSession = async (uid, category) => {
+    try {
+      const sessionRef = doc(db, 'sessions', uid);
+      const sessionData = {
+        uid,
+        category,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        isActive: true,
+        expiresAt: new Date(new Date().getTime() + SESSION_TIMEOUT)
+      };
+      
+      await setDoc(sessionRef, sessionData);
+      
+      localStorage.setItem('sessionData', JSON.stringify({
+        uid,
+        category,
+        sessionStartTime: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw error;
+    }
+  };
+
+  const handleCategoryBasedRedirect = (category) => {
+    if (category === 'Startup') {
+      navigate('/fdashboard');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  // Modified createUserDocument function with session handling
+  const createUserDocument = async (user, additionalData = {}) => {
+    if (!user) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      // New user - create user document and session
+      const createdAt = new Date();
+      try {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          createdAt,
+          lastLogin: createdAt,
+          ...additionalData
+        });
+        await createUserSession(user.uid);
+      } catch (error) {
+        console.error('Error creating user document:', error);
+        throw error;
+      }
+    } else {
+      // Existing user - update last login and create new session
+      await setDoc(userRef, { lastLogin: new Date() }, { merge: true });
+      await createUserSession(user.uid);
+    }
+  };
+
+  // Modified email authentication handler
+ // Modified email authentication handler
+ const handleEmailAuth = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+
+  try {
+    let userCredential;
+    if (isSignIn) {
+      userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userRef = doc(db, 'users', userCredential.user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        await createUserSession(userCredential.user.uid, userData.category);
+        handleCategoryBasedRedirect(userData.category);
+      } else {
+        throw new Error('User account not found');
+      }
+    } else {
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await createUserDocument(userCredential.user, {
+        signUpMethod: 'email',
+        accountType: 'email',
+        category: 'Startup' // Default category for new users
+      });
+      navigate('/startupregform');
+    }
+  } catch (err) {
+    console.error('Email auth error:', err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Modified Google Sign-In handler
+  const handleSocialSignIn = async (provider, providerName) => {
     setLoading(true);
     setError('');
 
     try {
-      let userCredential;
-      if (isSignIn) {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-        navigate('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      const userRef = doc(db, 'users', result.user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        await createUserSession(result.user.uid, userData.category);
+        handleCategoryBasedRedirect(userData.category);
       } else {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserDocument(result.user, {
+          signUpMethod: providerName,
+          accountType: providerName,
+          category: 'Startup' // Default category for new users
+        });
         navigate('/startupregform');
       }
     } catch (err) {
-      console.error('Email auth error:', err);
+      console.error(`${providerName} sign-in error:`, err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Phone Number authentication
-  const handleSendOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const handleGoogleSignIn = () => handleSocialSignIn(new GoogleAuthProvider(), 'google');
+  const handleMicrosoftSignIn = () => handleSocialSignIn(new OAuthProvider('microsoft.com'), 'microsoft');
 
-    try {
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-      setupRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
-      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-      window.confirmationResult = confirmationResult;
-      setOtpSent(true);
-      setError('');
-    } catch (err) {
-      console.error('Error sending OTP:', err);
-      setError(err.message);
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Handle OTP verification
+  // Modified OTP verification handler
+  // Modified OTP verification handler
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -107,7 +221,22 @@ const SignUp = () => {
     try {
       const confirmationResult = window.confirmationResult;
       const result = await confirmationResult.confirm(otp);
-      navigate('/dashboard');
+      const userRef = doc(db, 'users', result.user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        await createUserSession(result.user.uid, userData.category);
+        handleCategoryBasedRedirect(userData.category);
+      } else {
+        await createUserDocument(result.user, {
+          signUpMethod: 'phone',
+          accountType: 'phone',
+          phoneNumber: result.user.phoneNumber,
+          category: 'Startup' // Default category for new users
+        });
+        navigate('/startupregform');
+      }
     } catch (err) {
       console.error('Error verifying OTP:', err);
       setError(err.message);
@@ -116,40 +245,48 @@ const SignUp = () => {
     }
   };
 
-  // Handle Google Sign-In
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
+ // Handle Phone Number authentication
+ const handleSendOTP = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+
+  try {
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    setupRecaptcha();
+    const appVerifier = window.recaptchaVerifier;
+    const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+    window.confirmationResult = confirmationResult;
+    setOtpSent(true);
     setError('');
-
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  } catch (err) {
+    console.error('Error sending OTP:', err);
+    setError(err.message);
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
     }
-  };
-
-  // Handle Microsoft Sign-In
-  const handleMicrosoftSignIn = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const provider = new OAuthProvider('microsoft.com');
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('Microsoft sign-in error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } finally {
+    setLoading(false);
+  }
+};
+ // Initialize reCAPTCHA verifier
+ const setupRecaptcha = () => {
+  if (!window.recaptchaVerifier) {
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        console.log('Recaptcha verified');
+      },
+      'expired-callback': () => {
+        setError('reCAPTCHA expired. Please try again.');
+        window.recaptchaVerifier = null;
+      }
+    });
+  }
+};
+  // Modified OTP verification handler
+ 
   return (
     <div className="min-h-screen bg-white">
       {/* Header with Progress Steps */}
@@ -357,4 +494,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default Authentication;

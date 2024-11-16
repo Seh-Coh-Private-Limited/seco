@@ -22,4 +22,4 @@ const storage = getStorage(app);
 const auth = getAuth(app);
 
 // Export instances
-export { db, storage, auth };
+export { db, storage, auth,getAuth };
