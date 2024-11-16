@@ -51,8 +51,8 @@ const SignUp = () => {
     // Protect routes from direct URL access
     const checkAuthentication = async () => {
       const sessionData = localStorage.getItem('sessionData');
-      if (!sessionData && location.pathname !== '/') {
-        navigate('/');
+      if (!sessionData && location.pathname !== '/signup') {
+        navigate('/signup');
       }
     };
 
@@ -65,7 +65,7 @@ const SignUp = () => {
     try {
       await signOut(auth);
       localStorage.removeItem('sessionData');
-      navigate('/');
+      navigate('/signup');
     } catch (error) {
       console.error('Logout error:', error);
     }
