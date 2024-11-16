@@ -13,7 +13,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase'; // Make sure to import db from firebase config
 
-const Authentication = () => {
+const SignUp = () => {
   // Existing state management code remains the same
   const navigate = useNavigate();
   const [authMethod, setAuthMethod] = useState('email');
@@ -494,4 +494,4 @@ const Authentication = () => {
   );
 };
 
-export default Authentication;
+export default SignUp;
