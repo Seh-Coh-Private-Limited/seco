@@ -2,14 +2,19 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   OAuthProvider,
+  RecaptchaVerifier,
   signInWithEmailAndPassword,
+  signInWithPhoneNumber,
   signInWithPopup
 } from 'firebase/auth';
-import React, { useState } from 'react';
-import { auth } from '../firebase';
-import { useNavigate } from 'react-router-dom';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import OTPInput from 'otp-input-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import { Card, CardContent, Typography, TextField, Button } from '@mui/material';
+
 
 const Signup = () => {
   const [email, setEmail] = useState('');
@@ -19,63 +24,64 @@ const Signup = () => {
   const [errorMessage, setErrorMessage] = useState(''); // Store error messages
   const [loading, setLoading] = useState(false); // Loading state for form submission
   const [phone, setPhone] = useState(''); // Store phone number
-  const [otp, setOtp] = useState(''); // Store OTP
-  const [otpSent, setOtpSent] = useState(false); // Toggle to show OTP input field
-
+  const [otp, setOtp] = useState(""); // Store OTP
+  const [user, setUser] = useState(null); // Store user data
+  const [otpSent, setOtpSent] = useState(false);
+  const [hasFilled, setHasFilled] = useState(false);
   const [verificationId, setVerificationId] = useState(null); 
   const navigate = useNavigate(); // Use navigate for redirecting
 
+  // Check if user is already signed in
+  // useEffect(() => {
+  //   const unsubscribe = auth.onAuthStateChanged(user => {
+  //     if (user) {
+  //       // User is signed in, store session data
+  //       localStorage.setItem('user', JSON.stringify(user));
+  //       navigate('/dashboard'); // Redirect to dashboard
+  //     } else {
+  //       // User is not signed in, clear session
+  //       localStorage.removeItem('user');
+  //     }
+  //   });
 
+  //   return () => unsubscribe(); // Cleanup listener on unmount
+  // }, [navigate]);
 
   // Set up reCAPTCHA verifier
-  const setUpRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        'recaptcha-container',
-        { size: 'invisible' },
-        auth
-      );
-    }
-  };
+  // const setUpRecaptcha = () => {
+  //   if (!window.recaptchaVerifier) {
+  //     window.recaptchaVerifier = new RecaptchaVerifier(
+  //       'recaptcha-container',
+  //       { size: 'invisible' },
+  //       auth
+  //     );
+  //   }
+  // };
 
-  // Handle phone authentication
-  const handlePhoneAuth = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    setUpRecaptcha();
-    const appVerifier = window.recaptchaVerifier;
-
-    try {
-      const confirmationResult = await signInWithPhoneNumber(auth, phone, appVerifier);
-      setVerificationId(confirmationResult.verificationId);
-      setOtpSent(true);
-    } catch (error) {
-      setErrorMessage(`Phone Auth Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+ 
   // Handle OTP verification
-  const verifyOtp = async () => {
-    setLoading(true);
-    try {
-      const credential = auth.PhoneAuthProvider.credential(verificationId, otp);
-      await auth.signInWithCredential(credential);
-      navigate('/dashboard');
-    } catch (error) {
-      setErrorMessage(`OTP Verification Error: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const verifyOtp = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const credential = auth.PhoneAuthProvider.credential(verificationId, otp);
+  //     await auth.signInWithCredential(credential);
+  //     navigate('/dashboard');
+  //   } catch (error) {
+  //     setErrorMessage(`OTP Verification Error: ${error.message}`);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   // Handle Google Sign-In
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     setLoading(true);
     try {
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard'); // Navigates to dashboard after Google Sign-In
+      const userCredential = await signInWithPopup(auth, provider);
+      // Store user session info
+      // localStorage.setItem('user', JSON.stringify(userCredential.user));
+      navigate('/dashboard');
     } catch (error) {
       setErrorMessage(`Google Sign-In Error: ${error.message}`);
     } finally {
@@ -88,8 +94,10 @@ const Signup = () => {
     const provider = new OAuthProvider('microsoft.com');
     setLoading(true);
     try {
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard'); // Navigates to dashboard after Microsoft Sign-In
+      const userCredential = await signInWithPopup(auth, provider);
+      // Store user session info
+      // localStorage.setItem('user', JSON.stringify(userCredential.user));
+      navigate('/dashboard');
     } catch (error) {
       setErrorMessage(`Microsoft Sign-In Error: ${error.message}`);
     } finally {
@@ -103,10 +111,14 @@ const Signup = () => {
     setErrorMessage(''); // Clear previous errors
     try {
       if (isSignIn) {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // Store user session info
+        // localStorage.setItem('user', JSON.stringify(userCredential.user));
         navigate('/dashboard'); // Navigates existing users to dashboard
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Store user session info
+        // localStorage.setItem('user', JSON.stringify(userCredential.user));
         navigate('/startupregform'); // Navigates new users to StartupRegForm page
       }
     } catch (error) {
@@ -115,6 +127,74 @@ const Signup = () => {
       setLoading(false);
     }
   };
+
+  // const sendOtp= async()=>{
+  //   try{
+  //     const recaptcha = new RecaptchaVerifier(auth,"recaptcha",{});
+  //     const confirmation = await signInWithPhoneNumber(auth,phone,recaptcha);
+  //     setUser(confirmation);
+  //     setOtpSent(true);
+  //   }catch(error){
+  //     console.error(error);
+  //   }
+  
+  // }
+
+  // const verifyOtp= async()=>{
+  //   try {
+  //     await user.confirm(otp);
+  //     navigate('/dashboard');
+  //   } catch (error) {
+      
+  //   }
+      
+  // }
+  const generateRecaptcha = () => {
+    window.recaptchaVerifier = new RecaptchaVerifier('recaptcha', {
+      'size': 'invisible',
+      'callback': (response) => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
+        // ...
+      }
+    }, auth);
+  }
+
+  const handleSend = (event) => {
+    event.preventDefault();
+    setHasFilled(true);
+    generateRecaptcha();
+    let appVerifier = window.recaptchaVerifier;
+    signInWithPhoneNumber(auth, phone, appVerifier)
+      .then((confirmationResult) => {
+        // SMS sent. Prompt user to type the code from the message, then sign the
+        // user in with confirmationResult.confirm(code).
+        window.confirmationResult = confirmationResult;
+      }).catch((error) => {
+        // Error; SMS not sent
+        console.log(error);
+      });
+  }
+  
+  const verifyOtp = (event) => {
+    let otp = event.target.value;
+    setOtp(otp);
+
+    if (otp.length === 6) {
+      // verifu otp
+      let confirmationResult = window.confirmationResult;
+      confirmationResult.confirm(otp).then((result) => {
+        // User signed in successfully.
+        let user = result.user;
+        console.log(user);
+        alert('User signed in successfully');
+        // ...
+      }).catch((error) => {
+        // User couldn't sign in (bad verification code?)
+        // ...
+        alert('User couldn\'t sign in (bad verification code?)');
+      });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -185,15 +265,81 @@ const Signup = () => {
       {/* Phone or Email Input */}
       {isUsingPhone ? (
         <>
-          <input
-            type="tel"
-            id="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number"
-            className="w-full p-3 border border-gray-300 rounded-md mb-6 focus:outline-none focus:ring-2 focus:ring-gray-400"
-          />
-          <button
+  <div className="app__container">
+      {!otpSent ? (
+        <Card sx={{ width: '300px' }}>
+          <CardContent
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexDirection: 'column',
+            }}
+          >
+            <Typography
+              sx={{ padding: '20px' }}
+              variant="h5"
+              component="div"
+            >
+              Enter your phone number
+            </Typography>
+            <form onSubmit={handleSend}>
+              <TextField
+                sx={{ width: '240px' }}
+                variant="outlined"
+                autoComplete="off"
+                label="Phone Number"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ width: '240px', marginTop: '20px' }}
+              >
+                Send Code
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card sx={{ width: '300px' }}>
+          <CardContent
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexDirection: 'column',
+            }}
+          >
+            <Typography
+              sx={{ padding: '20px' }}
+              variant="h5"
+              component="div"
+            >
+              Enter the OTP
+            </Typography>
+            <TextField
+              sx={{ width: '240px' }}
+              variant="outlined"
+              label="OTP"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value)}
+            />
+            <Button
+              onClick={verifyOtp}
+              variant="contained"
+              sx={{ width: '240px', marginTop: '20px' }}
+            >
+              Verify OTP
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      <div id="recaptcha"></div>
+    </div>
+
+
+    
+          {/* <button
             onClick={handlePhoneAuth}
             className="w-full py-3 bg-gray-800 text-white font-semibold rounded-md hover:bg-gray-900 transition"
             disabled={loading}
@@ -201,7 +347,6 @@ const Signup = () => {
             {loading ? 'Sending OTP...' : 'Send OTP'}
           </button>
 
-          {/* OTP Input */}
           {otpSent && (
             <div className="mt-4">
               <OTPInput
@@ -221,8 +366,8 @@ const Signup = () => {
                 {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
             </div>
-          )}
-          <div id="recaptcha-container"></div>
+          )} */}
+          {/* <div id="recaptcha-container"></div> */}
         </>
       ) : (
         <>
