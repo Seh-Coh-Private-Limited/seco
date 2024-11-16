@@ -150,14 +150,23 @@ const Signup = () => {
       
   // }
   const generateRecaptcha = () => {
-    window.recaptchaVerifier = new RecaptchaVerifier('recaptcha', {
-      'size': 'invisible',
-      'callback': (response) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-        // ...
-      }
-    }, auth);
-  }
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(
+        'recaptcha',
+        {
+          size: 'invisible',
+          callback: (response) => {
+            console.log("reCAPTCHA solved");
+          },
+          'expired-callback': () => {
+            console.log("reCAPTCHA expired. Please try again.");
+          },
+        },
+        auth
+      );
+    }
+  };
+  
 
   const handleSend = (event) => {
     event.preventDefault();
