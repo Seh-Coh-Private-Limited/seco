@@ -35,7 +35,7 @@ const SignUp = () => {
       if (sessionData) {
         const { sessionStartTime } = JSON.parse(sessionData);
         const timeElapsed = new Date().getTime() - new Date(sessionStartTime).getTime();
-        
+  
         if (timeElapsed >= SESSION_TIMEOUT) {
           handleLogout();
         } else {
@@ -45,19 +45,21 @@ const SignUp = () => {
         }
       }
     };
-
+  
     setupSessionTimeout();
-
-    // Protect routes from direct URL access
-    const checkAuthentication = async () => {
-      const sessionData = localStorage.getItem('sessionData');
-      if (!sessionData && location.pathname !== '/signup') {
+  
+    // Protect routes from direct URL access using auth state change
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (!user) {
+        // User is not signed in, clear session and navigate to signup
+        localStorage.removeItem('user');
         navigate('/signup');
       }
-    };
-
-    checkAuthentication();
-  }, [location, navigate]);
+    });
+  
+    return () => unsubscribe(); // Cleanup listener on unmount
+  }, [navigate]);
+  
 
 
 
@@ -87,7 +89,7 @@ const SignUp = () => {
         expiresAt: new Date(new Date().getTime() + SESSION_TIMEOUT)
       };
       
-      await setDoc(sessionRef, sessionData);
+      // await setDoc(sessionRef, sessionData);
       
       localStorage.setItem('sessionData', JSON.stringify({
         uid,

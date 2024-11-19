@@ -14,11 +14,11 @@
   
   
   
-  .articles-container {
+  .f-articles-container {
   
     padding: 3px;
-    padding-left: 180px;
-    padding-right: 180px;
+    padding-left: 100px;
+    padding-right: 100px;
     display: grid;
     
     grid-template-columns: repeat(3, 1fr); /* 3 columns */

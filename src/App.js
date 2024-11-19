@@ -11,13 +11,15 @@ import SignUpPage from './pages/SignUp';
 import StartupRegistrationForm from './pages/StartupRegistrationForm';
 import FounderDashboard from './pages/FounderDashboard'; // Capitalized the component name
 import IDashboard from './pages/IDashboard'; // Capitalized the component name
-
+import InsertSampleData from './pages/Insert'; // Capitalized the component name
+import DDashboard from './pages/Dashboarddddd'; // Capitalized the component name
 
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/ddd" element={<DDashboard />} />  
         <Route path="/idashboard" element={<IDashboard />} />
         <Route path="/startupregform" element={<StartupRegistrationForm />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -26,6 +28,7 @@ function App() {
         <Route path="/pip" element={<ProgramInsertPage />} /> 
         <Route path="/program/:id" element={<ProgramDetail />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/insert" element={<InsertSampleData />} />
         {/* Define more routes as needed */}
       </Routes>
     </Router>

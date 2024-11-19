@@ -59,7 +59,7 @@ function InsertProgram() {
     }
 
     try {
-      await addDoc(collection(db, 'programs'), {
+      await addDoc(collection(db, 'programmes'), {
         title,
         id: Math.floor(Math.random() * 1000000000), // Generate a random ID
         image: imageUrl, // Save the uploaded image URL

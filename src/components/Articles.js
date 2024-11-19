@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import ProgramCard from '../components/ProgramCard'; // Import the ProgramCard component
-import { fetchPrograms } from '../components/fetchPrograms';
+import { fetchPrograms } from '../components/ffetchprograms';
 import './Article.css';
+import FProgramCard from './FProgramCard';
 
 function Articles() {
   const [programs, setPrograms] = useState([]);
@@ -104,16 +104,16 @@ function Articles() {
         </div>
       </div>
 
-      <div className="articles-container">
+      <div className="f-articles-container">
         {filteredPrograms.map((program, index) => (
-          <ProgramCard
+          <FProgramCard
             key={program.id}
             id={program.id}
             title={program.title}
             image={program.image}
             location={program.location}
             description={program.description}
-            category={program.industry.join(', ')}
+            // category={program.industry.join(', ')}
             orientation={getOrientation(index)}
           />
         ))}
