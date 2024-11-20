@@ -44,18 +44,31 @@ const Popup = ({ isOpen, onClose, programDetails }) => {
   };
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href); // Copies the current URL
-      alert('Link copied to clipboard!');
+      if (!programDetails || !programDetails.id) {
+        alert('Program details are not available.');
+        return;
+      }
+  
+      const currentUrl = window.location.origin; // Use the base URL of the app
+      const linkToCopy = `${currentUrl}/program/${programDetails.id}`; // Construct the program-specific URL
+  
+      await navigator.clipboard.writeText(linkToCopy); // Copy the link to clipboard
+      alert('Link with Program ID copied to clipboard!');
     } catch (err) {
-      console.error('Failed to copy: ', err);
-      alert('Failed to copy the link.');
+      console.error('Failed to copy link: ', err);
+      alert('An error occurred while copying the link.');
     }
   };
   
+  
 
   return (
-    <div className={`overlay ${isOpen ? 'show' : ''}`}>
-<div className={`popup ${isOpen ? 'show' : ''}`}>
+    <div className={`overlay ${isOpen ? 'show' : ''}`}
+    onClick={onClose} // Close popup when clicking on the overlay
+>
+<div className={`popup ${isOpen ? 'show' : ''}`}
+      onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the popup
+>
   <div className="popup-content">
   <div className="pane-header flex flex-col p-4 sticky top-8 z-20 mb-0">
   <div className="flex items-center gap-4">

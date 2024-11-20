@@ -187,19 +187,19 @@ import "slick-carousel/slick/slick.css";
 import './ProgramDetailPage.css';
 
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { fetchProgramById } from '../components/fetchProgram';
-
+import { ClipLoader } from 'react-spinners';
 import { Link } from 'react-scroll';
 import Footer from '../components/footer';
 import Header from '../components/Header';
 
 const ProgramDetail = () => {
+  const {id} = useParams();
   const loc = useLocation(); // Get the location object
   const { program } = loc.state || {}; // Destructure the program from state
   const [programDetails, setProgramDetails] = useState(null);
   const [activeTab, setActiveTab] = useState('Details');
-
 
 
   const [openIndex, setOpenIndex] = useState(null);
@@ -223,7 +223,11 @@ const ProgramDetail = () => {
   }, [program]); // Only run this effect when the program id changes
 
   if (!programDetails) {
-    return <p>No program details available.</p>; // Render a message if details are not available
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <ClipLoader size={50} color={'#3498db'} loading={true} />
+      </div>
+    );
   }
 
   const {

@@ -27,7 +27,12 @@ import { getFirestore, doc, getDoc, getDocs, query, where, collection,addDoc } f
 import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
-const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
+const generatedId = Math.floor(Math.random() * 1_000_000_000);
+const FormBuilderOptions = ({ onOptionSelect, onBack}) => {
+  const [submittedId, setSubmittedId] = useState(null);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   
   const options = [
@@ -52,12 +57,7 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
   ];
 
   const handleOptionSelect = (value) => {
-    if (value === 'scratch') {
-      setShowFormBuilder(true);
-    } else {
-      onOptionSelect(value);
-    }
-    if (value === 'import') {
+    if (value === 'scratch' || value === 'import') {
       setShowFormBuilder(true);
     } else {
       onOptionSelect(value);
@@ -67,7 +67,8 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
   if (showFormBuilder) {
     return (
       <div className="w-full">
-        <FormBuilder />
+        setCurrentStep(3) // Skip to review
+        <FormBuilder programId={generatedId} />
         <div className="fixed bottom-4 right-4">
           <button
             onClick={() => setShowFormBuilder(false)}
@@ -79,6 +80,7 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
       </div>
     );
   }
+  
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -267,16 +269,20 @@ const CardContent = ({ children, className = '' }) => (
     const [eventImage, setEventImage] = useState(null);
     const [skipForm, setSkipForm] = useState(false);
     const [selectedFormOption, setSelectedFormOption] = useState(null);
+    const [submittedId, setSubmittedId] = useState(null);
+    const [showFormBuilder, setShowFormBuilder] = useState(false);
+
+
     const [eventData, setEventData] = useState({
-      name: '',
+      title: '',
       startDate: '',
       startTime: '',
       endDate: '',
       endTime: '',
       location: '',
       description: '',
-      Eligibility: '',
-      Incentives: '',
+      eligibility: '',
+      incentives: '',
       isPublic: true,
       calendar: 'Google Calendar'
     });
@@ -302,19 +308,33 @@ const CardContent = ({ children, className = '' }) => (
   
     const handleSubmit = async () => {
       try {
-        // Add a new document to the "programmes" collection
+        // Generate a unique numeric ID for the event
+        
+    
         const docRef = await addDoc(collection(db, 'programmes'), {
           ...eventData,
           image: eventImage,
+          id: generatedId, // Use the generated numeric ID here
+          uid: auth.currentUser.uid,
           createdAt: new Date(),
         });
-        console.log('Event added with ID:', docRef.id);
-        // Close the form after submission
-        onClose();
+    
+        // Alert the generated ID
+        alert(`Event added with ID: ${generatedId}`);
+        console.log(`Event added with ID: ${generatedId}`);
+    
+        // Save the submitted ID
+        setSubmittedId(docRef.id);
+    
+        // Navigate to the next step
+        setShowFormBuilder(true); // This assumes showFormBuilder starts step 3
       } catch (e) {
         console.error('Error adding event: ', e);
       }
     };
+    
+    
+    
   
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -367,7 +387,7 @@ const CardContent = ({ children, className = '' }) => (
                     placeholder="Event Name"
                     className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
                     value={eventData.name}
-                    onChange={(e) => setEventData({ ...eventData, name: e.target.value })}
+                    onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
                   />
   
                   {/* Date and time */}
@@ -432,14 +452,14 @@ const CardContent = ({ children, className = '' }) => (
                     placeholder="Add Eligibility"
                     className="w-full p-3 border rounded-md min-h-[20px]"
                     value={eventData.Eligibility}
-                    onChange={(e) => setEventData({ ...eventData, Eligibility: e.target.value })}
+                    onChange={(e) => setEventData({ ...eventData, eligibility: e.target.value })}
                   />
   
                   <textarea
                     placeholder="Add Incentives"
                     className="w-full p-3 border rounded-md min-h-[20px]"
                     value={eventData.Incentives}
-                    onChange={(e) => setEventData({ ...eventData, Incentives: e.target.value })}
+                    onChange={(e) => setEventData({ ...eventData, incentives: e.target.value })}
                   />
                 </CardContent>
               </Card>
@@ -452,19 +472,20 @@ const CardContent = ({ children, className = '' }) => (
     <button 
       onClick={() => {
         handleSubmit()
-        setSkipForm(true);
+        // setSkipForm(true);
         setCurrentStep(3); // Skip to review
+        handleNext()
       }}
       className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
     >
-      Review and Launch
+      Next
     </button>
-    <button 
-      onClick={handleNext}
+    {/* <button
+      onClick=
       className="px-4 py-2 bg-purple-600 text-white rounded-md"
     >
       Next
-    </button>
+    </button> */}
   </div>
             </div>
           </div>
@@ -474,7 +495,7 @@ const CardContent = ({ children, className = '' }) => (
             onOptionSelect={(option) => {
               setSelectedFormOption(option);
             }}
-            onBack={() => setCurrentStep(1)}
+            // onBack={() => setCurrentStep(1)}
           />
         )}
       </div>

@@ -4,21 +4,23 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import './App.css';
 import './index.css';
 import Dashboard from './pages/Dashboard';
+import DDashboard from './pages/Dashboarddddd'; // Capitalized the component name
 import Discover from './pages/Discover';
+import FounderDashboard from './pages/FounderDashboard'; // Capitalized the component name
+import IDashboard from './pages/IDashboard'; // Capitalized the component name
+import InsertSampleData from './pages/Insert'; // Capitalized the component name
 import ProgramDetail from './pages/ProgramDetailPage';
 import ProgramInsertPage from './pages/programInsertPage'; // Capitalized the component name
 import SignUpPage from './pages/SignUp';
 import StartupRegistrationForm from './pages/StartupRegistrationForm';
-import FounderDashboard from './pages/FounderDashboard'; // Capitalized the component name
-import IDashboard from './pages/IDashboard'; // Capitalized the component name
-import InsertSampleData from './pages/Insert'; // Capitalized the component name
-import DDashboard from './pages/Dashboarddddd'; // Capitalized the component name
 
 
 function App() {
   return (
     <Router>
       <Routes>
+      <Route path="/program/:programId" element={<ProgramDetail />} />
+
         <Route path="/ddd" element={<DDashboard />} />  
         <Route path="/idashboard" element={<IDashboard />} />
         <Route path="/startupregform" element={<StartupRegistrationForm />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trash2, 
   GripVertical, 
@@ -14,10 +14,11 @@ import {
   AlignLeft,
   Clock,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  FolderPlus
 } from 'lucide-react';
-import { db, collection, addDoc,firebase,firestore } from '../firebase'; // Import the Firestore functions
-// Card components remain the same
+import { db,serverTimestamp,collection,query,addDoc,where,getDocs } from '../firebase';
+
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-lg shadow ${className}`}>
     {children}
@@ -41,15 +42,39 @@ const questionTypes = [
   { id: 'rating', icon: <Star className="w-4 h-4" />, label: 'Rating' }
 ];
 
-const FormBuilder = () => {
+const FormBuilder = ({ programId }) => {
   const [formTitle, setFormTitle] = useState('Enter your Form title');
   const [formDescription, setFormDescription] = useState('');
-  const [questions, setQuestions] = useState([]);
+  const [sections, setSections] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [currentStep, setCurrentStep] = useState('edit'); // 'edit' or 'review'
+  const [currentStep, setCurrentStep] = useState('edit');
+  const [selectedSection, setSelectedSection] = useState(null);
 
-  // Previous functions remain the same
-  const addQuestion = (type) => {
+  // Add a new section
+  const addSection = () => {
+    const newSection = {
+      id: Date.now(),
+      title: 'New Section',
+      description: '',
+      questions: []
+    };
+    setSections([...sections, newSection]);
+  };
+
+  // Update section details
+  const updateSection = (sectionId, updates) => {
+    setSections(sections.map(section =>
+      section.id === sectionId ? { ...section, ...updates } : section
+    ));
+  };
+
+  // Delete section
+  const deleteSection = (sectionId) => {
+    setSections(sections.filter(section => section.id !== sectionId));
+  };
+
+  // Add question to a specific section
+  const addQuestion = (sectionId, type) => {
     const newQuestion = {
       id: Date.now(),
       type,
@@ -58,56 +83,132 @@ const FormBuilder = () => {
       required: false,
       options: type === 'multipleChoice' || type === 'checkbox' ? ['Option 1'] : [],
     };
-    setQuestions([...questions, newQuestion]);
+    
+    setSections(sections.map(section => {
+      if (section.id === sectionId) {
+        return {
+          ...section,
+          questions: [...section.questions, newQuestion]
+        };
+      }
+      return section;
+    }));
     setSelectedQuestion(newQuestion.id);
+    setSelectedSection(sectionId);
   };
 
-  const updateQuestion = (id, updates) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, ...updates } : q
-    ));
+  // Update question within a section
+  const updateQuestion = (sectionId, questionId, updates) => {
+    setSections(sections.map(section => {
+      if (section.id === sectionId) {
+        return {
+          ...section,
+          questions: section.questions.map(q =>
+            q.id === questionId ? { ...q, ...updates } : q
+          )
+        };
+      }
+      return section;
+    }));
   };
 
-  const deleteQuestion = (id) => {
-    setQuestions(questions.filter(q => q.id !== id));
-    if (selectedQuestion === id) {
+  // Delete question from a section
+  const deleteQuestion = (sectionId, questionId) => {
+    setSections(sections.map(section => {
+      if (section.id === sectionId) {
+        return {
+          ...section,
+          questions: section.questions.filter(q => q.id !== questionId)
+        };
+      }
+      return section;
+    }));
+    if (selectedQuestion === questionId) {
       setSelectedQuestion(null);
     }
   };
 
-  const addOption = (questionId) => {
-    const question = questions.find(q => q.id === questionId);
-    if (question) {
-      const newOptions = [...question.options, `Option ${question.options.length + 1}`];
-      updateQuestion(questionId, { options: newOptions });
-    }
+  // Add option to a question
+  const addOption = (sectionId, questionId) => {
+    setSections(sections.map(section => {
+      if (section.id === sectionId) {
+        return {
+          ...section,
+          questions: section.questions.map(q => {
+            if (q.id === questionId) {
+              return {
+                ...q,
+                options: [...q.options, `Option ${q.options.length + 1}`]
+              };
+            }
+            return q;
+          })
+        };
+      }
+      return section;
+    }));
   };
+
   const handleFormLaunch = async () => {
     try {
-      // Create the form object including the title, description, and questions
+      // Validate form fields
+      if (!formTitle.trim()) {
+        alert('Please enter a form title');
+        return;
+      }
+  
+      if (!programId) {
+        alert('Invalid program ID. Please check and try again.');
+        return;
+      }
+  
+      if (sections.length === 0) {
+        alert('Please add at least one section to the form');
+        return;
+      }
+  
+      // Construct the simplified form data structure without IDs
       const formData = {
         title: formTitle,
-        description: formDescription,
-        questions: questions.map(q => ({
-          id: q.id,
-          type: q.type,
-          title: q.title,
-          description: q.description,
-          required: q.required,
-          options: q.options,
+        description: formDescription || "", 
+        sections: sections.map(section => ({
+          title: section.title,
+          description: section.description || "",
+          questions: section.questions.map(q => ({
+            type: q.type,
+            title: q.title,
+            description: q.description || "",
+            required: q.required || false,
+            options: q.options || [], // Only included for multiple choice/checkbox questions
+          })),
         })),
-        createdAt: db.FieldValue.serverTimestamp(),  // Correct usage of Firestore FieldValue
+        createdAt: serverTimestamp(),
+        programId,
       };
   
-      // Save the form data in the "programmes" collection
-      const docRef = await db.collection('programmes').add(formData);
+      // Reference to the "programmes" collection and query by program ID
+      const programmesRef = collection(db, "programmes");
+      const q = query(programmesRef, where("id", "==", programId));
+      const querySnapshot = await getDocs(q);
   
-      console.log("Form successfully created with ID:", docRef.id);
+      if (querySnapshot.empty) {
+        alert('No matching program found. Please check the program ID.');
+        return;
+      }
+  
+      const docRef = querySnapshot.docs[0].ref;
+  
+      // Add the simplified form to the "form" subcollection
+      const formRef = await addDoc(collection(docRef, "form"), formData);
+  
+      console.log("Form successfully created with ID:", formRef.id);
+      alert('Form successfully launched!');
     } catch (error) {
-      console.error("Error creating form:", error);
+      console.error("Error creating form:", error.message || error);
+      alert('Failed to launch form. Please try again.');
     }
   };
-  const QuestionCard = ({ question, isReview = false }) => {
+  const QuestionCard = ({ section, question, isReview = false }) => {
     const isSelected = selectedQuestion === question.id;
 
     if (isReview) {
@@ -145,7 +246,6 @@ const FormBuilder = () => {
       );
     }
 
-    // Original QuestionCard rendering for edit mode
     return (
       <Card className={`mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
         <CardContent>
@@ -157,7 +257,7 @@ const FormBuilder = () => {
               <input
                 type="text"
                 value={question.title}
-                onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
+                onChange={(e) => updateQuestion(section.id, question.id, { title: e.target.value })}
                 className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
                 placeholder="Question"
               />
@@ -176,7 +276,7 @@ const FormBuilder = () => {
                         onChange={(e) => {
                           const newOptions = [...question.options];
                           newOptions[index] = e.target.value;
-                          updateQuestion(question.id, { options: newOptions });
+                          updateQuestion(section.id, question.id, { options: newOptions });
                         }}
                         className="flex-1 border-none focus:outline-none focus:ring-0"
                         placeholder={`Option ${index + 1}`}
@@ -184,7 +284,7 @@ const FormBuilder = () => {
                       <button
                         onClick={() => {
                           const newOptions = question.options.filter((_, i) => i !== index);
-                          updateQuestion(question.id, { options: newOptions });
+                          updateQuestion(section.id, question.id, { options: newOptions });
                         }}
                         className="text-gray-400 hover:text-gray-600"
                       >
@@ -193,7 +293,7 @@ const FormBuilder = () => {
                     </div>
                   ))}
                   <button
-                    onClick={() => addOption(question.id)}
+                    onClick={() => addOption(section.id, question.id)}
                     className="text-blue-600 text-sm flex items-center gap-1 mt-2"
                   >
                     <Plus className="w-4 h-4" /> Add Option
@@ -213,16 +313,18 @@ const FormBuilder = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  const questionCopy = {...questions.find(q => q.id === question.id)};
+                  const questionCopy = {...question};
                   questionCopy.id = Date.now();
-                  setQuestions([...questions, questionCopy]);
+                  updateSection(section.id, {
+                    questions: [...section.questions, questionCopy]
+                  });
                 }}
                 className="p-2 hover:bg-gray-100 rounded-md"
               >
                 <Copy className="w-4 h-4" />
               </button>
               <button
-                onClick={() => deleteQuestion(question.id)}
+                onClick={() => deleteQuestion(section.id, question.id)}
                 className="p-2 hover:bg-gray-100 rounded-md"
               >
                 <Trash2 className="w-4 h-4" />
@@ -240,6 +342,57 @@ const FormBuilder = () => {
     );
   };
 
+  const SectionCard = ({ section, isReview = false }) => (
+    <Card className="mb-6">
+      <CardContent>
+        {!isReview && (
+          <div className="flex justify-between mb-4">
+            <input
+              type="text"
+              value={section.title}
+              onChange={(e) => updateSection(section.id, { title: e.target.value })}
+              className="text-xl font-semibold border-none focus:outline-none focus:ring-0"
+              placeholder="Section Title"
+            />
+            <button
+              onClick={() => deleteSection(section.id)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {isReview && (
+          <h2 className="text-xl font-semibold mb-4">{section.title}</h2>
+        )}
+        {section.questions.map(question => (
+          <QuestionCard 
+            key={question.id} 
+            section={section}
+            question={question} 
+            isReview={isReview} 
+          />
+        ))}
+        {!isReview && (
+          <div className="mt-4">
+            <div className="grid grid-cols-4 gap-2">
+              {questionTypes.map(type => (
+                <button
+                  key={type.id}
+                  onClick={() => addQuestion(section.id, type.id)}
+                  className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
+                >
+                  {type.icon}
+                  <span>{type.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   const ReviewSection = () => (
     <div className="flex-1 p-6 bg-gray-50">
       <div className="max-w-3xl mx-auto">
@@ -250,8 +403,8 @@ const FormBuilder = () => {
           </CardContent>
         </Card>
         
-        {questions.map(question => (
-          <QuestionCard key={question.id} question={question} isReview={true} />
+        {sections.map(section => (
+          <SectionCard key={section.id} section={section} isReview={true} />
         ))}
       </div>
     </div>
@@ -259,93 +412,78 @@ const FormBuilder = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex flex-1">
-        {/* Main form editing area */}
+      <div className="flex-1">
         {currentStep === 'edit' ? (
-          <>
-            <div className="flex-1 p-6 bg-gray-50">
-              <div className="max-w-3xl mx-auto">
-                {/* Form header */}
-                <Card className="mb-6">
-                  <CardContent>
-                    <input
-                      type="text"
-                      value={formTitle}
-                      onChange={(e) => setFormTitle(e.target.value)}
-                      className="w-full text-2xl font-semibold mb-2 border-none focus:outline-none focus:ring-0"
-                      placeholder="Form Title"
-                    />
-                    <input
-                      type="text"
-                      value={formDescription}
-                      onChange={(e) => setFormDescription(e.target.value)}
-                      className="w-full text-gray-600 border-none focus:outline-none focus:ring-0"
-                      placeholder="Form Description"
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Questions */}
-                {questions.map(question => (
-                  <QuestionCard key={question.id} question={question} />
-                ))}
-              </div>
-            </div>
-
-            {/* Right sidebar with question types */}
-            <div className="w-64 border-l border-gray-200 p-4 bg-white">
-              <h3 className="text-sm font-medium text-gray-600 mb-4">Add Question</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {questionTypes.map(type => (
+          <div className="p-6 bg-gray-50">
+            <div className="max-w-3xl mx-auto">
+              <Card className="mb-6">
+                <CardContent>
+                  <input
+                    type="text"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="w-full text-2xl font-semibold mb-2 border-none focus:outline-none focus:ring-0"
+                    placeholder="Form Title"
+                  />
+                  <input
+                    type="text"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    className="w-full text-gray-600 border-none focus:outline-none focus:ring-0"
+                    placeholder="Form Description"/>
+                    </CardContent>
+                  </Card>
+    
+                  {sections.map(section => (
+                    <SectionCard key={section.id} section={section} />
+                  ))}
+    
                   <button
-                    key={type.id}
-                    onClick={() => addQuestion(type.id)}
-                    className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
+                    onClick={addSection}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
                   >
-                    {type.icon}
-                    <span>{type.label}</span>
+                    <FolderPlus className="w-5 h-5" />
+                    Add New Section
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
-          </>
-        ) : (
-          <ReviewSection />
-        )}
-      </div>
-
-      {/* Footer with navigation buttons */}
-      <div className="border-t border-gray-200 p-4 bg-white">
-        <div className="max-w-3xl mx-auto flex justify-between">
-          {currentStep === 'review' && (
-            <button
-              onClick={() => setCurrentStep('edit')}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to Edit
-            </button>
-          )}
-          <div className="ml-auto">
-            {currentStep === 'edit' ? (
-              <button
-                onClick={() => setCurrentStep('review')}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Review & Launch <ArrowRight className="w-4 h-4" />
-              </button>
             ) : (
-              <button
-                onClick={handleFormLaunch}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Launch Form <ArrowRight className="w-4 h-4" />
-              </button>
+              <ReviewSection />
             )}
           </div>
+    
+          {/* Footer with navigation buttons */}
+          <div className="border-t border-gray-200 p-4 bg-white">
+            <div className="max-w-3xl mx-auto flex justify-between">
+              {currentStep === 'review' && (
+                <button
+                  onClick={() => setCurrentStep('edit')}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to Edit
+                </button>
+              )}
+              <div className="ml-auto">
+                {currentStep === 'edit' ? (
+                  <button
+                    onClick={() => setCurrentStep('3')}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Review & Launch <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleFormLaunch}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Launch Form <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-export default FormBuilder;
+      );
+    };
+    
+    export default FormBuilder;

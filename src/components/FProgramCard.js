@@ -63,7 +63,7 @@ const FProgramCard = ({
       </div>
 
       {/* Popup Component */}
-      {/* {showPopup && (
+      {showPopup && (
         <FPopup
           isOpen={showPopup} // Ensure to pass the correct state for controlling popup visibility
           onClose={closePopup} // Close function
@@ -71,7 +71,7 @@ const FProgramCard = ({
             id,
           }} // Pass program details to the popup
         />
-      )} */}
+      )}
     </>
   );
 };

@@ -2,8 +2,7 @@ import { faArrowRight, faCopy, faNewspaper } from '@fortawesome/free-solid-svg-i
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ffetchProgramById } from '../components/ffetchprogram'; // Adjust the import path based on your project structure
-import './Popup.css'; // Ensure CSS styles for the popup
+import { ffetchProgramById } from '../components/ffetchprogram';
 
 const FPopup = ({ isOpen, onClose, programDetails }) => {
   const navigate = useNavigate();
@@ -11,7 +10,7 @@ const FPopup = ({ isOpen, onClose, programDetails }) => {
 
   useEffect(() => {
     const fetchDetails = async () => {
-      const program = await ffetchProgramById(programDetails.id); // Use the passed id to fetch program details
+      const program = await ffetchProgramById(programDetails.id);
       setProgram(program);
     };
 
@@ -20,18 +19,16 @@ const FPopup = ({ isOpen, onClose, programDetails }) => {
     }
   }, [programDetails]);
 
-  if (!program) return null; // Render nothing if data is not yet available
+  if (!program) return null;
 
   const {
     title,
     image,
     description,
-    location, // Assuming this is the city
+    location,
     endDate,
     eligibility,
     incentives,
-    organizerDetails,
-    contactInfo,
   } = program;
 
   const formattedEndDate = new Date(endDate);
@@ -40,346 +37,124 @@ const FPopup = ({ isOpen, onClose, programDetails }) => {
   const formatDay = (date) => date.getDate();
 
   const handleEventPageClick = () => {
-    navigate(`/program/${programDetails.id}`, { state: { program: programDetails.id } }); // Pass the id in state
+    navigate(`/program/${programDetails.id}`, { state: { program: programDetails.id } });
   };
+
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href); // Copies the current URL
+      await navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard!');
     } catch (err) {
       console.error('Failed to copy: ', err);
       alert('Failed to copy the link.');
     }
   };
-  
 
   return (
-    <div className={`overlay ${isOpen ? 'show' : ''}`}>
-<div className={`f-popup ${isOpen ? 'show' : ''}`}>
-  <div className="popup-content">
-  <div className="pane-header flex flex-col p-4 sticky top-8 z-20 mb-0">
-  <div className="flex items-center gap-4">
-    {/* Close Button */}
-    <button 
-      id="close-button"
-      aria-label="Close" 
-      onClick={onClose} 
-      className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full transition-colors duration-300 hover:bg-gray-200"
-    >
-      <i className="far fa-times-circle text-black text-sm sm:text-lg"></i>
-    </button>
+    <div className={`fixed inset-y-0 right-0 w-[30%] bg-white shadow-lg overflow-y-auto z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300 ease-in-out`}>
+      <div className="p-4">
+        <div className="sticky top-0 bg-white z-20 pb-2">
+          <div className="flex items-start gap-4 mb-2">
+            <button 
+              aria-label="Close" 
+              onClick={onClose} 
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+            >
+              <i className="far fa-times-circle text-black text-lg"></i>
+            </button>
 
-    {/* Event Page Button */}
-    <button 
-      id="event-page-button"
-      onClick={handleEventPageClick} 
-      className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
-      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
-      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
-    >
-      <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
-        event page
-      </span>
-      <FontAwesomeIcon 
-        icon={faArrowRight} 
-        style={{ transform: 'rotate(305deg)' }} 
-        className="w-3 h-3 sm:w-4 sm:h-4"
-      />
-    </button>
+            <div className="flex space-x-2">
+              {/* <button 
+                onClick={handleEventPageClick} 
+                className="flex items-center bg-gray-200 px-3 py-2 rounded-xl hover:bg-gray-300 transition"
+              >
+                <span className="mr-2 text-black text-sm">event page</span>
+                <FontAwesomeIcon 
+                  icon={faArrowRight} 
+                  style={{ transform: 'rotate(305deg)' }} 
+                  className="w-4 h-4"
+                />
+              </button> */}
 
-    {/* Copy Link Button */}
-    <button 
-      id="copy-link-button"
-      onClick={handleCopyLink} 
-      className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
-      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D1D5DB'}
-      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#E5E7EB'}
-    >
-      <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
-        copy link
-      </span>
-      <FontAwesomeIcon 
-        icon={faCopy} 
-        className="w-3 h-3 sm:w-4 sm:h-4"
-      />
-    </button>
+              {/* <button 
+                onClick={handleCopyLink} 
+                className="flex items-center bg-gray-200 px-3 py-2 rounded-xl hover:bg-gray-300 transition"
+              >
+                <span className="mr-2 text-black text-sm">copy link</span>
+                <FontAwesomeIcon 
+                  icon={faCopy} 
+                  className="w-4 h-4"
+                />
+              </button> */}
 
-    {/* Apply Button */}
-    <button 
-  id="apply-button"
-  onClick={() => window.location.href = 'https://getseco.com/contact-1'}
-  className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out"
->
-  <span className="mr-1 text-black text-xs sm:text-sm" style={{ fontFamily: 'CFont' }}>
-    apply
-  </span>
-  <FontAwesomeIcon 
-    icon={faNewspaper} 
-    className="w-3 h-3 sm:w-4 sm:h-4"
-  />
-</button>
+              <button 
+                onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+                className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-3 py-2 rounded-xl transition"
+              >
+                <span className="mr-2 text-black text-sm">apply</span>
+                <FontAwesomeIcon 
+                  icon={faNewspaper} 
+                  className="w-4 h-4"
+                />
+              </button>
+            </div>
+          </div>
+          <hr className="border-t border-black" />
+        </div>
 
-  </div>
-
-  {/* Manual Line */}
-  <div className="w-full h-px bg-black mt-2 mb-0" style={{ marginLeft: '-32px', marginRight: '-16px' }}></div>
-</div>
-
-
-
-        {image && <img src={image} alt={title} className="popup-image mb-6 mt-14" />}
-        <p className='text-4xl font-bold my-4 'style={{
-                    fontFamily: 'CFont',
-                    textAlign: 'left',
-                    }}>
-              {title}
-            </p>
-
+        {image && <img src={image} alt={title} className="w-full h-auto object-cover mb-4" />}
         
-        <div className="date-and-location flex justify-between items-center mt-10 mb-10">
-  {/* Date Section - Left Aligned */}
-  <div id="date" className="flex flex-row gap-2">
-    <div className="w-10 border-2 border-slate-300 rounded-md h-10">
-      <div className="bg-slate-300 text-xs text-center"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'uppercase', 
-                    textAlign: 'center'
-                    }}>
-        {formatMonth(formattedEndDate)}
-      </div>
-      <div>
-        <p className="text-center text-sm"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>{formatDay(formattedEndDate)}</p>
-      </div>
-    </div>
-    <div>
-    
-      <p className="font-medium" >
-        {formattedEndDate.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          weekday: "long",
-        })}
-      </p>
-      <p className="text-sm text-gray-500"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase', 
-                    textAlign: 'left'
-                    }}>deadline</p>
-    </div>
-  </div>
+        <h2 className="text-3xl font-bold mb-4 text-left">{title}</h2>
 
-  {/* Location Section - Right Aligned */}
- 
-</div>
-<div id="location" className="flex flex-row gap-2 mb-10">
-<div className="w-10 border-2 border-slate-300 rounded-md h-10 flex items-center justify-center"> {/* Added flex properties */}
-  <img
-    src="../../location.png"
-    alt="location"
-    className="w-6 h-6"
-  />
-</div>
-
-    <div>
-      
-      <p className="font-medium"style={{
-                    fontFamily: 'CFont',
-                    
-                    textAlign: 'left'
-                    }}>{location}</p>
-                    <p className="text-sm text-gray-500"style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>location</p>
-    </div>
-  </div>
-        
-
-<div
-  className="about-section"
-  style={{
-    // Adjust the thickness and color as needed
-    borderRadius: '8px', // Optional: adds rounded corners
-    padding: '0px', // Optional: adds space inside the border
-  }}
->
-<div id='details' className='mt-6'>
-              <p className='font-bold'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>about</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-                <p>{description}</p>
-                
-               
-              </div>
+        <div className="flex items-start mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="border-2 border-slate-300 rounded-md w-10 h-10 flex flex-col">
+              <div className="bg-slate-300 text-xs text-center">{formatMonth(formattedEndDate)}</div>
+              <div className="text-center text-sm">{formatDay(formattedEndDate)}</div>
             </div>
-
-            <div id='eligibility' className='mt-6'>
-              <p className='font-bold'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>eligibility</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-                <p style={{ fontFamily: 'CFont',
-                   }}>{eligibility[0]}</p>
-                <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>Startup Stage for Applications:</p>
-               <p>
-  {eligibility[1] && typeof eligibility[1] === 'string' ? (
-    <ul className="list-disc pl-0 ml-0">
-      {eligibility[1].split('+').map((item, index) => (
-        <li key={index} className="font-CFont text-left ml-6"style={{
-          fontFamily: 'CFont',
-           
-          }}>
-          {item}
-        </li>
-      ))}
-    </ul>
-  ) : null}
-</p>
-
-                
-                {/* <p>for:</p>
-                <p>
-  {eligibility[2] && typeof eligibility[2] === 'string' ? (
-    <div className="flex flex-wrap gap-6"> 
-      {eligibility[2].split(';').map((item, index) => (
-        <span 
-          key={index} 
-          className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
-            fontFamily: 'CFont',
-             
-            }}
-        >
-          {item}
-          <br />
-        </span>
-      ))}
-    </div>
-  ) : null}
-</p> */}
-
-
-              </div>
+            <div>
+              <p className="font-medium text-left">
+                {formattedEndDate.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  weekday: "long",
+                })}
+              </p>
+              <p className="text-sm text-gray-500 text-left">deadline</p>
             </div>
+          </div>
+        </div>
 
+        <div className="flex items-center space-x-2 mb-4">
+          <div className="border-2 border-slate-300 rounded-md w-10 h-10 flex items-center justify-center">
+            <img src="../../location.png" alt="location" className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="font-medium text-left">{location}</p>
+            <p className="text-sm text-gray-500 text-left">location</p>
+          </div>
+        </div>
 
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-left">about</h3>
+            <hr className="border-t border-gray-300 mb-4" />
+            <p className="text-left">{description}</p>
+          </div>
 
-            <div id='incentives' className='mt-6'>
-              <p className='font-bold'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>incentives</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-                
-                <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>Fiscal Incentives:</p>
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-                  -{incentives.fiscal}
-                </p>
-                
-                <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>Non-Fiscal Incentives:</p>
-                
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>-{incentives.nonFiscal}</p>
-              </div>
-            </div>
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-left">eligibility</h3>
+            <hr className="border-t border-gray-300 mb-4" />
+            <p className="text-left">{eligibility}</p>
+          </div>
 
-            <div className='text-sm mt-2'>
-  <p className='mb-2 font-bold'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>contact the host</p>
-  <hr className='my-4 border-t border-gray-300' />
-
-  <div className='mb-4'> {/* Added margin for spacing */}
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}> {/* Added margin bottom */}
-      Person In Charge: 
-      <a className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{contactInfo.contactPerson}</a> {/* Added margin left */}
-    </p>
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}> {/* Added margin bottom */}
-      Designation: 
-      <a className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{contactInfo.designation}</a> {/* Added margin left */}
-    </p>
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}> {/* Added margin bottom */}
-      Email ID:
-      <a href='mailto:atoms@accel.com' className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {contactInfo.email}</a> {/* Added margin left */}
-    </p>
-    <p className='font-medium mb-4'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}> {/* Added margin bottom */}
-      Website:
-      <a href='https://atoms.accel.com/' target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {contactInfo.website}</a> {/* Added margin left */}
-    </p>
-  </div>
-
-  <div className='flex flex-row gap-7 mb-4'>
-      <a href={contactInfo.socialMedia.twitter} target='_blank' rel='noopener noreferrer'>
-        <img src='../../twitter.png' alt='twitter' className='w-5 h-5 my-2' />
-      </a>
-      <a href={contactInfo.socialMedia.instagram} target='_blank' rel='noopener noreferrer'>
-        <img src='../../instagram.png' alt='instagram' className='w-5 h-5 my-2' />
-      </a>
-      <a href={contactInfo.socialMedia.linkedin} target='_blank' rel='noopener noreferrer'>
-        <img src='../../linkedin.png' alt='linkedin' className='w-5 h-5 my-2' />
-      </a>
-      <a href={contactInfo.socialMedia.facebook} target='_blank' rel='noopener noreferrer'>
-        <img src='../../facebook.png' alt='facebook' className='w-5 h-5 my-2' />
-      </a>
-    </div>
-
- 
-</div>
-
-</div>
-</div>
-
+          <div>
+            <h3 className="text-lg font-bold mb-2 text-left">incentives</h3>
+            <hr className="border-t border-gray-300 mb-4" />
+            <p className="mb-2 text-left">{incentives}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
