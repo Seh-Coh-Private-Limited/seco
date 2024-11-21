@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate,useLocation } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -10,7 +8,9 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase'; // Make sure to import db from firebase config
 
 const SignUp = () => {
@@ -27,6 +27,10 @@ const SignUp = () => {
   const [otpSent, setOtpSent] = useState(false);
   const SESSION_TIMEOUT = 40 * 60 * 1000;
   const location = useLocation();
+ const [category, setCategory] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   
   useEffect(() => {
     // Set up session timeout
@@ -158,18 +162,40 @@ const SignUp = () => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(userCredential.user.uid, userData.category);
-        handleCategoryBasedRedirect(userData.category);
+        
+        // Redirect to the appropriate dashboard based on category
+        if (userData.category === 'Startup') {
+          navigate('/fdashboard'); // Redirect to the startup dashboard
+        } else {
+          navigate('/dashboard'); // Redirect to the general dashboard
+        }
       } else {
         throw new Error('User account not found');
       }
     } else {
+      // Validate additional fields for signup
+      if (!firstName || !lastName) {
+        setError('First Name and Last Name are required');
+        setLoading(false);
+        return;
+      }
+
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await createUserDocument(userCredential.user, {
         signUpMethod: 'email',
         accountType: 'email',
-        category: 'Startup' // Default category for new users
+        category, // Default category for new users
+        firstName,
+        lastName,
+        companyName: companyName || '', // Optional company name
       });
-      navigate('/startupregform');
+
+      // Redirect to the appropriate dashboard based on category
+      if (category === 'startup') {
+        navigate('/fdashboard'); // Redirect to the startup dashboard
+      } else {
+        navigate('/dashboard'); // Redirect to the general dashboard
+      }
     }
   } catch (err) {
     console.error('Email auth error:', err);
@@ -179,16 +205,18 @@ const SignUp = () => {
   }
 };
 
+
+
   // Modified Google Sign-In handler
   const handleSocialSignIn = async (provider, providerName) => {
     setLoading(true);
     setError('');
-
+  
     try {
       const result = await signInWithPopup(auth, provider);
       const userRef = doc(db, 'users', result.user.uid);
       const userSnap = await getDoc(userRef);
-      
+  
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(result.user.uid, userData.category);
@@ -197,17 +225,21 @@ const SignUp = () => {
         await createUserDocument(result.user, {
           signUpMethod: providerName,
           accountType: providerName,
-          category: 'Startup' // Default category for new users
+          category: 'Startup', // Default category for new users
         });
         navigate('/startupregform');
       }
     } catch (err) {
-      console.error(`${providerName} sign-in error:`, err);
-      setError(err.message);
+      // Handle only non-popup closing errors
+      if (err.code !== 'auth/popup-closed-by-user') {
+        console.error(`${providerName} sign-in error:`, err);
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleGoogleSignIn = () => handleSocialSignIn(new GoogleAuthProvider(), 'google');
   const handleMicrosoftSignIn = () => handleSocialSignIn(new OAuthProvider('microsoft.com'), 'microsoft');
@@ -299,7 +331,7 @@ const SignUp = () => {
             seco
           </div>
           {/* Progress Steps */}
-          <div className="flex items-center flex-1 justify-center gap-4">
+          {/* <div className="flex items-center flex-1 justify-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm">✓</div>
               <span className="text-sm text-gray-900">Create your account</span>
@@ -314,14 +346,14 @@ const SignUp = () => {
               <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm">3</div>
               <span className="text-sm text-gray-600">Apply for Programmes</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Main Authentication Form */}
       <div className="p-4 rounded-xl">
-        <div className="flex justify-between items-center h-[calc(100vh/1.14)] bg-gray-300 px-16 py-8 rounded-xl">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <div className="flex justify-between items-center h-[calc(100vh/1.14)] bg-gray-300 pl-16 py-8 rounded-xl">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md h-[calc(100vh/1.24)] overflow-y-auto scrollbar-hide">
             {/* Title */}
             <h2 className="text-2xl font-bold text-center mb-2">
               {isSignIn ? 'Sign In' : 'Sign Up'}
@@ -390,41 +422,108 @@ const SignUp = () => {
 
             {/* Authentication Forms */}
             {authMethod === 'email' ? (
-              // Email Authentication Form
-              <form onSubmit={handleEmailAuth} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : isSignIn ? 'Sign In' : 'Sign Up'}
-                </button>
-              </form>
-            ) : (
+  <form onSubmit={handleEmailAuth} className="space-y-4">
+    {!isSignIn && (
+      <>
+        <div className="flex space-x-2">
+          <div className="w-1/2">
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First Name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div className="w-1/2">
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last Name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            placeholder="Company Name"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div className="flex items-center space-x-4">
+  <label className="text-sm font-medium text-gray-400">
+    Category
+  </label>
+  <label className="flex items-center">
+    <input
+      type="radio"
+      name="category"
+      value="startup"
+      checked={category === "startup"}
+      onChange={(e) => setCategory(e.target.value)}
+      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+      required
+    />
+    <span className="ml-2 text-sm text-black-700">Startup</span>
+  </label>
+  <label className="flex items-center">
+    <input
+      type="radio"
+      name="category"
+      value="incubator"
+      checked={category === "incubator"}
+      onChange={(e) => setCategory(e.target.value)}
+      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+      required
+    />
+    <span className="ml-2 text-sm text-black-700">Incubator</span>
+  </label>
+</div>
+
+      </>
+    )}
+    <div>
+      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+        Email address
+      </label> */}
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email Address"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        required
+      />
+    </div>
+    <div>
+      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+        Password
+      </label> */}
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        required
+      />
+    </div>
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+    >
+      {loading ? 'Processing...' : isSignIn ? 'Sign In' : 'Sign Up'}
+    </button>
+  </form>
+)  : (
               // Phone Authentication Form
               <div className="space-y-4">
                 {!otpSent ? (
@@ -479,19 +578,29 @@ const SignUp = () => {
 
             {/* Toggle Sign In/Up */}
             <p className="mt-4 text-sm text-center">
-              <button
-                onClick={() => setIsSignIn(!isSignIn)}
-                className="text-blue-600 hover:text-blue-500"
-              >
-                {isSignIn ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
-              </button>
-            </p>
+            <a
+  onClick={() => setIsSignIn(!isSignIn)}
+  className="text-blue-600 hover:text-black"
+>
+  {isSignIn ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+</a>
+
+</p>
+
+
           </div>
+          <div class="bg-[#F99F31] p-8 rounded-tl-[150px] rounded-bl-[75px] rounded-r-xl shadow-lg w-[700px] h-[calc(100vh/1.14)] ml-8">
+
+</div>
+
+
         </div>
+        
       </div>
 
       {/* reCAPTCHA container */}
       <div id="recaptcha-container"></div>
+      
     </div>
   );
 };

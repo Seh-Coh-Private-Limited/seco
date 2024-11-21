@@ -1,44 +1,82 @@
+import React, { useState, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBook,
-  faBuilding,
   faCog,
   faCommentDots,
   faFile,
-  faFolder,
   faHome,
   faLightbulb,
   faMagic,
   faMap,
   faQuestion,
+  faSearch, 
+  faFolder,
   faQuestionCircle,
   faRocket,
-  faSearch,
   faSignOutAlt,
-  faTrashAlt
+  faCamera,
+  faLocationDot,
+  faPlus,
+  faTrashAlt,
+  faBuilding
 } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import FormResponses from './FormResponses';
 import { getAuth, signOut } from 'firebase/auth';
-import { collection, getDocs, getFirestore, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Articles from '../components/Articles';
 import FFormResponses from './FFormResponses';
+import { getFirestore, doc, getDoc, getDocs, query, where, collection,addDoc } from 'firebase/firestore';
+import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-react';
+import SettingsForm from '../components/SettingsForm';
+
+import { useNavigate } from 'react-router-dom';
 
 const FounderDashboard = () => {
   const [companyDetails, setCompanyDetails] = useState(null);
   const [logoError, setLogoError] = useState(false);
-  const [applications, setApplications] = useState([]);
-  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [programmes, setProgrammes] = useState([]);
+  const [selectedProgram, setSelectedProgram] = useState(null);
   const [formResponses, setFormResponses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [activeProgramTab, setActiveProgramTab] = useState('summary');
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [applications, setApplications] = useState([]);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  
   const [activeApplicationTab, setActiveApplicationTab] = useState('summary');
+
   
   const navigate = useNavigate();
   const auth = getAuth();
   const db = getFirestore();
 
-  // Fetch company details and applications
+  // Fetch company details
+  useEffect(() => {
+    const fetchCompanyDetails = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setCompanyDetails({
+            name: userData.companyName || 'Company Name',
+            logo: userData.logo || userData.companyLogo || null
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching company details:', error);
+        setCompanyDetails({ name: 'Company Name', logo: null });
+      }
+    };
+
+    fetchCompanyDetails();
+  }, [auth, db, navigate]);
   useEffect(() => {
     const fetchUserDataAndApplications = async () => {
       try {
@@ -83,11 +121,43 @@ const FounderDashboard = () => {
 
     fetchUserDataAndApplications();
   }, [auth, db, navigate]);
+  // Fetch programmes
+  useEffect(() => {
+    const fetchProgrammes = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
 
-  const handleApplicationClick = (application) => {
-    setActiveTab('application');
-    setSelectedApplication(application);
-    setActiveApplicationTab('summary');
+        const programmesQuery = await getDocs(
+          query(collection(db, 'programmes'), where('uid', '==', user.uid))
+        );
+        
+        const fetchedProgrammes = programmesQuery.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        setProgrammes(fetchedProgrammes);
+      } catch (error) {
+        console.error('Error fetching programmes:', error);
+        setProgrammes([]);
+      }
+    };
+
+    fetchProgrammes();
+  }, [auth, db]);
+
+  // Fetch form responses when program or tab changes
+ // Fetch form responses when program or tab changes
+// StepIndicator Component
+
+
+
+
+  const handleProgramClick = (program) => {
+    setActiveTab('program');
+    setSelectedProgram(program);
+    setActiveProgramTab('summary');
     setFormResponses([]);
   };
 
@@ -99,7 +169,7 @@ const FounderDashboard = () => {
       console.error('Error signing out:', error);
     }
   };
-
+ 
   const CompanyLogo = () => {
     if (logoError || !companyDetails?.logo) {
       return (
@@ -117,8 +187,14 @@ const FounderDashboard = () => {
       />
     );
   };
+  const openSettings = () => {
+    setActiveTab('settings'); // Switch to settings view
+  };
 
-  const NavItem = ({ icon, label, active, onClick, className = '', status }) => (
+  const goBack = () => {
+    setActiveTab('home'); // Return to home view
+  };
+  const NavItem = ({ icon, label, active, onClick, className = '' }) => (
     <button
       onClick={onClick}
       className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
@@ -126,20 +202,16 @@ const FounderDashboard = () => {
       } ${className}`}
     >
       <FontAwesomeIcon icon={icon} />
-      <span className="flex-1">{label}</span>
-      {status && (
-        <span className={`text-xs px-2 py-1 rounded-full ${
-          status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-          status === 'Approved' ? 'bg-green-100 text-green-800' :
-          status === 'Rejected' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {status}
-        </span>
-      )}
+      <span>{label}</span>
     </button>
   );
-
+  const handleApplicationClick = (application) => {
+    setActiveTab('application');
+    setSelectedApplication(application);
+    setActiveApplicationTab('summary');
+    setFormResponses([]);
+  };
+ 
   const ApplicationHeader = ({ application }) => (
     <div className="border-b border-gray-200 p-4">
       {/* <h2 className="text-2xl font-bold mb-4">{application.title || 'Untitled Application'}</h2> */}
@@ -164,7 +236,7 @@ const FounderDashboard = () => {
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-none h-full">
+      <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-hide h-full">
         <div className="flex items-center gap-2 mb-6">
           <CompanyLogo />
           <span className="font-medium truncate">
@@ -241,34 +313,36 @@ const FounderDashboard = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
-        <header className="h-14 border-b border-gray-200 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <FontAwesomeIcon icon={activeTab === 'discover' ? faSearch : faHome} className="text-xl" />
-            <h1 className="text-xl font-semibold">
-              {activeTab === 'discover' ? 'Discover' : 
-               activeTab === 'application' ? selectedApplication?.title || 'Application' : 
-               'Home'}
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="text-gray-600 hover:bg-gray-100 p-2 rounded-md">
-              <FontAwesomeIcon icon={faSearch} size="lg" />
-            </button>
-            <button className="text-gray-600 hover:bg-gray-100 p-2 rounded-md">
-              <FontAwesomeIcon icon={faCog} size="lg" />
-            </button>
-          </div>
-        </header>
+      <div className="flex-1 overflow-hidden scrollbar-hide">
+      <div className="flex items-center justify-between px-4 py-2 sticky top-0">
+    {/* Logo */}
+    <h6
+          className="text-black font-bold"
+          style={{
+            fontFamily: 'CustomFont',
+            fontSize: '30px', // Adjust font size for mobile
+            paddingRight: '60px', // Smaller padding for mobile
+            }}
+          >
+            seco
+          </h6>
 
+    {/* Settings Icon */}
+    <button
+  className="p-2 text-black hover:text-gray-700 focus:outline-none"
+  onClick={openSettings}
+>
+  <FontAwesomeIcon icon={faCog} size="lg" />
+</button>
+
+  </div>
         <main className="h-full">
           {activeTab === 'home' && (
             <div className="p-4">
-              <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2>
-              {/* Add home content here */}
+              {/* <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2> */}
             </div>
           )}
-
+          
           {activeTab === 'discover' && (
             <div className="p-4">
               <Articles />
@@ -307,6 +381,14 @@ const FounderDashboard = () => {
               </div>
             </div>
           )}
+
+<div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+  {activeTab === 'settings' && (
+    <SettingsForm />
+  )}
+</div>
+
+
         </main>
       </div>
 

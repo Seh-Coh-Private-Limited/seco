@@ -30,6 +30,7 @@
     "react-spinners": "^0.14.1",
     "shadcn-ui": "^0.9.3",
     "slick-carousel": "^1.8.1",
+    "tailwind-scrollbar-hide": "^1.1.7",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

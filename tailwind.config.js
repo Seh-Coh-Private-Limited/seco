@@ -8,5 +8,7 @@ module.exports = {
       michelle: ['"Michelle"', 'sans-serif'], // Custom font
     },},
   },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar-hide'), // Custom plugin
+  ],
 };

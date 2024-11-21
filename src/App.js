@@ -13,6 +13,7 @@ import ProgramDetail from './pages/ProgramDetailPage';
 import ProgramInsertPage from './pages/programInsertPage'; // Capitalized the component name
 import SignUpPage from './pages/SignUp';
 import StartupRegistrationForm from './pages/StartupRegistrationForm';
+import Mediator from './components/Mediator';
 
 
 function App() {
@@ -28,7 +29,7 @@ function App() {
         <Route path="/fdashboard" element={<FounderDashboard />} />
         <Route path="/" element={<Discover />} />
         <Route path="/pip" element={<ProgramInsertPage />} /> 
-        <Route path="/program/:id" element={<ProgramDetail />} />
+        <Route path="/program/:id" element={<Mediator />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/insert" element={<InsertSampleData />} />
         {/* Define more routes as needed */}
