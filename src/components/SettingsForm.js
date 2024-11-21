@@ -292,7 +292,7 @@ const SettingsForm = () => {
           <label className="block text-black font-medium mb-1">Company Name</label>
           <input
             type="text"
-            className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+            className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
             value={formData.companyName}
             onChange={(e) => handleInputChange(null, 'companyName', e.target.value)}
           />
@@ -301,7 +301,7 @@ const SettingsForm = () => {
         <div>
           <label className="block text-black font-medium mb-1">Bio</label>
           <textarea
-            className="w-full max-w-md border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+            className="w-full max-w-lg border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
             value={formData.bio}
             onChange={(e) => handleInputChange(null, 'bio', e.target.value)}
           />
@@ -311,7 +311,7 @@ const SettingsForm = () => {
           <label className="block text-black font-medium mb-1">City / State</label>
           <input
             type="text"
-            className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+            className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
             value={formData.cityState}
             onChange={(e) => handleInputChange(null, 'cityState', e.target.value)}
           />
@@ -413,7 +413,7 @@ const SettingsForm = () => {
                 <label className="block text-black font-medium mb-1">Email</label>
                 <input
                   type="email"
-                  className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
                   value={formData.contact.email}
                   onChange={(e) => handleInputChange('contact', 'email', e.target.value)}
                 />
@@ -423,7 +423,7 @@ const SettingsForm = () => {
                 <label className="block text-black font-medium mb-1">First Name</label>
                 <input
                   type="text"
-                  className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
                   value={formData.contact.firstName}
                   onChange={(e) => handleInputChange('contact', 'firstName', e.target.value)}
                 />
@@ -433,7 +433,7 @@ const SettingsForm = () => {
                 <label className="block text-black font-medium mb-1">Last Name</label>
                 <input
                   type="text"
-                  className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
                   value={formData.contact.lastName}
                   onChange={(e) => handleInputChange('contact', 'lastName', e.target.value)}
                 />
@@ -443,7 +443,7 @@ const SettingsForm = () => {
                 <label className="block text-black font-medium mb-1">Mobile Number</label>
                 <input
                   type="tel"
-                  className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
                   value={formData.contact.mobile}
                   onChange={(e) => handleInputChange('contact', 'mobile', e.target.value)}
                 />
@@ -453,7 +453,7 @@ const SettingsForm = () => {
                 <label className="block text-black font-medium mb-1">Designation</label>
                 <input
                   type="text"
-                  className="w-full max-w-md h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
                   value={formData.contact.designation}
                   onChange={(e) => handleInputChange('contact', 'designation', e.target.value)}
                 />
@@ -476,7 +476,7 @@ const SettingsForm = () => {
           </p>
           <button 
             type="button"
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="mt-4 px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             Delete Account
           </button>
