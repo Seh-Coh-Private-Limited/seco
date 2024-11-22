@@ -104,12 +104,12 @@
 .f-card-horizontal {
   grid-column: span 1; /* Spans one column */
   grid-row: span 1; /* Spans one row */
-  height: 252px; /* Horizontal card should have a smaller height */
+  height: 152px; /* Horizontal card should have a smaller height */
   max-width: 100%; /* Full width */
 }
 
 .f-card-horizontal .f-card-image {
-  height: 180px; /* Smaller image height for horizontal card */
+  height: 120px; /* Smaller image height for horizontal card */
 }
 
 .f-card-horizontal .f-card-description {
@@ -129,7 +129,7 @@
 .f-card-vertical {
   grid-column: span 1; /* Spans one column */
   grid-row: span 2; /* Spans two rows */
-  height: 434px; /* Full height */
+  height: 334px; /* Full height */
   max-width: 100%;
 }
 
@@ -144,7 +144,7 @@
 }
 
 .f-card-vertical .f-card-image {
-  height: 200px; /* Larger image for vertical card */
+  height: 140px; /* Larger image for vertical card */
 }
 
 /* Responsive Design for Smaller Screens */

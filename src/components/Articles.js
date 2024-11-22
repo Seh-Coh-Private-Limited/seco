@@ -79,8 +79,17 @@ function Articles() {
   };
 
   return (
-    <div>
-      <div className="filters-container">
+    
+    <div className="md:px-56 overflow-auto">
+       <div className="text-left mb-8">
+        <h1 className="text-4xl font-bold font-sans-serif">Discover</h1>
+        <div className="flex border-b border-gray-300 justify-left mt-4">
+          {/* <div className="py-2 text-black  border-b-2 border-black cursor-pointer">
+            My account
+          </div> */}
+        </div>
+      </div>
+      <div className="filters-container mt-10 mb-10">
         <p style={{ fontFamily: 'CFont' }}>show me</p>
         <div className="filter-dropdown">
           <select className="dropdown" onChange={e => setFilterCategory(e.target.value)}>

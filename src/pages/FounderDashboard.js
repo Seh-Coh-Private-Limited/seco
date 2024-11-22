@@ -413,7 +413,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
           )}
           
           {activeTab === 'discover' && (
-            <div className="p-4">
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
               <Articles />
             </div>
           )}
