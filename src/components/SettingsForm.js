@@ -1,17 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Instagram, 
-  Twitter, 
-  Youtube, 
-  Music2, 
-  Linkedin, 
-  Globe 
-} from 'lucide-react';
 import { getAuth } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
+import {
+  Globe,
+  Instagram,
+  Linkedin,
+  Music2,
+  Plus,
+  Twitter,
+  X,
+  Youtube
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+const defaultContactFields = {
+  email: '',
+  firstName: '',
+  lastName: '',
+  mobile: '',
+  designation: ''
+};
 const defaultFormData = {
     companyName: '',
     bio: '',
@@ -24,17 +31,15 @@ const defaultFormData = {
       linkedin: '',
       website: ''
     },
-    contact: {
-      email: '',
-      firstName: '',
-      lastName: '',
-      mobile: '',
-      designation: ''
-    }
+    contacts: [defaultContactFields] 
   };
 const SettingsForm = () => {
     const auth = getAuth();
-    const [formData, setFormData] = useState(defaultFormData);
+    // const [formData, setFormData] = useState(defaultFormData);
+    const [formData, setFormData] = React.useState({
+      contact: [], // Initialize contact as an empty array
+    });
+    
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const storage = getStorage();
@@ -53,10 +58,11 @@ const SettingsForm = () => {
   
             if (docSnap.exists()) {
               const data = docSnap.data();
+  
               if (data.logoUrl) {
                 setImagePreview(data.logoUrl);
               }
-              // Merge the fetched data with default values to ensure all fields exist
+  
               setFormData({
                 companyName: data.companyName || '',
                 bio: data.bio || '',
@@ -67,18 +73,12 @@ const SettingsForm = () => {
                   youtube: data.social?.youtube || '',
                   tiktok: data.social?.tiktok || '',
                   linkedin: data.social?.linkedin || '',
-                  website: data.social?.website || ''
+                  website: data.social?.website || '',
                 },
-                contact: {
-                  email: data.contact?.email || '',
-                  firstName: data.contact?.firstName || '',
-                  lastName: data.contact?.lastName || '',
-                  mobile: data.contact?.mobile || '',
-                  designation: data.contact?.designation || ''
-                }
+                contacts: Array.isArray(data.contacts) ? data.contacts : [defaultContactFields],
+                logoUrl: data.logoUrl || ''
               });
             } else {
-              // If no document exists, use default values
               setFormData(defaultFormData);
             }
           } catch (error) {
@@ -91,6 +91,7 @@ const SettingsForm = () => {
   
       fetchUserData();
     }, [auth.currentUser]);
+    
   
     const handleInputChange = (section, field, value) => {
       setFormData(prev => {
@@ -109,7 +110,30 @@ const SettingsForm = () => {
         };
       });
     };
-    
+    const handleAddContact = () => {
+      setFormData(prev => ({
+        ...prev,
+        contacts: [...prev.contacts, { ...defaultContactFields }]
+      }));
+    };
+    const handleRemoveContact = (index) => {
+      if (formData.contacts.length === 1) {
+        return; // Don't remove if it's the last contact
+      }
+      setFormData(prev => ({
+        ...prev,
+        contacts: prev.contacts.filter((_, i) => i !== index)
+      }));
+    };
+  
+    const handleContactChange = (index, field, value) => {
+      setFormData(prev => ({
+        ...prev,
+        contacts: prev.contacts.map((contact, i) => 
+          i === index ? { ...contact, [field]: value } : contact
+        )
+      }));
+    };
   
       const handleImageUpload = async (event) => {
         const file = event.target.files[0];
@@ -407,59 +431,90 @@ const SettingsForm = () => {
           </div>
 
           <div>
-            <label className="block text-black font-medium mb-1 mt-20">Contact Information</label>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-black font-medium mb-1">Email</label>
-                <input
-                  type="email"
-                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                  value={formData.contact.email}
-                  onChange={(e) => handleInputChange('contact', 'email', e.target.value)}
-                />
-              </div>
+      <div className="flex items-center justify-between mt-20 mb-10">
+        <label className="text-black font-medium">Contact Information</label>
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleAddContact();
+          }}
+          className="flex items-center text-blue-600 hover:text-black"
+        >
+          <Plus className="w-5 h-5 mr-1" />
+          Add Contact
+        </a>
+      </div>
 
-              <div>
-                <label className="block text-black font-medium mb-1">First Name</label>
-                <input
-                  type="text"
-                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                  value={formData.contact.firstName}
-                  onChange={(e) => handleInputChange('contact', 'firstName', e.target.value)}
-                />
-              </div>
+      {formData.contacts.map((contact, index) => (
+        <div key={index} className="relative rounded-lg mb-4 bg-white p-4 border border-gray-200">
+          {formData.contacts.length > 1 && (
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleRemoveContact(index);
+              }}
+              className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+            >
+              <X className="w-5 h-5" />
+            </a>
+          )}
 
-              <div>
-                <label className="block text-black font-medium mb-1">Last Name</label>
-                <input
-                  type="text"
-                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                  value={formData.contact.lastName}
-                  onChange={(e) => handleInputChange('contact', 'lastName', e.target.value)}
-                />
-              </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-black font-medium mb-1">First Name</label>
+              <input
+                type="text"
+                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                value={contact.firstName || ''}
+                onChange={(e) => handleContactChange(index, 'firstName', e.target.value)}
+              />
+            </div>
 
-              <div>
-                <label className="block text-black font-medium mb-1">Mobile Number</label>
-                <input
-                  type="tel"
-                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                  value={formData.contact.mobile}
-                  onChange={(e) => handleInputChange('contact', 'mobile', e.target.value)}
-                />
-              </div>
+            <div>
+              <label className="block text-black font-medium mb-1">Last Name</label>
+              <input
+                type="text"
+                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                value={contact.lastName || ''}
+                onChange={(e) => handleContactChange(index, 'lastName', e.target.value)}
+              />
+            </div>
 
-              <div>
-                <label className="block text-black font-medium mb-1">Designation</label>
-                <input
-                  type="text"
-                  className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                  value={formData.contact.designation}
-                  onChange={(e) => handleInputChange('contact', 'designation', e.target.value)}
-                />
-              </div>
+            <div>
+              <label className="block text-black font-medium mb-1">Phone Number</label>
+              <input
+                type="tel"
+                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                value={contact.mobile || ''}
+                onChange={(e) => handleContactChange(index, 'mobile', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-black font-medium mb-1">Email</label>
+              <input
+                type="email"
+                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                value={contact.email || ''}
+                onChange={(e) => handleContactChange(index, 'email', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-black font-medium mb-1">Designation</label>
+              <input
+                type="text"
+                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
+                value={contact.designation || ''}
+                onChange={(e) => handleContactChange(index, 'designation', e.target.value)}
+              />
             </div>
           </div>
+        </div>
+      ))}
+    </div>
         </div>
 
         <button

@@ -20,6 +20,8 @@ const SignUp = () => {
   const [isSignIn, setIsSignIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState('category'); // 'category' or 'auth'
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -31,7 +33,8 @@ const SignUp = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  
+  const [showAuth, setShowAuth] = useState(false);
+
   useEffect(() => {
     // Set up session timeout
     const setupSessionTimeout = () => {
@@ -65,8 +68,63 @@ const SignUp = () => {
   }, [navigate]);
   
 
+  const handleCategorySubmit = () => {
+    if (!category) {
+      setError('Please select a category');
+      return;
+    }
+    setError('');
+    setStep('auth');
+  };
 
+  // const handleCategoryBasedRedirect = (selectedCategory) => {
+  //   if (selectedCategory === 'startup') {
+  //     navigate('/fdashboard');
+  //   } else {
+  //     navigate('/dashboard');
+  //   }
+  // };
 
+  // Rest of your existing authentication functions remain the same, 
+  // but use the category state that was selected in the first step
+
+  const CategorySelection = () => {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <h2 className="text-2xl  text-gray-900 mb-6">
+          Select your category
+        </h2>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => handleCategorySelect('startup')}
+            className={`px-8 py-3 rounded-lg transition-all ${
+              category === 'startup'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+            }`}
+          >
+            Startup
+          </button>
+          <button
+            onClick={() => handleCategorySelect('incubator')}
+            className={`px-8 py-3 rounded-lg transition-all ${
+              category === 'incubator'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+            }`}
+          >
+            Incubator
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const handleCategorySelect = (selectedCategory) => {
+    setCategory(selectedCategory);
+    setStep('auth');
+    setShowAuth(true);
+  };
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -106,10 +164,10 @@ const SignUp = () => {
     }
   };
 
-  const handleCategoryBasedRedirect = (category) => {
-    if (category === 'Startup') {
+  const handleCategoryBasedRedirect = (selectedCategory) => {
+    if (selectedCategory === 'startup') {
       navigate('/fdashboard');
-    } else {
+    } else if (selectedCategory === 'incubator') {
       navigate('/dashboard');
     }
   };
@@ -144,7 +202,37 @@ const SignUp = () => {
       await createUserSession(user.uid);
     }
   };
+// Add password validation and security checks
+const validatePassword = (password) => {
+  // Minimum requirements for password
+  const minLength = 12;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
+  if (password.length < minLength) {
+    throw new Error('Password must be at least 12 characters long');
+  }
+  
+  if (!(hasUppercase && hasLowercase && hasNumbers && hasSpecialChar)) {
+    throw new Error('Password must contain uppercase, lowercase, numbers, and special characters');
+  }
+
+  // Check for common password patterns to avoid
+  const commonPatterns = [
+    /password/i,
+    /12345/,
+    /qwerty/i,
+    /admin/i,
+  ];
+
+  if (commonPatterns.some(pattern => pattern.test(password))) {
+    throw new Error('Password contains common unsafe patterns');
+  }
+
+  return true;
+};
   // Modified email authentication handler
  // Modified email authentication handler
  const handleEmailAuth = async (e) => {
@@ -153,6 +241,17 @@ const SignUp = () => {
   setError('');
 
   try {
+    if (!isSignIn) {
+      try {
+        validatePassword(password);
+      } catch (validationError) {
+        setError(validationError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+
     let userCredential;
     if (isSignIn) {
       userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -162,20 +261,14 @@ const SignUp = () => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(userCredential.user.uid, userData.category);
-        
-        // Redirect to the appropriate dashboard based on category
-        if (userData.category === 'Startup') {
-          navigate('/fdashboard'); // Redirect to the startup dashboard
-        } else {
-          navigate('/dashboard'); // Redirect to the general dashboard
-        }
+        handleCategoryBasedRedirect(userData.category);
       } else {
         throw new Error('User account not found');
       }
     } else {
       // Validate additional fields for signup
-      if (!firstName || !lastName) {
-        setError('First Name and Last Name are required');
+      if (!firstName || !lastName || !category) {
+        setError('All fields are required');
         setLoading(false);
         return;
       }
@@ -184,18 +277,20 @@ const SignUp = () => {
       await createUserDocument(userCredential.user, {
         signUpMethod: 'email',
         accountType: 'email',
-        category, // Default category for new users
-        firstName,
-        lastName,
-        companyName: companyName || '', // Optional company name
+        category,
+        companyName: companyName || '',
+        contacts: [
+          {
+            email,
+            firstName,
+            lastName,
+            mobile: phoneNumber || '',
+          },
+        ],
       });
+      
 
-      // Redirect to the appropriate dashboard based on category
-      if (category === 'startup') {
-        navigate('/fdashboard'); // Redirect to the startup dashboard
-      } else {
-        navigate('/dashboard'); // Redirect to the general dashboard
-      }
+      handleCategoryBasedRedirect(category);
     }
   } catch (err) {
     console.error('Email auth error:', err);
@@ -205,13 +300,17 @@ const SignUp = () => {
   }
 };
 
+useEffect(() => {
+  setStep(isSignIn ? 'auth' : 'category');
+}, [isSignIn]);
+
 
 
   // Modified Google Sign-In handler
   const handleSocialSignIn = async (provider, providerName) => {
     setLoading(true);
     setError('');
-  
+    
     try {
       const result = await signInWithPopup(auth, provider);
       const userRef = doc(db, 'users', result.user.uid);
@@ -220,17 +319,18 @@ const SignUp = () => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(result.user.uid, userData.category);
-        handleCategoryBasedRedirect(userData.category);
+        handleCategoryBasedRedirect(userData.category); // Redirect based on category
       } else {
+        // Default category for new users
+       // You can customize this default category
         await createUserDocument(result.user, {
           signUpMethod: providerName,
           accountType: providerName,
-          category: 'Startup', // Default category for new users
+          category: category
         });
-        navigate('/startupregform');
+        handleCategoryBasedRedirect(category); // Redirect to startup registration form
       }
     } catch (err) {
-      // Handle only non-popup closing errors
       if (err.code !== 'auth/popup-closed-by-user') {
         console.error(`${providerName} sign-in error:`, err);
         setError(err.message);
@@ -351,74 +451,82 @@ const SignUp = () => {
       </div>
 
       {/* Main Authentication Form */}
+      
       <div className="p-4 rounded-xl">
         <div className="flex justify-between items-center h-[calc(100vh/1.14)] bg-gray-300 pl-16 py-8 rounded-xl">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md h-[calc(100vh/1.24)] overflow-y-auto scrollbar-hide">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md h-[calc(100vh/1.35)] overflow-y-auto scrollbar-hide">
             {/* Title */}
-            <h2 className="text-2xl font-bold text-center mb-2">
-              {isSignIn ? 'Sign In' : 'Sign Up'}
-            </h2>
-            <p className="text-gray-600 text-center mb-6">
-              {isSignIn ? 'Welcome back!' : 'Create your account'}
-            </p>
+            {!isSignIn && step === 'category' && !showAuth ? (
+              <CategorySelection />
+            ) : (
+              <>
+                {/* Title */}
+                <h2 className="text-2xl font-bold text-center mb-2">
+                  {isSignIn ? 'Sign In' : 'Sign Up'}
+                </h2>
+                <p className="text-gray-600 text-center mb-6">
+                  {isSignIn ? 'Welcome back!' : 'Create your account'}
+                </p>
 
-            {/* Error Display */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+                {/* Error Display */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
 
-            {/* Social Sign-In Buttons */}
-            <div className="flex justify-between space-x-4 mb-6">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="flex items-center justify-center w-full p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <img src="https://img.icons8.com/color/24/000000/google-logo.png" alt="Google" className="w-5 h-5" />
-                <span className="ml-2 text-sm">Google</span>
-              </button>
-              <button
-                onClick={handleMicrosoftSignIn}
-                disabled={loading}
-                className="flex items-center justify-center w-full p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <img src="https://img.icons8.com/color/24/000000/microsoft.png" alt="Microsoft" className="w-5 h-5" />
-                <span className="ml-2 text-sm">Microsoft</span>
-              </button>
-            </div>
+                {/* Social Sign-In Buttons */}
+                <div className="flex justify-between space-x-4 mb-6">
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                    className="flex items-center justify-center w-full p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <img src="https://img.icons8.com/color/24/000000/google-logo.png" alt="Google" className="w-5 h-5" />
+                    <span className="ml-2 text-sm">Google</span>
+                  </button>
+                  <button
+                    onClick={handleMicrosoftSignIn}
+                    disabled={loading}
+                    className="flex items-center justify-center w-full p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <img src="https://img.icons8.com/color/24/000000/microsoft.png" alt="Microsoft" className="w-5 h-5" />
+                    <span className="ml-2 text-sm">Microsoft</span>
+                  </button>
+                </div>
 
-            {/* Divider */}
-            <div className="flex items-center mb-6">
-              <div className="flex-1 border-t border-gray-300"></div>
-              <span className="px-4 text-sm text-gray-500">or</span>
-              <div className="flex-1 border-t border-gray-300"></div>
-            </div>
+                {/* Divider */}
+                <div className="flex items-center mb-6">
+                  <div className="flex-1 border-t border-gray-300"></div>
+                  <span className="px-4 text-sm text-gray-500">or</span>
+                  <div className="flex-1 border-t border-gray-300"></div>
+                </div>
 
-            {/* Auth Method Toggle */}
-            <div className="flex justify-between text-sm mb-4">
-              <button
-                onClick={() => setAuthMethod('email')}
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  authMethod === 'email' 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Email
-              </button>
-              <button
-                onClick={() => setAuthMethod('phone')}
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  authMethod === 'phone' 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Phone
-              </button>
-            </div>
+                {/* Auth Method Toggle */}
+                <div className="flex justify-between text-sm mb-4">
+  <button
+    onClick={() => setAuthMethod('email')}
+    className={`px-4 py-2 rounded-md transition-colors ${
+      authMethod === 'email'
+        ? 'bg-blue-100 text-blue-600'
+        : 'text-gray-600 hover:bg-gray-100'
+    } hover:bg-gray-100 hover:text-gray-600`}
+  >
+    Email
+  </button>
+  <button
+    onClick={() => setAuthMethod('phone')}
+    className={`px-4 py-2 rounded-md transition-colors ${
+      authMethod === 'phone'
+        ? 'bg-blue-100 text-blue-600'
+        : 'text-gray-600 hover:bg-gray-100'
+    } hover:bg-gray-100 hover:text-gray-600`}
+  >
+    Phone
+  </button>
+</div>
+
+
 
             {/* Authentication Forms */}
             {authMethod === 'email' ? (
@@ -457,7 +565,17 @@ const SignUp = () => {
             required
           />
         </div>
-        <div className="flex items-center space-x-4">
+        <div>
+          <input
+            type="text"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            placeholder="Phone Number"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        {/* <div className="flex items-center space-x-4">
   <label className="text-sm font-medium text-gray-400">
     Category
   </label>
@@ -485,7 +603,7 @@ const SignUp = () => {
     />
     <span className="ml-2 text-sm text-black-700">Incubator</span>
   </label>
-</div>
+</div> */}
 
       </>
     )}
@@ -587,6 +705,8 @@ const SignUp = () => {
 
 </p>
 
+              </>
+            )}
 
           </div>
           <div class="bg-[#F99F31] p-8 rounded-tl-[150px] rounded-bl-[75px] rounded-r-xl shadow-lg w-[700px] h-[calc(100vh/1.14)] ml-8">

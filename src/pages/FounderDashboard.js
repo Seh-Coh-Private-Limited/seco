@@ -17,6 +17,7 @@ import {
   faSignOutAlt,
   faCamera,
   faLocationDot,
+  faChevronRight,
   faPlus,
   faTrashAlt,
   faBuilding
@@ -65,8 +66,8 @@ const FounderDashboard = () => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setCompanyDetails({
-            name: userData.companyName || 'Company Name',
-            logo: userData.logo || userData.companyLogo || null
+            name: userData.companyName || 'Company Name',   
+            logo: userData.logoUrl || userData.companyLogo || null
           });
         }
       } catch (error) {
@@ -95,7 +96,7 @@ const FounderDashboard = () => {
           const userData = userSnapshot.docs[0].data();
           setCompanyDetails({
             name: userData.companyName || 'Company Name',
-            logo: userData.logo || userData.companyLogo || null
+            logo: userData.logoUrl || userData.companyLogo || null
           });
 
           // Get the user document reference
@@ -151,7 +152,91 @@ const FounderDashboard = () => {
  // Fetch form responses when program or tab changes
 // StepIndicator Component
 
+const Breadcrumb = ({ activeTab, selectedApplication, setActiveTab }) => {
+  const getBreadcrumbItems = () => {
+    const items = [];
+    
+    // Add current tab (only if not home)
+    switch (activeTab) {
+      case 'discover':
+        items.push({ label: 'Discover' });
+        break;
+      case 'settings':
+        items.push({ label: 'Settings' });
+        break;
+      case 'application':
+        if (selectedApplication) {
+          items.push({ label: selectedApplication.title || 'Untitled Application' });
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return items;
+  };
 
+  const breadcrumbItems = getBreadcrumbItems();
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      {breadcrumbItems.length > 0 && (
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className="text-gray-400 w-3 h-3"
+        />
+      )}
+      {breadcrumbItems.map((item, index) => (
+        <React.Fragment key={item.label}>
+          {index > 0 && (
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className="text-gray-400 w-3 h-3"
+            />
+          )}
+          <span className="text-gray-900">{item.label}</span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+// Replace your existing header section in the return statement with this:
+const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) => {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200">
+      <div className="flex items-center gap-4">
+      <button
+  onClick={() => setActiveTab('home')}
+  className="focus:outline-none hover:bg-gray-100 rounded-lg"
+>
+  <h6
+    className="text-black font-bold hover:opacity-80 transition-opacity px-2"
+    style={{
+      fontFamily: 'CustomFont',
+      fontSize: '30px',
+      
+    }}
+  >
+    seco
+  </h6>
+</button>
+
+        <Breadcrumb 
+          activeTab={activeTab} 
+          selectedApplication={selectedApplication}
+          setActiveTab={setActiveTab}
+        />
+      </div>
+      
+      <a
+        className="p-2 text-black hover:text-gray-300 focus:outline-none"
+        onClick={openSettings}
+      >
+        <FontAwesomeIcon icon={faCog} size="lg" />
+      </a>
+    </div>
+  );
+};
 
 
   const handleProgramClick = (program) => {
@@ -314,28 +399,12 @@ const FounderDashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 overflow-hidden scrollbar-hide">
-      <div className="flex items-center justify-between px-4 py-2 sticky top-0">
-    {/* Logo */}
-    <h6
-          className="text-black font-bold"
-          style={{
-            fontFamily: 'CustomFont',
-            fontSize: '30px', // Adjust font size for mobile
-            paddingRight: '60px', // Smaller padding for mobile
-            }}
-          >
-            seco
-          </h6>
-
-    {/* Settings Icon */}
-    <button
-  className="p-2 text-black hover:text-gray-700 focus:outline-none"
-  onClick={openSettings}
->
-  <FontAwesomeIcon icon={faCog} size="lg" />
-</button>
-
-  </div>
+      <Header 
+  activeTab={activeTab}
+  selectedApplication={selectedApplication}
+  setActiveTab={setActiveTab}
+  openSettings={openSettings}
+/>
         <main className="h-full">
           {activeTab === 'home' && (
             <div className="p-4">
