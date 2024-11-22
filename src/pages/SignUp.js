@@ -503,28 +503,31 @@ useEffect(() => {
                 </div>
 
                 {/* Auth Method Toggle */}
-                <div className="flex justify-between text-sm mb-4">
-  <button
-    onClick={() => setAuthMethod('email')}
-    className={`px-4 py-2 rounded-md transition-colors ${
-      authMethod === 'email'
-        ? 'bg-blue-100 text-blue-600'
-        : 'text-gray-600 hover:bg-gray-100'
-    } hover:bg-gray-100 hover:text-gray-600`}
-  >
-    Email
-  </button>
-  <button
-    onClick={() => setAuthMethod('phone')}
-    className={`px-4 py-2 rounded-md transition-colors ${
-      authMethod === 'phone'
-        ? 'bg-blue-100 text-blue-600'
-        : 'text-gray-600 hover:bg-gray-100'
-    } hover:bg-gray-100 hover:text-gray-600`}
-  >
-    Phone
-  </button>
-</div>
+               {/* Auth Method Toggle - Only show for Sign In */}
+{isSignIn && (
+  <div className="flex justify-between text-sm mb-4">
+    <button
+      onClick={() => setAuthMethod('email')}
+      className={`px-4 py-2 rounded-md transition-colors ${
+        authMethod === 'email'
+          ? 'bg-blue-100 text-blue-600'
+          : 'text-gray-600 hover:bg-gray-100'
+      } hover:bg-gray-100 hover:text-gray-600`}
+    >
+      Email
+    </button>
+    <button
+      onClick={() => setAuthMethod('phone')}
+      className={`px-4 py-2 rounded-md transition-colors ${
+        authMethod === 'phone'
+          ? 'bg-blue-100 text-blue-600'
+          : 'text-gray-600 hover:bg-gray-100'
+      } hover:bg-gray-100 hover:text-gray-600`}
+    >
+      Phone
+    </button>
+  </div>
+)}
 
 
 

@@ -1,0 +1,29 @@
+
+  
+  /* Remove internal paddings */
+  .grid > div {
+    padding: 0;
+  }
+  
+  /* Ensure content aligns precisely with borders */
+  .border-b, .border-t {
+    border-color: #d1d5db; /* Tailwind gray-300 */
+    margin: 0;
+  }
+  
+  /* Remove padding from links and sections */
+ 
+  
+  /* Adjust link spacing */
+  .space-x-6 > * {
+    margin-right: 0.5rem;
+    margin-left: 0.5rem;
+  }
+  
+  /* Ensure images and content stretch to full width without padding */
+  .w-full {
+    width: 100%;
+  }
+  
+  /* Remove any default margins */
+  

@@ -11,6 +11,7 @@ const FProgramCard = ({
   category,
   location,
   orientation,
+  handleTabChange 
 }) => {
   const [showPopup, setShowPopup] = useState(false); // State to control popup visibility
 
@@ -65,11 +66,10 @@ const FProgramCard = ({
       {/* Popup Component */}
       {showPopup && (
         <FPopup
-          isOpen={showPopup} // Ensure to pass the correct state for controlling popup visibility
-          onClose={closePopup} // Close function
-          programDetails={{
-            id,
-          }} // Pass program details to the popup
+          isOpen={showPopup}
+          onClose={closePopup}
+          programDetails={{ id }}
+          handleTabChange={handleTabChange}
         />
       )}
     </>

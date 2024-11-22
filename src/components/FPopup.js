@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ffetchProgramById } from '../components/ffetchprogram';
 
-const FPopup = ({ isOpen, onClose, programDetails ,setActiveTab}) => {
+const FPopup = ({ isOpen, onClose, programDetails ,handleTabChange}) => {
   const navigate = useNavigate();
   const [program, setProgram] = useState(null);
 
@@ -37,28 +37,13 @@ const FPopup = ({ isOpen, onClose, programDetails ,setActiveTab}) => {
   const formatDay = (date) => date.getDate();
 
   const handleEventPageClick = () => {
-    // Navigate to founder dashboard with the events tab active
-    navigate('/founder-dashboard', { 
-      state: { 
-        activeTab: 'events',
-        programId: programDetails.id 
-      } 
-    });
-    // Set the active tab in the dashboard
-    setActiveTab('events');
+    handleTabChange('programdetailpage', programDetails.id);
+    onClose();
   };
 
-  // Handler for apply button
   const handleApplyClick = () => {
-    // Navigate to founder dashboard with the applications tab active
-    navigate('/founder-dashboard', {
-      state: {
-        activeTab: 'applications',
-        programId: programDetails.id
-      }
-    });
-    // Set the active tab in the dashboard
-    setActiveTab('applications');
+    handleTabChange('applicationform', programDetails.id);
+    onClose();
   };
 
 
@@ -104,29 +89,29 @@ const FPopup = ({ isOpen, onClose, programDetails ,setActiveTab}) => {
               <div className="flex space-x-2">
                  {/* Event Page Button */}
                  <button 
-        onClick={handleEventPageClick}
-        className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out hover:bg-gray-300"
-      >
-        <span className="mr-1 text-black text-xs sm:text-sm">
-          event page
-        </span>
-        <FontAwesomeIcon 
-          icon={faArrowRight}
-          style={{ transform: 'rotate(305deg)' }}
-          className="w-3 h-3 sm:w-4 sm:h-4"
-        />
-      </button>
+            onClick={handleEventPageClick}
+            className="flex items-center bg-gray-200 px-2 py-1 sm:px-4 sm:py-2 rounded-xl transition duration-300 ease-in-out hover:bg-gray-300"
+          >
+            <span className="mr-1 text-black text-xs sm:text-sm">
+              event page
+            </span>
+            <FontAwesomeIcon 
+              icon={faArrowRight}
+              style={{ transform: 'rotate(305deg)' }}
+              className="w-3 h-3 sm:w-4 sm:h-4"
+            />
+          </button>
 
-      <button 
-        onClick={handleApplyClick}
-        className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-3 py-2 rounded-xl transition"
-      >
-        <span className="mr-2 text-black text-sm">apply</span>
-        <FontAwesomeIcon 
-          icon={faNewspaper}
-          className="w-4 h-4"
-        />
-      </button>
+          <button 
+            onClick={handleApplyClick}
+            className="flex items-center bg-[#F99F31] hover:bg-[#FACB82] px-3 py-2 rounded-xl transition"
+          >
+            <span className="mr-2 text-black text-sm">apply</span>
+            <FontAwesomeIcon 
+              icon={faNewspaper}
+              className="w-4 h-4"
+            />
+          </button>
                 
               </div>
             </div>

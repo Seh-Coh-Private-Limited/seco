@@ -3,7 +3,7 @@ import { fetchPrograms } from '../components/ffetchprograms';
 import './Article.css';
 import FProgramCard from './FProgramCard';
 
-function Articles() {
+function Articles({ handleTabChange }) {
   const [programs, setPrograms] = useState([]);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterCity, setFilterCity] = useState('any city');
@@ -114,19 +114,19 @@ function Articles() {
       </div>
 
       <div className="f-articles-container">
-        {filteredPrograms.map((program, index) => (
-          <FProgramCard
-            key={program.id}
-            id={program.id}
-            title={program.title}
-            image={program.image}
-            location={program.location}
-            description={program.description}
-            // category={program.industry.join(', ')}
-            orientation={getOrientation(index)}
-          />
-        ))}
-      </div>
+      {filteredPrograms.map((program, index) => (
+        <FProgramCard
+          key={program.id}
+          id={program.id}
+          title={program.title}
+          image={program.image}
+          location={program.location}
+          description={program.description}
+          orientation={getOrientation(index)}
+          handleTabChange={handleTabChange}
+        />
+      ))}
+    </div>
     </div>
   );
 }

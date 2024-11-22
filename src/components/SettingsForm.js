@@ -1,6 +1,12 @@
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
+import ContactRow from './ContactRow';
+import { deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { deleteUser } from 'firebase/auth';
+import { auth,firestore } from '../firebase';
+import { useNavigate } from 'react-router-dom';
+
 import {
   Globe,
   Instagram,
@@ -92,6 +98,62 @@ const SettingsForm = () => {
       fetchUserData();
     }, [auth.currentUser]);
     
+  
+    const [isConfirming, setIsConfirming] = useState(false);
+    const navigate = useNavigate();
+  
+    const handleDeleteAccountInitiate = () => {
+      setIsConfirming(true);
+    };
+  
+    const handleConfirmDelete = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setError('No user logged in. Please log in and try again.');
+          setIsConfirming(false);
+          return;
+        }
+    
+        // Get the Firestore instance
+        const db = getFirestore();
+    
+        // Delete user's programs
+        const programsQuery = query(
+          collection(db, 'programmes'), 
+          where('uid', '==', user.uid)
+        );
+        const programsSnapshot = await getDocs(programsQuery);
+        
+        const deleteProgramPromises = programsSnapshot.docs.map(
+          (programDoc) => deleteDoc(programDoc.ref)
+        );
+        await Promise.all(deleteProgramPromises);
+    
+        // Delete user's logo from storage if exists
+        if (formData.logoUrl) {
+          const logoRef = ref(storage, formData.logoUrl);
+          await deleteObject(logoRef);
+        }
+    
+        // Delete user document from users collection
+        await deleteDoc(doc(db, 'users', user.uid));
+    
+        // Delete Firebase Authentication user
+        await deleteUser(user);
+        alert('Account deleted successfully!');
+        // Navigate to sign-in page
+        navigate('/signup');
+      } catch (error) {
+        console.error('Error deleting account:', error);
+        setError(`Failed to delete account: ${error.message}`);
+        setIsConfirming(false);
+      }
+    };
+  
+    const handleCancelDelete = () => {
+      setIsConfirming(false);
+    };
   
     const handleInputChange = (section, field, value) => {
       setFormData(prev => {
@@ -431,90 +493,35 @@ const SettingsForm = () => {
           </div>
 
           <div>
-      <div className="flex items-center justify-between mt-20 mb-10">
-        <label className="text-black font-medium">Contact Information</label>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            handleAddContact();
-          }}
-          className="flex items-center text-blue-600 hover:text-black"
-        >
-          <Plus className="w-5 h-5 mr-1" />
-          Add Contact
-        </a>
-      </div>
+  <div className="flex items-center justify-between mt-20 mb-10">
+    <label className="text-black font-medium">Contact Information</label>
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        handleAddContact();
+      }}
+      className="flex items-center text-blue-600 hover:text-black"
+    >
+      <Plus className="w-5 h-5 mr-1" />
+      Add Contact
+    </button>
+  </div>
 
-      {formData.contacts.map((contact, index) => (
-        <div key={index} className="relative rounded-lg mb-4 bg-white p-4 border border-gray-200">
-          {formData.contacts.length > 1 && (
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                handleRemoveContact(index);
-              }}
-              className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-            >
-              <X className="w-5 h-5" />
-            </a>
-          )}
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-black font-medium mb-1">First Name</label>
-              <input
-                type="text"
-                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                value={contact.firstName || ''}
-                onChange={(e) => handleContactChange(index, 'firstName', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-black font-medium mb-1">Last Name</label>
-              <input
-                type="text"
-                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                value={contact.lastName || ''}
-                onChange={(e) => handleContactChange(index, 'lastName', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-black font-medium mb-1">Phone Number</label>
-              <input
-                type="tel"
-                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                value={contact.mobile || ''}
-                onChange={(e) => handleContactChange(index, 'mobile', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-black font-medium mb-1">Email</label>
-              <input
-                type="email"
-                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                value={contact.email || ''}
-                onChange={(e) => handleContactChange(index, 'email', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-black font-medium mb-1">Designation</label>
-              <input
-                type="text"
-                className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-                value={contact.designation || ''}
-                onChange={(e) => handleContactChange(index, 'designation', e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
+  {formData.contacts.map((contact, index) => (
+    <ContactRow 
+      key={index}
+      contact={contact}
+      onUpdate={(updatedContact) => {
+        handleContactChange(index, 'firstName', updatedContact.firstName);
+        handleContactChange(index, 'lastName', updatedContact.lastName);
+        handleContactChange(index, 'email', updatedContact.email);
+        handleContactChange(index, 'mobile', updatedContact.mobile);
+        handleContactChange(index, 'designation', updatedContact.designation);
+      }}
+      onRemove={formData.contacts.length > 1 ? () => handleRemoveContact(index) : null}
+    />
+  ))}
+</div>
         </div>
 
         <button
@@ -525,17 +532,37 @@ const SettingsForm = () => {
         </button>
 
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-Black mt-20">Delete Account</h2>
-          <p className="text-sm text-gray-700 mt-2">
-            This will permanently delete your entire account. All your forms, submissions, and workspaces will be deleted.
-          </p>
-          <button 
+      <h2 className="text-lg font-semibold text-Black mt-20">Delete Account</h2>
+      <p className="text-sm text-gray-700 mt-2">
+        This will permanently delete your entire account. All your forms, submissions, and workspaces will be deleted.
+      </p>
+      {!isConfirming ? (
+        <button
+          type="button"
+          onClick={handleDeleteAccountInitiate}
+          className="mt-4 px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          Delete Account
+        </button>
+      ) : (
+        <div className="mt-4 space-x-2">
+          <button
             type="button"
-            className="mt-4 px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            onClick={handleConfirmDelete}
+            className="px-2 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
-            Delete Account
+            Confirm Delete
+          </button>
+          <button
+            type="button"
+            onClick={handleCancelDelete}
+            className="px-2 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            Cancel
           </button>
         </div>
+      )}
+    </div>
       </form>
     </div>
   );

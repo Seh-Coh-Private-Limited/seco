@@ -31,6 +31,8 @@ import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-rea
 import SettingsForm from '../components/SettingsForm';
 
 import { useNavigate } from 'react-router-dom';
+import Application from './ApplicationForm';
+import FProgramDetailPage from './FProgramDetailPage';
 
 const FounderDashboard = () => {
   const [companyDetails, setCompanyDetails] = useState(null);
@@ -44,7 +46,10 @@ const FounderDashboard = () => {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [applications, setApplications] = useState([]);
   const [selectedApplication, setSelectedApplication] = useState(null);
-  
+  const [dashboardTab, setDashboardTab] = useState({
+    activeTab: 'articles',
+    programId: null
+  })
   const [activeApplicationTab, setActiveApplicationTab] = useState('summary');
 
   
@@ -152,32 +157,94 @@ const FounderDashboard = () => {
  // Fetch form responses when program or tab changes
 // StepIndicator Component
 
-const Breadcrumb = ({ activeTab, selectedApplication, setActiveTab }) => {
+const Breadcrumb = ({ 
+  activeTab, 
+  selectedApplication, 
+  selectedProgram, 
+  eventDetails, 
+  setActiveTab 
+}) => {
   const getBreadcrumbItems = () => {
     const items = [];
-    
-    // Add current tab (only if not home)
+
+    // Add breadcrumb items based on active tab and selected resources
     switch (activeTab) {
       case 'discover':
-        items.push({ label: 'Discover' });
+        items.push({ 
+          label: 'Discover', 
+          onClick: () => setActiveTab('discover') 
+        });
         break;
+
+      case 'applicationform':
+        items.push(
+          { 
+            label: 'Discover', 
+            onClick: () => setActiveTab('discover') 
+          },
+          { 
+            label: 'Application Form', 
+            onClick: () => setActiveTab('applicationform') 
+          }
+        );
+        break;
+
+      case 'eventdetailpage':
+        items.push(
+          { 
+            label: 'Discover', 
+            onClick: () => setActiveTab('discover') 
+          },
+          { 
+            label: eventDetails?.title || 'Event', 
+            onClick: () => setActiveTab('eventdetailpage') 
+          }
+        );
+        break;
+
+      case 'applicationform':
+        items.push(
+          { 
+            label: 'Discover', 
+            onClick: () => setActiveTab('discover') 
+          },
+          { 
+            label: eventDetails?.title || 'Event', 
+            onClick: () => setActiveTab('eventdetailpage') 
+          },
+          { 
+            label: 'Application Form', 
+            onClick: () => setActiveTab('eventapplicationform') 
+          }
+        );
+        break;
+
+      case 'application':
+        if (selectedApplication) {
+          items.push(
+            { 
+              label: 'Discover', 
+              onClick: () => setActiveTab('discover') 
+            },
+            { 
+              label: selectedApplication.title || 'Untitled Application', 
+              onClick: () => setActiveTab('application') 
+            }
+          );
+        }
+        break;
+
       case 'settings':
         items.push({ label: 'Settings' });
         break;
-      case 'application':
-        if (selectedApplication) {
-          items.push({ label: selectedApplication.title || 'Untitled Application' });
-        }
-        break;
+
       default:
         break;
     }
-    
+
     return items;
   };
-
   const breadcrumbItems = getBreadcrumbItems();
-
   return (
     <div className="flex items-center gap-2 text-sm text-gray-600">
       {breadcrumbItems.length > 0 && (
@@ -194,7 +261,16 @@ const Breadcrumb = ({ activeTab, selectedApplication, setActiveTab }) => {
               className="text-gray-400 w-3 h-3"
             />
           )}
-          <span className="text-gray-900">{item.label}</span>
+          {item.onClick ? (
+            <a
+              onClick={item.onClick} 
+              className="text-gray-900 hover:underline focus:outline-none"
+            >
+              {item.label}
+            </a>
+          ) : (
+            <span className="text-gray-900">{item.label}</span>
+          )}
         </React.Fragment>
       ))}
     </div>
@@ -296,7 +372,13 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
     setActiveApplicationTab('summary');
     setFormResponses([]);
   };
- 
+  // const [activeTab, setActiveTab] = useState('discover');
+  const [selectedProgramId, setSelectedProgramId] = useState(null);
+
+  const handleTabChange = (tab, programId) => {
+    setActiveTab(tab);
+    setSelectedProgramId(programId);
+  };
   const ApplicationHeader = ({ application }) => (
     <div className="border-b border-gray-200 p-4">
       {/* <h2 className="text-2xl font-bold mb-4">{application.title || 'Untitled Application'}</h2> */}
@@ -413,10 +495,30 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
           )}
           
           {activeTab === 'discover' && (
-            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
-              <Articles />
-            </div>
-          )}
+        <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+          <Articles handleTabChange={handleTabChange} />
+        </div>
+      )}
+      {activeTab === 'programdetailpage' && (
+        <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+          {/* Your Events component */}
+          <FProgramDetailPage programId={selectedProgramId} />
+          {/* <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Events</h3>
+            <p className="text-gray-600">No events available</p>
+            </div> */}
+        </div>
+      )}
+      {activeTab === 'applicationform' && (
+        <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+          {/* Your Applications component */}
+          {/* <Applications programId={selectedProgramId} /> */}
+          <Application />
+          {/* <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Applications</h3>
+            </div> */}
+        </div>
+      )}
           
           {activeTab === 'application' && selectedApplication && (
             <div className="h-full">
