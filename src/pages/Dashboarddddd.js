@@ -1,34 +1,38 @@
+import React, { useState, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBook,
   faCog,
   faCommentDots,
   faFile,
-  faGlobe,
   faHome,
   faLightbulb,
   faMagic,
   faMap,
-  faPlus,
   faQuestion,
   faQuestionCircle,
   faRocket,
-  faSearch,
-  faStar,
-  faTrashAlt,
-  faUsers,
+  faSignOutAlt,
   faCamera,
   faLocationDot,
+  faPlus,
+  faTrashAlt,
+  faBuilding
 } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useState } from 'react';
-import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-react';
-import FormBuilder from './FormBuilder';
-import { db } from '../firebase';  // Import the db from firebase.js
-import { collection, addDoc } from 'firebase/firestore';
 import FormResponses from './FormResponses';
-// FormBuilderOptions Component
-// Then update your FormBuilderOptions component like this:
-const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
+import { getAuth, signOut } from 'firebase/auth';
+import FormBuilder from './FormBuilder';
+
+import { getFirestore, doc, getDoc, getDocs, query, where, collection,addDoc } from 'firebase/firestore';
+import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-react';
+
+import { useNavigate } from 'react-router-dom';
+const generatedId = Math.floor(Math.random() * 1_000_000_000);
+const FormBuilderOptions = ({ onOptionSelect, onBack}) => {
+  const [submittedId, setSubmittedId] = useState(null);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   
   const options = [
@@ -53,12 +57,7 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
   ];
 
   const handleOptionSelect = (value) => {
-    if (value === 'scratch') {
-      setShowFormBuilder(true);
-    } else {
-      onOptionSelect(value);
-    }
-    if (value === 'import') {
+    if (value === 'scratch' || value === 'import') {
       setShowFormBuilder(true);
     } else {
       onOptionSelect(value);
@@ -68,7 +67,8 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
   if (showFormBuilder) {
     return (
       <div className="w-full">
-        <FormBuilder />
+        setCurrentStep(3) // Skip to review
+        <FormBuilder programId={generatedId} />
         <div className="fixed bottom-4 right-4">
           <button
             onClick={() => setShowFormBuilder(false)}
@@ -80,6 +80,7 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
       </div>
     );
   }
+  
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -116,7 +117,77 @@ const FormBuilderOptions = ({ onOptionSelect, onBack }) => {
     </div>
   );
 };
+const FounderDashboard = () => {
+  const [companyDetails, setCompanyDetails] = useState(null);
+  const [logoError, setLogoError] = useState(false);
+  const [programmes, setProgrammes] = useState([]);
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [formResponses, setFormResponses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('home');
+  const [activeProgramTab, setActiveProgramTab] = useState('summary');
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
 
+  
+  const navigate = useNavigate();
+  const auth = getAuth();
+  const db = getFirestore();
+
+  // Fetch company details
+  useEffect(() => {
+    const fetchCompanyDetails = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setCompanyDetails({
+            name: userData.companyName || 'Company Name',
+            logo: userData.logo || userData.companyLogo || null
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching company details:', error);
+        setCompanyDetails({ name: 'Company Name', logo: null });
+      }
+    };
+
+    fetchCompanyDetails();
+  }, [auth, db, navigate]);
+
+  // Fetch programmes
+  useEffect(() => {
+    const fetchProgrammes = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const programmesQuery = await getDocs(
+          query(collection(db, 'programmes'), where('uid', '==', user.uid))
+        );
+        
+        const fetchedProgrammes = programmesQuery.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        setProgrammes(fetchedProgrammes);
+      } catch (error) {
+        console.error('Error fetching programmes:', error);
+        setProgrammes([]);
+      }
+    };
+
+    fetchProgrammes();
+  }, [auth, db]);
+
+  // Fetch form responses when program or tab changes
+ // Fetch form responses when program or tab changes
 // StepIndicator Component
 const StepIndicator = ({ currentStep }) => {
   const steps = [
@@ -177,292 +248,358 @@ const CardContent = ({ children, className = '' }) => (
   </div>
 );
 
-// CreateEventForm Component
-const CreateEventForm = ({ onClose }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [eventImage, setEventImage] = useState(null);
-  const [skipForm, setSkipForm] = useState(false);
-  const [selectedFormOption, setSelectedFormOption] = useState(null);
-  const [eventData, setEventData] = useState({
-    name: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
-    location: '',
-    description: '',
-    Eligibility: '',
-    Incentives: '',
-    isPublic: true,
-    calendar: 'Google Calendar'
-  });
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEventImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleProgramClick = (program) => {
+    setActiveTab('program');
+    setSelectedProgram(program);
+    setActiveProgramTab('summary');
+    setFormResponses([]);
   };
 
-  const handleNext = () => {
-    setCurrentStep(2);
-  };
-
-  const handleBack = () => {
-    setCurrentStep(1);
-  };
-
-  const handleSubmit = async () => {
+  const handleLogout = async () => {
     try {
-      // Add a new document to the "programmes" collection
-      const docRef = await addDoc(collection(db, 'programmes'), {
-        ...eventData,
-        image: eventImage,
-        createdAt: new Date(),
-      });
-      console.log('Event added with ID:', docRef.id);
-      // Close the form after submission
-      onClose();
-    } catch (e) {
-      console.error('Error adding event: ', e);
+      await signOut(auth);
+      navigate('/signup');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
+  const CreateEventForm = ({ onClose }) => {
+    const [currentStep, setCurrentStep] = useState(1);
+    const [eventImage, setEventImage] = useState(null);
+    const [skipForm, setSkipForm] = useState(false);
+    const [selectedFormOption, setSelectedFormOption] = useState(null);
+    const [submittedId, setSubmittedId] = useState(null);
+    const [showFormBuilder, setShowFormBuilder] = useState(false);
 
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Create Event</h1>
-      </div>
 
-      <StepIndicator currentStep={currentStep} />
-
-      {currentStep === 1 ? (
-        <div className="grid grid-cols-3 gap-6">
-          {/* Left column - Image upload */}
-          <div className="col-span-1">
-            <Card>
-              <CardContent className="p-0">
-                <div 
-                  className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
-                  onClick={() => document.getElementById('imageUpload').click()}
-                >
-                  {eventImage ? (
-                    <img 
-                      src={eventImage} 
-                      alt="Event" 
-                      className="w-full h-full object-cover"
+    const [eventData, setEventData] = useState({
+      title: '',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
+      location: '',
+      description: '',
+      eligibility: '',
+      incentives: '',
+      isPublic: true,
+      calendar: 'Google Calendar'
+    });
+  
+    const handleImageUpload = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setEventImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+  
+    const handleNext = () => {
+      setCurrentStep(2);
+    };
+  
+    const handleBack = () => {
+      setCurrentStep(1);
+    };
+  
+    const handleSubmit = async () => {
+      try {
+        // Generate a unique numeric ID for the event
+        
+    
+        const docRef = await addDoc(collection(db, 'programmes'), {
+          ...eventData,
+          image: eventImage,
+          id: generatedId, // Use the generated numeric ID here
+          uid: auth.currentUser.uid,
+          createdAt: new Date(),
+        });
+    
+        // Alert the generated ID
+        alert(`Event added with ID: ${generatedId}`);
+        console.log(`Event added with ID: ${generatedId}`);
+    
+        // Save the submitted ID
+        setSubmittedId(docRef.id);
+    
+        // Navigate to the next step
+        setShowFormBuilder(true); // This assumes showFormBuilder starts step 3
+      } catch (e) {
+        console.error('Error adding event: ', e);
+      }
+    };
+    
+    
+    
+  
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Create Event</h1>
+        </div>
+  
+        <StepIndicator currentStep={currentStep} />
+  
+        {currentStep === 1 ? (
+          <div className="grid grid-cols-3 gap-6">
+            {/* Left column - Image upload */}
+            <div className="col-span-1">
+              <Card>
+                <CardContent className="p-0">
+                  <div 
+                    className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
+                    onClick={() => document.getElementById('imageUpload').click()}
+                  >
+                    {eventImage ? (
+                      <img 
+                        src={eventImage} 
+                        alt="Event" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center p-4">
+                        <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">Click to upload event image</p>
+                      </div>
+                    )}
+                    <input
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
                     />
-                  ) : (
-                    <div className="text-center p-4">
-                      <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Click to upload event image</p>
-                    </div>
-                  )}
-                  <input
-                    id="imageUpload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right column - Event details */}
-          <div className="col-span-2">
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <input
-                  type="text"
-                  placeholder="Event Name"
-                  className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
-                  value={eventData.name}
-                  onChange={(e) => setEventData({ ...eventData, name: e.target.value })}
-                />
-
-                {/* Date and time */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">Start</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="date"
-                        className="flex-1 border rounded-md px-3 py-2"
-                        value={eventData.startDate}
-                        onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
-                      />
-                      <input
-                        type="time"
-                        className="w-32 border rounded-md px-3 py-2"
-                        value={eventData.startTime}
-                        onChange={(e) => setEventData({ ...eventData, startTime: e.target.value })}
-                      />
-                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">End</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="date"
-                        className="flex-1 border rounded-md px-3 py-2"
-                        value={eventData.endDate}
-                        onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
-                      />
-                      <input
-                        type="time"
-                        className="w-32 border rounded-md px-3 py-2"
-                        value={eventData.endTime}
-                        onChange={(e) => setEventData({ ...eventData, endTime: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="relative">
-                  <FontAwesomeIcon icon={faLocationDot} className="absolute left-3 top-3 text-gray-400" />
+                </CardContent>
+              </Card>
+            </div>
+  
+            {/* Right column - Event details */}
+            <div className="col-span-2">
+              <Card>
+                <CardContent className="p-6 space-y-6">
                   <input
                     type="text"
-                    placeholder="Add Event Location"
-                    className="w-full pl-10 pr-3 py-2 border rounded-md"
-                    value={eventData.location}
-                    onChange={(e) => setEventData({ ...eventData, location: e.target.value })}
+                    placeholder="Event Name"
+                    className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
+                    value={eventData.name}
+                    onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
                   />
-                </div>
-
-                {/* Description, Eligibility, Incentives */}
-                <textarea
-                  placeholder="Add Description"
-                  className="w-full p-3 border rounded-md min-h-[20px]"
-                  value={eventData.description}
-                  onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
-                />
-                
-                <textarea
-                  placeholder="Add Eligibility"
-                  className="w-full p-3 border rounded-md min-h-[20px]"
-                  value={eventData.Eligibility}
-                  onChange={(e) => setEventData({ ...eventData, Eligibility: e.target.value })}
-                />
-
-                <textarea
-                  placeholder="Add Incentives"
-                  className="w-full p-3 border rounded-md min-h-[20px]"
-                  value={eventData.Incentives}
-                  onChange={(e) => setEventData({ ...eventData, Incentives: e.target.value })}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-4 mt-6">
-  <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
-    Cancel
-  </button>
-  <button 
-    onClick={() => {
-      handleSubmit()
-      setSkipForm(true);
-      setCurrentStep(3); // Skip to review
-    }}
-    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-  >
-    Review and Launch
-  </button>
-  <button 
-    onClick={handleNext}
-    className="px-4 py-2 bg-purple-600 text-white rounded-md"
-  >
-    Next
-  </button>
-</div>
+  
+                  {/* Date and time */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">Start</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          className="flex-1 border rounded-md px-3 py-2"
+                          value={eventData.startDate}
+                          onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
+                        />
+                        <input
+                          type="time"
+                          className="w-32 border rounded-md px-3 py-2"
+                          value={eventData.startTime}
+                          onChange={(e) => setEventData({ ...eventData, startTime: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1">End</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          className="flex-1 border rounded-md px-3 py-2"
+                          value={eventData.endDate}
+                          onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
+                        />
+                        <input
+                          type="time"
+                          className="w-32 border rounded-md px-3 py-2"
+                          value={eventData.endTime}
+                          onChange={(e) => setEventData({ ...eventData, endTime: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+  
+                  {/* Location */}
+                  <div className="relative">
+                    <FontAwesomeIcon icon={faLocationDot} className="absolute left-3 top-3 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Add Event Location"
+                      className="w-full pl-10 pr-3 py-2 border rounded-md"
+                      value={eventData.location}
+                      onChange={(e) => setEventData({ ...eventData, location: e.target.value })}
+                    />
+                  </div>
+  
+                  {/* Description, Eligibility, Incentives */}
+                  <textarea
+                    placeholder="Add Description"
+                    className="w-full p-3 border rounded-md min-h-[20px]"
+                    value={eventData.description}
+                    onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
+                  />
+                  
+                  <textarea
+                    placeholder="Add Eligibility"
+                    className="w-full p-3 border rounded-md min-h-[20px]"
+                    value={eventData.Eligibility}
+                    onChange={(e) => setEventData({ ...eventData, eligibility: e.target.value })}
+                  />
+  
+                  <textarea
+                    placeholder="Add Incentives"
+                    className="w-full p-3 border rounded-md min-h-[20px]"
+                    value={eventData.Incentives}
+                    onChange={(e) => setEventData({ ...eventData, incentives: e.target.value })}
+                  />
+                </CardContent>
+              </Card>
+  
+              {/* Buttons */}
+              <div className="flex justify-end gap-4 mt-6">
+    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
+      Cancel
+    </button>
+    <button 
+      onClick={() => {
+        handleSubmit()
+        // setSkipForm(true);
+        setCurrentStep(3); // Skip to review
+        handleNext()
+      }}
+      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+    >
+      Next
+    </button>
+    {/* <button
+      onClick=
+      className="px-4 py-2 bg-purple-600 text-white rounded-md"
+    >
+      Next
+    </button> */}
+  </div>
+            </div>
           </div>
+          
+        ) : (
+          <FormBuilderOptions
+            onOptionSelect={(option) => {
+              setSelectedFormOption(option);
+            }}
+            // onBack={() => setCurrentStep(1)}
+          />
+        )}
+      </div>
+    );
+  };
+  const CompanyLogo = () => {
+    if (logoError || !companyDetails?.logo) {
+      return (
+        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+          <FontAwesomeIcon icon={faBuilding} className="text-gray-500" />
         </div>
-        
-      ) : (
-        <FormBuilderOptions
-          onOptionSelect={(option) => {
-            setSelectedFormOption(option);
-          }}
-          onBack={() => setCurrentStep(1)}
-        />
-      )}
+      );
+    }
+    return (
+      <img 
+        src={companyDetails.logo}
+        alt="Company Logo"
+        className="w-8 h-8 rounded-full object-cover border border-gray-200"
+        onError={() => setLogoError(true)}
+      />
+    );
+  };
+
+  const NavItem = ({ icon, label, active, onClick, className = '' }) => (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
+        active ? 'bg-gray-200 font-medium' : ''
+      } ${className}`}
+    >
+      <FontAwesomeIcon icon={icon} />
+      <span>{label}</span>
+    </button>
+  );
+
+  const ProgramHeader = ({ program }) => (
+    <div className="border-b border-gray-200 p-4">
+      <h2 className="text-2xl font-bold mb-4">{program.title || 'Untitled Program'}</h2>
+      <div className="flex space-x-6">
+        {['summary', 'formResponses', 'editProgram', 'editForm'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveProgramTab(tab)}
+            className={`text-sm font-medium pb-2 ${
+              activeProgramTab === tab
+                ? 'border-b-2 border-blue-500 text-blue-500'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
+          </button>
+        ))}
+      </div>
     </div>
   );
-};
-
-// NavItem Component
-const NavItem = ({ icon, label, active, onClick, className }) => (
-  <div
-    onClick={onClick}
-    className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${active ? 'bg-gray-200 font-medium' : ''} ${className}`}
-  >
-    <span>{icon}</span>
-    <span>{label}</span>
-  </div>
-);
-
-// Main Dashboard Component
-const DDashboard = () => {
-  const [expandedWorkspace, setExpandedWorkspace] = useState(null);
-  const [activeTab, setActiveTab] = useState('home');
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
 
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-none h-full">
-        {/* User section */}
         <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 rounded-full bg-gray-200"></div>
-          <span className="font-medium">User</span>
+          <CompanyLogo />
+          <span className="font-medium truncate">
+            {companyDetails?.name || 'Loading...'}
+          </span>
         </div>
 
-        {/* Main navigation */}
         <nav className="space-y-1">
-          <NavItem icon={<FontAwesomeIcon icon={faHome} />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-          <NavItem icon={<FontAwesomeIcon icon={faSearch} />} label="Search" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
-          <NavItem icon={<FontAwesomeIcon icon={faUsers} />} label="Members" active={activeTab === 'members'} onClick={() => setActiveTab('members')} />
-          <NavItem icon={<FontAwesomeIcon icon={faGlobe} />} label="Files" active={activeTab === 'files'} onClick={() => setActiveTab('files')} />
-          <NavItem icon={<FontAwesomeIcon icon={faCog} />} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
-          <NavItem icon={<FontAwesomeIcon icon={faStar} />} label="Upgrade plan" className="text-purple-600" />
+          <NavItem 
+            icon={faHome}
+            label="Home" 
+            active={activeTab === 'home'} 
+            onClick={() => setActiveTab('home')} 
+          />
         </nav>
 
-        {/* Workspaces */}
         <div className="mt-8">
-          <div className="text-sm text-gray-500 mb-2">Workspaces</div>
-          {['Programs', 'Events', 'Cohorts'].map((workspace) => (
-            <div key={workspace} className="ml-2">
-              <details>
-                <summary className="cursor-pointer mb-2">{workspace}</summary>
-                <div className="ml-2">
-                  <NavItem
-                    icon={<FontAwesomeIcon icon={faFile} />}
-                    label="Form Responses"
-                    active={activeTab === 'formResponses'}
-                    onClick={() => setActiveTab('formResponses')}
-                  />
-                </div>
-              </details>
-            </div>
-          ))}
+          <div className="text-sm text-gray-500 mb-2">Programs</div>
+          <div className="ml-2">
+            {programmes.length > 0 ? (
+              programmes.map((programme) => (
+                <NavItem
+                  key={programme.id}
+                  icon={faFile}
+                  label={programme.title || 'Untitled Program'}
+                  active={selectedProgram?.id === programme.id}
+                  onClick={() => handleProgramClick(programme)}
+                />
+              ))
+            ) : (
+              <div className="text-gray-400 p-2">No programs available</div>
+            )}
+          </div>
         </div>
 
         {/* Product section */}
         <div className="mt-8">
           <div className="text-sm text-gray-500 mb-2">Product</div>
           <nav className="space-y-1">
-            <NavItem icon={<FontAwesomeIcon icon={faFile} />} label="Templates" />
-            <NavItem icon={<FontAwesomeIcon icon={faMagic} />} label="What's new" />
-            <NavItem icon={<FontAwesomeIcon icon={faMap} />} label="Roadmap" />
-            <NavItem icon={<FontAwesomeIcon icon={faLightbulb} />} label="Feature requests" />
-            <NavItem icon={<FontAwesomeIcon icon={faTrashAlt} />} label="Trash" />
+            <NavItem icon={faFile} label="Templates" />
+            <NavItem icon={faMagic} label="What's new" />
+            <NavItem icon={faMap} label="Roadmap" />
+            <NavItem icon={faLightbulb} label="Feature requests" />
+            <NavItem icon={faTrashAlt} label="Trash" />
           </nav>
         </div>
 
@@ -470,35 +607,81 @@ const DDashboard = () => {
         <div className="mt-8">
           <div className="text-sm text-gray-500 mb-2">Help</div>
           <nav className="space-y-1">
-            <NavItem icon={<FontAwesomeIcon icon={faRocket} />} label="Get started" />
-            <NavItem icon={<FontAwesomeIcon icon={faBook} />} label="How-to guides" />
-            <NavItem icon={<FontAwesomeIcon icon={faQuestion} />} label="Help center" />
-            <NavItem icon={<FontAwesomeIcon icon={faCommentDots} />} label="Contact support" />
+            <NavItem icon={faRocket} label="Get started" />
+            <NavItem icon={faBook} label="How-to guides" />
+            <NavItem icon={faQuestion} label="Help center" />
+            <NavItem icon={faCommentDots} label="Contact support" />
           </nav>
+        </div>
+
+        {/* Logout option */}
+        <div className="mt-8 border-t pt-4">
+          <NavItem 
+            icon={faSignOutAlt}
+            label="Logout" 
+            onClick={handleLogout}
+            className="text-red-600 hover:bg-red-50"
+          />
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="h-14 border-b border-gray-200 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <FontAwesomeIcon icon={faHome} className="text-xl" />
-            <h1 className="text-xl font-semibold">Home</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="text-gray-600 hover:bg-gray-100 p-2 rounded-md">
-              <FontAwesomeIcon icon={faSearch} size="lg" />
-            </button>
-            <button className="text-gray-600 hover:bg-gray-100 p-2 rounded-md">
-              <FontAwesomeIcon icon={faCog} size="lg" />
-            </button>
-          </div>
-        </header>
+        <main className="h-full">
+          {activeTab === 'home' && (
+            <div className="p-4">
+              <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2>
+            </div>
+          )}
+          
+          {activeTab === 'program' && selectedProgram && (
+            <div className="h-full">
+              <ProgramHeader program={selectedProgram} />
+              <div className="p-4">
+                {activeProgramTab === 'summary' && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Program Summary</h3>
+                    {/* Add program summary content */}
+                  </div>
+                )}
+                
 
-        {/* Content */}
-        <main className="p-4">
-          {!showCreateEvent ? (
+
+
+{activeProgramTab === 'formResponses' && (
+    <div className="h-full">
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-6">
+          {/* <h3 className="text-lg font-semibold">Form Responses</h3>
+          <div className="text-sm text-gray-500">
+          Total responses: {formResponses.length}
+        </div> */}
+        </div>
+        <FormResponses programId={selectedProgram.id} />
+      </div>
+    </div>
+  )}
+
+
+
+
+                {activeProgramTab === 'editProgram' && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
+                    {/* Add edit program form */}
+                  </div>
+                )}
+                {activeProgramTab === 'editForm' && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Edit Form</h3>
+                    {/* Add edit form content */}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+{!showCreateEvent ? (
             <>
               <div className="flex justify-end gap-2 mb-8">
                 <button 
@@ -550,18 +733,18 @@ const DDashboard = () => {
           ) : (
             <CreateEventForm onClose={() => setShowCreateEvent(false)} />
           )}
+
         </main>
       </div>
 
-      {/* Help button */}
-      <button className="fixed bottom-4 right-4 w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center">
+      <button 
+        className="fixed bottom-4 right-4 w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-gray-700"
+        aria-label="Help"
+      >
         <FontAwesomeIcon icon={faQuestionCircle} size="lg" />
       </button>
     </div>
   );
 };
 
-export default DDashboard;
-  
-  
-  
+export default FounderDashboard;
