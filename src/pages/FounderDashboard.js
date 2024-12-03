@@ -1,34 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBook,
+  faBuilding,
+  faChevronRight,
   faCog,
   faCommentDots,
   faFile,
+  faFolder,
   faHome,
   faLightbulb,
   faMagic,
   faMap,
   faQuestion,
-  faSearch, 
-  faFolder,
   faQuestionCircle,
   faRocket,
+  faSearch,
   faSignOutAlt,
-  faCamera,
-  faLocationDot,
-  faChevronRight,
-  faPlus,
-  faTrashAlt,
-  faBuilding
+  faTrashAlt
 } from '@fortawesome/free-solid-svg-icons';
-import FormResponses from './FormResponses';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
+import { collection, doc, getDoc, getDocs, getFirestore, query, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 import Articles from '../components/Articles';
-import FFormResponses from './FFormResponses';
-import { getFirestore, doc, getDoc, getDocs, query, where, collection,addDoc } from 'firebase/firestore';
-import { Search, Settings, Plus, HelpCircle, Upload, Sparkles } from 'lucide-react';
 import SettingsForm from '../components/SettingsForm';
+import FFormResponses from './FFormResponses';
 
 import { useNavigate } from 'react-router-dom';
 import Application from './ApplicationForm';
@@ -513,7 +508,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
         <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
           {/* Your Applications component */}
           {/* <Applications programId={selectedProgramId} /> */}
-          <Application />
+          <Application programId={selectedProgramId}/>
           {/* <div className="p-4">
             <h3 className="text-lg font-semibold mb-4">Applications</h3>
             </div> */}

@@ -1,11 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { addDoc, collection, doc, Firestore, getDocs, getFirestore, query, serverTimestamp, where, writeBatch } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { serverTimestamp } from 'firebase/firestore';
-import { collection } from 'firebase/firestore';
-import { query,where,addDoc,getDocs } from 'firebase/firestore';
-import { Firestore } from 'firebase/firestore';
 
 // Your Firebase config
 const firebaseConfig = {
@@ -27,5 +23,5 @@ const auth = getAuth(app);
 const firestore=Firestore;
 
 // Export instances
-export { auth, db, getAuth, storage,serverTimestamp,collection,query,where,addDoc,getDocs,firestore };
+export { addDoc, auth, collection, db, doc, firestore, getAuth, getDocs, query, serverTimestamp, storage, where, writeBatch };
 

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
 import { Send } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../firebase';
 
+// Loading dots animation
 const LoadingDots = () => (
   <div className="flex items-center space-x-1 p-2">
     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -9,79 +12,186 @@ const LoadingDots = () => (
   </div>
 );
 
-const Application = () => {
+// Typewriter component
+const Typewriter = ({ text, speed = 50 }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    setDisplayedText('');
+    setIsComplete(false);
+
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedText((prev) => prev + text[index]);
+        index += 1;
+      } else {
+        clearInterval(interval);
+        setIsComplete(true);
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return (
+    <h2 className={`text-xl font-semibold ${isComplete ? 'cursor-default' : 'animate-pulse'}`}>
+      {displayedText}
+      {!isComplete && <span className="ml-1 animate-pulse">|</span>}
+    </h2>
+  );
+};
+
+const Application = ({ programId }) => {
   const [inputValue, setInputValue] = useState('');
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(-1);
   const [answers, setAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      type: 'bot',
-      content: 'Welcome to the Startup Incubator Program Registration! I\'ll help you complete your application. Let\'s get started!',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [questions, setQuestions] = useState([]);
+  const [programTitle, setProgramTitle] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [typewriterText, setTypewriterText] = useState(
+    "This application is the first step towards turning vision into innovation. Let's begin!"
+  );
 
-  const questions = [
-    { id: 'founderName', question: "What's your full name?", type: 'text' },
-    { id: 'email', question: "What's your email address?", type: 'email' },
-    { id: 'startupName', question: "What's the name of your startup?", type: 'text' },
-    { id: 'industry', question: "Which industry does your startup operate in?", type: 'text' },
-    { id: 'stage', question: "What stage is your startup in? (Idea, MVP, Early Revenue, Growth)", type: 'text' },
-    { id: 'problem', question: "What problem does your startup solve? Please be specific.", type: 'longtext' },
-    { id: 'solution', question: "How does your solution address this problem?", type: 'longtext' },
-    { id: 'marketSize', question: "What's your estimated market size and target audience?", type: 'longtext' },
-    { id: 'funding', question: "Have you received any funding so far? If yes, please specify the amount and source.", type: 'text' },
-    { id: 'teamSize', question: "How many team members do you have? Please list their key roles.", type: 'longtext' },
-    { id: 'expectations', question: "What do you expect to gain from our incubator program?", type: 'longtext' }
-  ];
+  // Fetch program and questions data
+  useEffect(() => {
+    const fetchProgramData = async () => {
+      try {
+        const programQuery = query(
+          collection(db, 'programmes'),
+          where('id', '==', programId)
+        );
 
-  const addMessage = (content, type) => {
-    const newMessage = {
-      type,
-      content,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const programSnapshot = await getDocs(programQuery);
+        if (programSnapshot.empty) throw new Error('Program not found');
+
+        const programDoc = programSnapshot.docs[0];
+        setProgramTitle(programDoc.data().title);
+
+        const questionsSnapshot = await getDocs(
+          collection(db, 'programmes', programDoc.id, 'form')
+        );
+
+        const fetchedQuestions = questionsSnapshot.docs.flatMap((doc) =>
+          doc.data().questions.map((q) => ({
+            id: doc.id,
+            question: q.title,
+          }))
+        );
+
+        setQuestions(fetchedQuestions);
+
+        setMessages([
+          {
+            type: 'bot',
+            content:
+              "Buckle up! I'm your guide on this application ride. 🎢 Drop your startup name or idea, and let's get this party started! 💡",
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          },
+        ]);
+      } catch (error) {
+        console.error('Error fetching program data:', error);
+        setMessages([
+          {
+            type: 'bot',
+            content: 'Error loading program questions. Please try again later.',
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          },
+        ]);
+      } finally {
+        setIsInitializing(false);
+      }
     };
-    setMessages((prev) => [...prev, newMessage]);
+
+    fetchProgramData();
+  }, [programId]);
+
+  // Add a message to the chat
+  const addMessage = (content, type) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        type,
+        content,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      },
+    ]);
   };
 
+  // Handle user input submission
   const handleSubmit = () => {
-    if (inputValue.trim() === '' || isLoading) return;
+    if (!inputValue.trim() || isLoading || isInitializing) return;
 
     addMessage(inputValue, 'user');
-    setAnswers((prev) => ({
-      ...prev,
-      [questions[currentQuestion].id]: inputValue
-    }));
-
+    const userResponse = inputValue.trim();
     setInputValue('');
     setIsLoading(true);
 
     setTimeout(() => {
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion((prev) => prev + 1);
-        addMessage(questions[currentQuestion + 1].question, 'bot');
+      if (currentQuestion === -1) {
+        setCurrentQuestion(0);
+        addMessage(questions[0]?.question || 'No questions available.', 'bot');
       } else {
-        addMessage("Thank you for completing your registration! We'll review your application and get back to you soon.", 'bot');
+        setAnswers((prev) => ({
+          ...prev,
+          [questions[currentQuestion]?.id]: userResponse,
+        }));
+
+        if (currentQuestion < questions.length - 1) {
+          setCurrentQuestion(currentQuestion + 1);
+          addMessage(questions[currentQuestion + 1].question, 'bot');
+        } else {
+          addMessage(
+            "Thank you for completing your registration! We'll review your application and get back to you soon.",
+            'bot'
+          );
+        }
       }
       setIsLoading(false);
     }, 1500);
   };
 
+  // Message component
   const Message = ({ message }) => (
-    <div className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start gap-2 max-w-[80%]`}>
-        <div className={`w-8 h-8 flex items-center justify-center rounded-full ${
-          message.type === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'
-        }`}>
+    <div
+      className={`flex ${
+        message.type === 'user' ? 'justify-end' : 'justify-start'
+      } mb-4`}
+    >
+      <div
+        className={`flex ${
+          message.type === 'user' ? 'flex-row-reverse' : 'flex-row'
+        } items-start gap-2 max-w-[80%]`}
+      >
+        <div
+          className={`w-8 h-8 flex items-center justify-center rounded-full ${
+            message.type === 'user'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-500 text-white'
+          }`}
+        >
           {message.type === 'user' ? 'U' : 'B'}
         </div>
         <div>
-          <div className={`rounded-lg p-3 ${
-            message.type === 'user'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-100 text-gray-900'
-          }`}>
+          <div
+            className={`rounded-lg p-3 ${
+              message.type === 'user'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-900'
+            }`}
+          >
             {message.content}
           </div>
           <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
@@ -90,30 +200,26 @@ const Application = () => {
     </div>
   );
 
-  React.useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      addMessage(questions[0].question, 'bot');
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+  if (isInitializing) {
+    return (
+      <div className="md:px-56 h-screen flex flex-col items-center justify-center">
+        <LoadingDots />
+      </div>
+    );
+  }
 
   return (
-    <div className="md:px-56 overflow-auto">
+    <div className="md:px-56 h-screen flex flex-col">
       <div className="text-left mb-8">
-        <h1 className="text-4xl font-bold font-sans-serif">Program Title</h1>
-        <div className="flex border-b border-gray-300 justify-left mt-4">
-          {/* <span className="font-medium text-blue-600">Registration Form</span> */}
-        </div>
+        <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
+        <div className="flex border-b border-gray-300 justify-left mt-4" />
+      </div>
+      <div className="mb-8">
+        <Typewriter text={typewriterText} speed={20} />
       </div>
 
-      <div className="border rounded-lg shadow-lg min-h-[600px] flex flex-col bg-white">
-        <div className="bg-gray-100 p-4 border-b">
-          <h2 className="text-xl font-bold">Registration Chat Assistant</h2>
-          <p className="text-sm text-gray-500">Please answer all questions to complete your registration</p>
-        </div>
-
-        <div className="flex-grow p-4 overflow-auto">
+      <div className="h-[420px] border rounded-lg shadow-lg flex flex-col bg-white">
+        <div className="flex-1 overflow-y-auto p-4">
           {messages.map((message, index) => (
             <Message key={index} message={message} />
           ))}
@@ -129,34 +235,22 @@ const Application = () => {
           )}
         </div>
 
-        <div className="border-t p-4">
-          <div className="flex flex-col gap-2">
-            {questions[currentQuestion].type === 'longtext' ? (
-              <textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Type your answer here..."
-                className="min-h-[100px] p-2 border rounded-md"
-                disabled={isLoading}
-                rows="4"
-              />
-            ) : (
-              <input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Type your answer here..."
-                type={questions[currentQuestion].type}
-                className="p-2 border rounded-md"
-                disabled={isLoading}
-              />
-            )}
+        <div className="border-t p-4 bg-white rounded-b-lg">
+          <div className="flex gap-2">
+            <input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Type your message..."
+              type="text"
+              className="flex-grow p-3 border rounded-lg focus:outline-none focus:border-blue-500"
+              disabled={isLoading}
+            />
             <button
               onClick={handleSubmit}
-              className="flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300"
+              className="p-3 bg-white border rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
               disabled={isLoading || !inputValue.trim()}
             >
-              <Send className="h-4 w-4 mr-2" />
-              Send
+              <Send className="h-6 w-6" />
             </button>
           </div>
         </div>
