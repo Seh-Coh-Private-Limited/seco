@@ -367,7 +367,7 @@ const FProgramDetailPage = ({ programId }) => {
                 <div className='mt-4'>
                   <div className='flex justify-between mb-4'>
                     <button
-                      onClick={() => window.location.href = ''}
+                      onClick={() => window.location.href = '#'}
                       className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8"
                       style={{ fontFamily: 'CFont' }}
                     >
