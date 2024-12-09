@@ -4,11 +4,9 @@ import './FProgramDetail.css';
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ffetchProgramById } from '../components/ffetchprogram';
-import { ClipLoader } from 'react-spinners';
 import { Link } from 'react-scroll';
-import Footer from '../components/footer';
-import Header from '../components/Header';
+import { ClipLoader } from 'react-spinners';
+import { ffetchProgramById } from '../components/ffetchprogram';
 
 const FProgramDetailPage = ({ programId }) => {
   const navigate = useNavigate();
@@ -369,7 +367,7 @@ const FProgramDetailPage = ({ programId }) => {
                 <div className='mt-4'>
                   <div className='flex justify-between mb-4'>
                     <button
-                      onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+                      onClick={() => window.location.href = ''}
                       className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8"
                       style={{ fontFamily: 'CFont' }}
                     >
