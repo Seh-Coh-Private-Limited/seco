@@ -36,14 +36,14 @@ const FormBuilderOptions = ({ onOptionSelect, onBack,programId }) => {
       {/* Directly render the FormBuilder */}
       <FormBuilder programId={programId}/>
 
-      {/* <div className="flex justify-start mt-6">
+      <div className="flex justify-start mt-6">
         <button
           onClick={onBack}
           className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
         >
           Back
         </button>
-      </div> */}
+      </div>
     </div>
   );
 };
@@ -79,7 +79,7 @@ const FounderDashboard = () => {
           const userData = userDoc.data();
           setCompanyDetails({
             name: userData.companyName || 'Company Name',
-            logo: userData.logo || userData.companyLogo || null
+            logo: userData.logoUrl || userData.companyLogo || null
           });
         }
       } catch (error) {
@@ -184,13 +184,13 @@ const HomePage = () => {
               onClick={() => setShowCreateEvent(true)}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md flex items-center gap-2"
             >
-              New Event
+             <FontAwesomeIcon icon={faPlus} size="sm" />
             </button>
             <button
               onClick={() => setShowCreateEvent(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center gap-2"
             >
-              <FontAwesomeIcon icon={faPlus} size="sm" />
+              
               New Program
             </button>
           </div>
@@ -221,13 +221,13 @@ const HomePage = () => {
                 className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
               >
                 <Plus size={16} />
-                New Event
+               
               </button>
               <button
                 onClick={() => setShowCreateEvent(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
               >
-                <Plus size={16} />
+               
                 New Program
               </button>
             </div>
@@ -624,7 +624,7 @@ const CardContent = ({ children, className = '' }) => (
     );
   };
   const CompanyLogo = () => {
-    if (logoError || !companyDetails?.logo) {
+    if (logoError || !companyDetails?.logoUrl) {
       return (
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
           <FontAwesomeIcon icon={faBuilding} className="text-gray-500" />
@@ -633,7 +633,7 @@ const CardContent = ({ children, className = '' }) => (
     }
     return (
       <img 
-        src={companyDetails.logo}
+        src={companyDetails.logoUrl}
         alt="Company Logo"
         className="w-8 h-8 rounded-full object-cover border border-gray-200"
         onError={() => setLogoError(true)}

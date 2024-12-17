@@ -2,11 +2,15 @@ import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 import './Reviewsection.css';
 
+import DOMPurify from 'dompurify';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-scroll';
 import { ClipLoader } from 'react-spinners';
 import { ffetchProgramById } from '../components/ffetchprogram';
+
+
+
 
 const FProgramDetailPage = ({ programId }) => {
   const navigate = useNavigate();
@@ -67,6 +71,7 @@ const FProgramDetailPage = ({ programId }) => {
 
   const formatMonth = (date) => date.toLocaleString('default', { month: 'short' }).toUpperCase();
   const formatDay = (date) => date.getDate();
+  const sanitizedDescription = DOMPurify.sanitize(description);
 
   const handleSetActive = (to) => {
     setActiveTab(to);
@@ -119,231 +124,41 @@ const FProgramDetailPage = ({ programId }) => {
                         onSetActive={() => handleSetActive('Eligibility')}
                         style={{fontFamily: 'CFont'}}
                       >
-                        eligibility
+                        form questions
                       </Link>
-                      <Link 
-                        to="incentives" 
-                        smooth={true} 
-                        duration={500} 
-                        offset={-80}
-                        className={`text-sm text-gray-500 hover:text-blue-600 relative
-                        ${activeTab === 'Incentives' ? 'border-blue-600 pb-1' : ''}    mx-2`}
-                        onSetActive={() => handleSetActive('Incentives')}
-                        style={{fontFamily: 'CFont'}}
-                      >
-                        incentives
-                      </Link>
-                      <Link 
-                        to="faq" 
-                        smooth={true} 
-                        duration={500} 
-                        offset={-80}
-                        className={`text-sm text-gray-500 hover:text-blue-600 relative
-                        ${activeTab === 'FAQs' ? 'border-blue-600 pb-1' : ''} mx-2`}
-                        onSetActive={() => handleSetActive('FAQs')}
-                        style={{fontFamily: 'CFont'}}
-                      >
-                        faqs
-                      </Link>
+                      
                     </div>
                   </div>
                 </div>
               </nav>
-              <div id='details' className='mt-6'>
-              <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>details</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-              <p style={{
-        fontFamily: 'CFont',
-    }}>
-    
+              <div id="details" className="mt-6 mb-6">
+ 
+  <hr className="my-4 border-t border-gray-300" />
+  <div
+    className="flex flex-col gap-6 mt-6"
+    style={{
+      fontFamily: 'CFont',
+    }}
+  >
+    {/* Display dynamic content */
+    }
+    <div
+      style={{ fontFamily: "CFont" }} // Apply your custom styles
+      dangerouslySetInnerHTML={{
+        __html: sanitizedDescription, // Render sanitized HTML
+      }}
+    ></div>
+
+  </div>
+</div>
+
+
+           
 
 
 
-    <div className='flex flex-col gap-6'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-                <p>{description}</p>
-                
-               
-              </div>
-</p>
-
-                
-               
-              </div>
-            </div>
-
-            <div id='eligibility' className='mt-6'>
-              <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>eligibility</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{Eligibility}</p>
-                {/* <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>startup stage for applications:</p>
-               <p>
-  {eligibility[1] && typeof eligibility[1] === 'string' ? (
-    <ul className="list-disc pl-0 ml-0">
-      {eligibility[1].split('+').map((item, index) => (
-        <li key={index} className="font-CFont text-left ml-6"style={{
-          fontFamily: 'CFont',
-          
-          }}>
-          {item}
-        </li>
-      ))}
-    </ul>
-  ) : null}
-</p> */}
-
-                
-                {/* <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>For:</p>
-                <p>
-  {eligibility[2] && typeof eligibility[2] === 'string' ? (
-    <div className="flex flex-wrap gap-6"> 
-      {eligibility[2].split(';').map((item, index) => (
-        <span 
-          key={index} 
-          className="bg-slate-300 rounded-3xl p-2 inline-block"style={{
-            fontFamily: 'CFont',
             
-            }}
-        >
-          {item}
-          <br />
-        </span>
-      ))}
-    </div>
-  ) : null}
-</p> */}
-
-
-              </div>
-            </div>
-
-
-
-            <div id='incentives' className='mt-6'>
-              <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>incentives</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-                
-               
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>
-                  {Incentives}
-                </p>
-                
-                {/* <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>non-fiscal incentives:</p>
-                
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>-{incentives.nonFiscal}</p> */}
-              </div>
-            </div>
-            {/* <div id='portfolio' className='mt-6'>
-              <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>portfolio</p>
-              <hr className='my-4 border-t border-gray-300' />
-              <div className='flex flex-col gap-6'>
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>about:</p>
-                <p style={{
-                    fontFamily: 'CFont',
-                    textTransform: 'lowercase' 
-                    }}>
-{organizerDetails}                </p>
-                
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>portfolio companies:</p>
-                <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{portfolioCompanies}</p>
-                <div>
-      <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>logos:</p>
-      <Slider {...settings}>
-        {logos.map((logo, index) => (
-          <div key={index} className="p-4">
-            <img 
-              src={logo} 
-              alt={`Logo ${index + 1}`} 
-              className="mx-auto" 
-              style={{ maxWidth: '100%', height: '80px' }} // Responsive image
-            />
-          </div>
-        ))}
-      </Slider>
-    </div>
-              </div>
-            </div> */}
-            {/* <div id='faq' className='mt-6 lg:mb-44'>
-      <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>faqs</p>
-      <hr className='my-4 border-t border-gray-300' />
-      <div className='flex flex-col gap-6'>
-        {faqs.map((faq, index) => (
-          <div key={index} className='border-b border-gray-200 pb-2'>
-            <div
-              className='flex justify-between cursor-pointer'
-              onClick={() => toggleAnswer(index)}
-            >
-              <p className='font'style={{
-                    fontFamily: 'CFont',
-                     
-                    
-                    }}>{faq.question}</p>
-              <span className={`transform transition-transform ${openIndex === index ? 'rotate-180' : ''}`}>
-                <span className='material-icons'>expand_more</span>
-              </span>
-            </div>
-            {openIndex === index && (
-              <div className='mt-2 text-gray-600'style={{
-                fontFamily: 'CFont',
-                
-                }}>
-                {faq.answer}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div> */}
+            
           </div>
 
           <div 
@@ -471,13 +286,13 @@ const FProgramDetailPage = ({ programId }) => {
 
    
 
-    <div id='Hosted' className='mb-4'> {/* Added bottom margin */}
+    <div id='Hosted' className='mb-6'> {/* Added bottom margin */}
       <p style={{
                     fontFamily: 'CFont',
                     
                     }}>industry</p>
-      <hr className='my-4 border-t border-slate-300' />
-      <div className='flex flex-wrap gap-2'style={{
+      <hr className='my-4 border-t border-slate-300 mt-6' />
+      <div className='flex flex-wrap gap-2 mt-2'style={{
                     fontFamily: 'CFont',
                     
                     }}> {/* Allows items to wrap */}

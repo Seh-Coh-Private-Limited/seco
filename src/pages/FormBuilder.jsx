@@ -1528,10 +1528,9 @@ import {
   X
 } from 'lucide-react';
 import React, { useState } from 'react';
-import ReviewSection from '../components/Reviewsection';
+import FProgramDetailPage from '../components/Reviewsection';
 import { addDoc, collection, db, getDocs, query, where } from '../firebase';
 import RegistrationInfo from './ri';
-import FProgramDetailPage from '../components/Reviewsection';
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-lg shadow ${className}`}>
     {children}
@@ -1711,106 +1710,84 @@ const FormBuilder = ({ programId }) => {
 
   // Enhanced Modal component
   const AddSectionModal = () => {
-    const [showQuestionTypes, setShowQuestionTypes] = useState(false);
-  
+    const [showQuestionTypes, setShowQuestionTypes] = useState(true); // Set to true by default
+
     if (!isModalOpen) return null;
-  
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="p-6 border-b">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Add Questions</h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetModalState();
-                  setShowQuestionTypes(false);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="p-6 border-b">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-xl font-semibold">Add Questions</h2>
+                        <button
+                            onClick={() => {
+                                setIsModalOpen(false);
+                                resetModalState();
+                                setShowQuestionTypes(false);
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto">
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-medium mb-4">Questions</h3>
+                            {modalQuestions.map(question => (
+                                <ModalQuestionCard key={question.id} question={question} />
+                            ))}
+                            
+                            <div className="grid grid-cols-4 gap-2 mt-4">
+                                {questionTypes.map(type => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => {
+                                            addModalQuestion(type.id);
+                                        }}
+                                        className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
+                                    >
+                                        {type.icon}
+                                        <span>{type.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t bg-gray-50">
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={() => {
+                                setIsModalOpen(false);
+                                resetModalState();
+                                setShowQuestionTypes(false);
+                            }}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => {
+                                handleAddSection();
+                                setShowQuestionTypes(false);
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            disabled={!modalQuestions.length}
+                        >
+                            Save Questions
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
-          
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="space-y-6">
-            {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Section Title
-                </label>
-                <input
-                  type="text"
-                  value={newSectionTitle}
-                  onChange={(e) => setNewSectionTitle(e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter section title"
-                />
-              </div> */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Questions</h3>
-                {modalQuestions.map(question => (
-                  <ModalQuestionCard key={question.id} question={question} />
-                ))}
-                
-                {!showQuestionTypes ? (
-                  <button
-                    onClick={() => setShowQuestionTypes(true)}
-                    className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add Question
-                  </button>
-                ) : (
-                  <div className="grid grid-cols-4 gap-2 mt-4">
-                    {questionTypes.map(type => (
-                      <button
-                        key={type.id}
-                        onClick={() => {
-                          addModalQuestion(type.id);
-                          setShowQuestionTypes(false);
-                        }}
-                        className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
-                      >
-                        {type.icon}
-                        <span>{type.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-  
-          <div className="p-6 border-t bg-gray-50">
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  resetModalState();
-                  setShowQuestionTypes(false);
-                }}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  handleAddSection();
-                  setShowQuestionTypes(false);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                disabled={!modalQuestions.length}
-              >
-                Save Questions
-              </button>
-            </div>
-          </div>
         </div>
-      </div>
     );
-  };
+};
+
   
 
   // Add a new section
