@@ -19,7 +19,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, getFirestore, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, query, setDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import Articles from '../components/Articles';
 import SettingsForm from '../components/SettingsForm';
@@ -51,17 +51,136 @@ const FounderDashboard = () => {
   const navigate = useNavigate();
   const auth = getAuth();
   const db = getFirestore();
-
-  // Fetch company details
   useEffect(() => {
-    const fetchCompanyDetails = async () => {
+    const checkSessionAndFetchData = async () => {
+      const sessionData = localStorage.getItem('sessionData');
+      
+      if (!sessionData) {
+        navigate('/signup');
+        return;
+      }
+  
       try {
+        const { uid, expiresAt } = JSON.parse(sessionData);
+        const currentTime = new Date().getTime();
+        const expiration = new Date(expiresAt).getTime();
+        
+        // Extend session instead of logging out
+        if (currentTime >= expiration) {
+          console.warn('Session is about to expire. Extending session.');
+          // Optionally update expiration in localStorage
+          const extendedSessionData = {
+            ...JSON.parse(sessionData),
+            expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString() // Extend by 24 hours
+          };
+          localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
+        }
+  
+        // Verify the session in Firestore
+        const sessionRef = doc(db, 'sessions', uid);
+        const sessionDoc = await getDoc(sessionRef);
+        
+        if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
+          navigate('/signup');
+          return;
+        }
+  
+        // Fetch user and data
         const user = auth.currentUser;
         if (!user) {
           navigate('/signup');
           return;
         }
-
+  
+        // Fetch company details
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setCompanyDetails({
+            name: userData.companyName || 'Company Name',   
+            logo: userData.logoUrl || userData.companyLogo || null
+          });
+        }
+  
+        // Fetch applications
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where('uid', '==', user.uid));
+        const userSnapshot = await getDocs(userQuery);
+        
+        if (!userSnapshot.empty) {
+          const userDocRef = userSnapshot.docs[0].ref;
+          
+          // Fetch applications from subcollection
+          const applicationsCollection = collection(userDocRef, 'applications');
+          const applicationsSnapshot = await getDocs(applicationsCollection);
+          
+          const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            title: doc.data().title
+          }));
+          
+          setApplications(fetchedApplications);
+        }
+  
+        // Fetch programmes
+        const programmesQuery = await getDocs(
+          query(collection(db, 'programmes'), where('uid', '==', user.uid))
+        );
+        
+        const fetchedProgrammes = programmesQuery.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        setProgrammes(fetchedProgrammes);
+  
+        // Update last activity
+        await setDoc(sessionRef, {
+          lastActivity: new Date().toISOString()
+        }, { merge: true });
+  
+      } catch (error) {
+        console.error('Session check and data fetch error:', error);
+        
+        // Fallback states
+        setCompanyDetails({ name: 'Company Name', logo: null });
+        setApplications([]);
+        setProgrammes([]);
+        
+        // Do not automatically log out on errors
+        console.warn('There was an issue checking your session. Please try again.');
+      }
+    };
+  
+    // Initial check and data fetch
+    checkSessionAndFetchData();
+    
+    // Periodic session checks
+    const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Check every 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [navigate, auth, db]);
+  // Fetch company details
+  useEffect(() => {
+    const fetchCompanyDetails = async () => {
+      try {
+        const user = auth.currentUser;
+        const sessionData = localStorage.getItem('sessionData');
+        
+        // if (!user || !sessionData) {
+        //   navigate('/signup');
+        //   return;
+        // }
+  
+        const { expiresAt } = JSON.parse(sessionData);
+        const now = new Date().getTime();
+        const expiration = new Date(expiresAt).getTime();
+        
+        if (now >= expiration) {
+          await handleLogout();
+          return;
+        }
+  
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -75,17 +194,17 @@ const FounderDashboard = () => {
         setCompanyDetails({ name: 'Company Name', logo: null });
       }
     };
-
+  
     fetchCompanyDetails();
   }, [auth, db, navigate]);
   useEffect(() => {
     const fetchUserDataAndApplications = async () => {
       try {
         const user = auth.currentUser;
-        if (!user) {
-          navigate('/signup');
-          return;
-        }
+        // if (!user) {
+        //   navigate('/signup');
+        //   return;
+        // }
 
         // Query users collection where uid field matches current user's uid
         const usersRef = collection(db, 'users');
@@ -319,13 +438,21 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
 
   const handleLogout = async () => {
     try {
+      const user = auth.currentUser;
+      if (user) {
+        const sessionRef = doc(db, 'sessions', user.uid);
+        await setDoc(sessionRef, { 
+          isActive: false,
+          logoutTime: new Date().toISOString()
+        }, { merge: true });
+      }
       await signOut(auth);
+      localStorage.removeItem('sessionData');
       navigate('/signup');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Logout error:', error);
     }
   };
- 
   const CompanyLogo = () => {
     if (logoError || !companyDetails?.logo) {
       return (

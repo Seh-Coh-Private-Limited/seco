@@ -86,14 +86,14 @@ const FProgramDetailPage = ({ programId }) => {
        <p className='text-4xl font-bold my-4' style={{fontFamily: 'CFont'}}>
                 {title}
               </p>
-        <div className="flex border-b border-gray-300 justify-left mt-4"></div>
-      <div className='bg-white h-full w-full font-poppins justify-center'>
+        <div className="flex fborder-b border-gray-300 justify-left mt-4"></div>
+      <div className='bg-white h-full fw-full font-poppins justify-center'>
         <div className='flex justify-center mt-4 '>
-          <div className='w-full lg:w-4/6 grid grid-cols-1 lg:grid-cols-3 gap-8 '> 
+          <div className='fw-full lg:w-4/6 grid grid-cols-1 lg:grid-cols-3 gap-8 '> 
             <div className='col-span-1 lg:col-span-3 order-1 lg:order-1'>
               <img
                 src={image}
-                className='w-full h-auto object-fit rounded-lg'
+                className='fw-full h-auto object-fit rounded-lg'
                 alt={title}
               />
             </div>
@@ -104,13 +104,13 @@ const FProgramDetailPage = ({ programId }) => {
               <nav className="bg-white rounded-3xl">
                 <div className="max-w-6xl mx-auto py-2">
                   <div className="flex justify-start space-x-6">
-                    <div className="flex border-b border-gray-300 rounded-3xl"> 
+                    <div className="flex fborder-b border-gray-300 rounded-3xl"> 
                       <Link 
                         to="details" 
                         smooth={true} 
                         duration={500} 
                         offset={-80}
-                        className={`text-gray-700 text-sm hover:text-blue-600 relative mx-2 ${activeTab === 'Details' ? 'border-blue-600 pb-1' : ''}`}
+                        className={`text-gray-700 text-sm hover:text-blue-600 relative mx-2 ${activeTab === 'Details' ? 'fborder-blue-600 pb-1' : ''}`}
                         onSetActive={() => handleSetActive('Details')}
                         style={{fontFamily: 'CFont'}}
                       >
@@ -122,7 +122,7 @@ const FProgramDetailPage = ({ programId }) => {
                         duration={500} 
                         offset={-80}
                         className={`text-sm text-gray-500 hover:text-blue-600 relative
-                        ${activeTab === 'Eligibility' ? 'border-blue-600 pb-1' : ''} mx-2`}
+                        ${activeTab === 'Eligibility' ? 'fborder-blue-600 pb-1' : ''} mx-2`}
                         onSetActive={() => handleSetActive('Eligibility')}
                         style={{fontFamily: 'CFont'}}
                       >
@@ -138,7 +138,7 @@ const FProgramDetailPage = ({ programId }) => {
                     fontFamily: 'CFont',
                     textTransform: 'lowercase' 
                     }}>details</p>
-              <hr className='my-4 border-t border-gray-300' />
+              <hr className='my-4 fborder-t border-gray-300' />
               <div className='flex flex-col gap-6'>
               <p style={{
         fontFamily: 'CFont',
@@ -176,7 +176,7 @@ const FProgramDetailPage = ({ programId }) => {
                   <div className='flex justify-between mb-4'>
                     <button
                       onClick={() => window.location.href = '#'}
-                      className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8"
+                      className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] fw-full h-12 px-8"
                       style={{ fontFamily: 'CFont' }}
                     >
                       apply
@@ -294,7 +294,7 @@ const FProgramDetailPage = ({ programId }) => {
                     fontFamily: 'CFont',
                     
                     }}>industry</p>
-      <hr className='my-4 border-t border-slate-300' />
+      <hr className='my-4 fborder-t border-slate-300' />
       <div className='flex flex-wrap gap-2'style={{
                     fontFamily: 'CFont',
                     
@@ -313,7 +313,7 @@ const FProgramDetailPage = ({ programId }) => {
                     fontFamily: 'CFont',
                     
                     }}>contact the host</p>
-  <hr className='my-4 border-t border-gray-300' />
+  <hr className='my-4 fborder-t border-gray-300' />
 
   <div className='mb-4'> {/* Added margin for spacing */}
     <p className='font-medium mb-4'style={{

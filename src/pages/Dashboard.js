@@ -11,15 +11,16 @@ import {
   faMap,
   faPlus,
   faQuestion,
+
   faQuestionCircle,
   faRocket,
   faSignOutAlt,
-  faTrashAlt,
+  faTrashAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, where } from 'firebase/firestore';
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
@@ -58,21 +59,119 @@ const FounderDashboard = () => {
   const [activeProgramTab, setActiveProgramTab] = useState('summary');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [error, setError] = useState(null);
 
   
   const navigate = useNavigate();
   const auth = getAuth();
   const db = getFirestore();
+  useEffect(() => {
+    const checkSession = () => {
+      const sessionData = localStorage.getItem('sessionData');
+      if (!sessionData) {
+        navigate('/signup');
+        return;
+      }
+  
+      const { expiresAt } = JSON.parse(sessionData);
+      const now = new Date().getTime();
+      const expiration = new Date(expiresAt).getTime();
+      
+      if (now >= expiration) {
+        handleLogout();
+      }
+    };
+  
+    checkSession();
+    // Check session every minute
+    const interval = setInterval(checkSession, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
+  // Auth state change effect
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadAllData();
+      } else {
+        navigate('/signup');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, navigate]);
+  const loadAllData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const user = auth.currentUser;
+    if (!user) {
+      navigate('/signup');
+      return;
+    }
+
+    try {
+      await Promise.all([
+        fetchCompanyDetails(user),
+        fetchProgrammes(user)
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setError('Failed to load some data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchCompanyDetails = async (user) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCompanyDetails({
+          name: userData.companyName || 'Company Name',
+          logo: userData.logoUrl || userData.companyLogo || null
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      setError('Failed to load company details');
+      setCompanyDetails({ name: 'Company Name', logo: null });
+    }
+  };
+
+  // Function to fetch programmes
+  const fetchProgrammes = async (user) => {
+    try {
+      const programmesQuery = await getDocs(
+        query(collection(db, 'programmes'), where('uid', '==', user.uid))
+      );
+      
+      const fetchedProgrammes = programmesQuery.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setProgrammes(fetchedProgrammes);
+    } catch (error) {
+      console.error('Error fetching programmes:', error);
+      setError('Failed to load programmes');
+      setProgrammes([]);
+    }
+  };
+  // Add reload function to handle manual reloads
+  const handleReload = () => {
+    loadAllData();
+  };
   // Fetch company details
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
         const user = auth.currentUser;
-        if (!user) {
-          navigate('/signup');
-          return;
-        }
+        // if (!user) {
+        //   navigate('/signup');
+        //   return;
+        // }
 
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
@@ -121,7 +220,62 @@ const FounderDashboard = () => {
     setActiveTab('settings'); // Switch to settings view
   };
   
-
+  const Breadcrumb = ({ 
+    currentStep, 
+    setCurrentStep,
+    showCreateEvent
+  }) => {
+    const handleNavigate = (step) => {
+      // Only allow navigation to previous steps
+      if (step <= currentStep) {
+        setCurrentStep(step);
+      }
+    };
+  
+    // Don't show breadcrumbs when not creating a program
+    if (!showCreateEvent) {
+      return null;
+    }
+  
+    const steps = [
+      { step: 1, label: 'Basic Details' },
+      { step: 2, label: 'Form Builder' },
+      { step: 3, label: 'Review & Launch' }
+    ];
+  
+    return (
+      <div className="flex items-center space-x-2">
+        {steps.slice(0, currentStep).map((item, index) => (
+          <React.Fragment key={item.step}>
+            {index > 0 && <ChevronRight className="text-gray-400" size={16} />}
+            <button
+              onClick={() => handleNavigate(item.step)}
+              className={`flex items-center ${
+                currentStep === item.step 
+                  ? 'text-blue-600 font-medium' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className={`w-5 h-5 flex justify-center items-center rounded-full mr-2 text-sm
+                ${currentStep === item.step 
+                  ? 'bg-blue-600 text-white' 
+                  : 'border-2 border-gray-400 text-gray-400'
+                }`}
+              >
+                {item.step}
+              </div>
+              {item.label}
+            </button>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+  
+  
+  
+  
+  
   // Fetch form responses when program or tab changes
  // Fetch form responses when program or tab changes
 // StepIndicator Component
@@ -239,31 +393,36 @@ const HomePage = () => {
     </div>
   );
 };
-const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) => {
+const Header = ({ 
+  activeTab, 
+  selectedApplication, 
+  setActiveTab, 
+  openSettings,
+  currentStep = 1, // Ensure it starts from 1
+  selectedProgram,
+  setCurrentStep
+}) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200 z-10">
       <div className="flex items-center gap-4">
-      <button
-  onClick={() => setActiveTab('home')}
-  className="focus:outline-none hover:bg-gray-100 rounded-lg"
->
-  <h6
-    className="text-black font-bold hover:opacity-80 transition-opacity px-2"
-    style={{
-      fontFamily: 'CustomFont',
-      fontSize: '30px',
-      
-    }}
-  >
-    seco
-  </h6>
-</button>
+        <h6
+          className="text-black font-bold hover:opacity-80 transition-opacity px-2"
+          style={{
+            fontFamily: 'CustomFont',
+            fontSize: '30px',
+          }}
+        >
+          seco
+        </h6>
 
-        {/* <Breadcrumb 
+        <Breadcrumb 
           activeTab={activeTab} 
           selectedApplication={selectedApplication}
+          selectedProgram={selectedProgram}
           setActiveTab={setActiveTab}
-        /> */}
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+        />
       </div>
       
       <a
@@ -275,6 +434,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
     </div>
   );
 };
+
 
 // Card Components
 const Card = ({ children, className = '' }) => (
@@ -328,11 +488,10 @@ const CardContent = ({ children, className = '' }) => (
     });
     const modules = {
       toolbar: [
-        [{ 'header': '1'}, { 'header': '2'}, { 'header': '3'}, { 'font': [] }],
+        [{ 'header': '1'}, { 'header': '2'}],
         ['bold', 'italic', 'underline', 'strike'],
         [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-        ['link', 'image'],
-        ['clean'],
+       [{'link': 'text'}],
       ],
     };
     
@@ -422,195 +581,189 @@ const CardContent = ({ children, className = '' }) => (
         <div className="border-b border-gray-300 mt-4">
         {/* Placeholder for additional content */}
       </div> 
-      <div className="flex items-center justify-between mb-6 mt-8">
-          <input
-            type="text"
-            placeholder="Event Name"
-            className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
-            value={eventData.name}
-            onChange={(e) => setEventData({ ...eventData, name: e.target.value })}
-          />
-        </div>
+     
         {currentStep === 1 ? (
-          <div className="grid grid-cols-3 gap-6">
-            {/* Left column - Image upload */}
-            <div className="col-span-1">
-              <Card>
-                <CardContent className="p-0">
-                  <div 
-                    className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
-                    onClick={() => document.getElementById('imageUpload').click()}
-                  >
-                    {eventImage ? (
-                      <img 
-                        src={eventImage} 
-                        alt="Event" 
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="text-center p-4">
-                        <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">Click to upload event image</p>
-                      </div>
-                    )}
-                    <input
-                      id="imageUpload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-  
-            {/* Right column - Event details */}
-            <div className="col-span-2">
-              <Card>
-                <CardContent className="p-6 space-y-6">
-                <div className="w-full p-3 border rounded-md">
-      <ReactQuill
-        theme="snow"
-        value={eventData.description}
-        onChange={handleChange}
-        placeholder="Add Description"
-        modules={modules}  // Use the custom toolbar
-        formats={formats}  // Supported formats
-      />
-    </div>
-  
-                  {/* Sector dropdown */}
-                  <div className="mb-6">
-                    <label className="block text-sm text-gray-500 mb-1">Please Select Your sector</label>
-                    <select
-                      value={eventData.sector}
-                      onChange={(e) => setEventData({ ...eventData, sector: e.target.value })}
-                      className="w-full p-3 border rounded-md"
+           <><div className="flex items-center justify-between mb-6 mt-8">
+            <input
+              type="text"
+              placeholder="Event Name"
+              className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
+              value={eventData.name}
+              onChange={(e) => setEventData({ ...eventData, name: e.target.value })} />
+          </div><div className="grid grid-cols-3 gap-6">
+              {/* Left column - Image upload */}
+              <div className="col-span-1">
+                <Card>
+                  <CardContent className="p-0">
+                    <div
+                      className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
+                      onClick={() => document.getElementById('imageUpload').click()}
                     >
-                      <option value="" disabled>Select Sector</option>
-                      <option value="Technology">Technology</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Education">Education</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="Retail">Retail</option>
-                    </select>
-                  </div>
-  
-                  {/* Required Date Fields */}
-                  <div className="space-y-4">
-                  <div className="pt-6 border-t">
-                      <h3 className="text-lg font-medium text-gray-700 mb-4">Schedule of the event</h3>
-                      
-                    </div>
-                    <div className="flex gap-4">
-                    <div className="flex-1">
-      <label className="block text-sm text-gray-500 mb-1">
-        Application Start Date *
-      </label>
-      <input
-        type="date"
-        className="w-full border rounded-md px-3 py-2"
-        value={eventData.startDate}
-        onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
-        required
-      />
-    </div>
-    <div className="flex-1">
-      <label className="block text-sm text-gray-500 mb-1">
-        Application End Date *
-      </label>
-      <input
-        type="date"
-        className="w-full border rounded-md px-3 py-2"
-        value={eventData.endDate}
-        onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
-        required
-      />
-    </div></div>
-  
-                    {/* Custom Date Fields */}
-                    <div className="pt-6 border-t">
-                      <h3 className="text-lg font-medium text-gray-700 mb-4">Additional Important Dates</h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Add any additional program dates (e.g., Interview Rounds, Pitch Day, Demo Day)
-                      </p>
-                    </div>
-  
-                    {eventData.customFields.map(field => (
-                      <div key={field.id}>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-sm text-gray-500">
-                            {field.name}
-                          </label>
-                          <button
-                            onClick={() => removeCustomField(field.id)}
-                            className="text-red-500 hover:text-red-700"
-                            aria-label="Remove field"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                      {eventImage ? (
+                        <img
+                          src={eventImage}
+                          alt="Event"
+                          className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="text-center p-4">
+                          <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">Click to upload event image</p>
                         </div>
-                        <div className="flex gap-2">
+                      )}
+                      <input
+                        id="imageUpload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload} />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right column - Event details */}
+              <div className="col-span-2">
+                <Card>
+                  <CardContent className="p-6 space-y-6">
+                    <div className="w-full p-3 border rounded-md">
+                      <ReactQuill
+                        theme="snow"
+                        value={eventData.description}
+                        onChange={handleChange}
+                        placeholder="Add Description"
+                        modules={modules} // Use the custom toolbar
+                        formats={formats} // Supported formats
+                        style={{ whiteSpace: 'pre-wrap' }} // Preserve line breaks
+                      />
+                    </div>
+
+                    {/* Sector dropdown */}
+                    <div className="mb-6">
+                      <label className="block text-sm text-gray-500 mb-1">Please Select Your sector</label>
+                      <select
+                        value={eventData.sector}
+                        onChange={(e) => setEventData({ ...eventData, sector: e.target.value })}
+                        className="w-full p-3 border rounded-md"
+                      >
+                        <option value="" disabled>Select Sector</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Education">Education</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Retail">Retail</option>
+                      </select>
+                    </div>
+
+                    {/* Required Date Fields */}
+                    <div className="space-y-4">
+                      <div className="pt-6 border-t">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Schedule of the event</h3>
+
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="block text-sm text-gray-500 mb-1">
+                            Application Start Date *
+                          </label>
                           <input
                             type="date"
+                            className="w-full border rounded-md px-3 py-2"
+                            value={eventData.startDate}
+                            onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
+                            required />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-sm text-gray-500 mb-1">
+                            Application End Date *
+                          </label>
+                          <input
+                            type="date"
+                            className="w-full border rounded-md px-3 py-2"
+                            value={eventData.endDate}
+                            onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
+                            required />
+                        </div></div>
+
+                      {/* Custom Date Fields */}
+                      <div className="pt-6 border-t">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Additional Important Dates</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Add any additional program dates (e.g., Interview Rounds, Pitch Day, Demo Day)
+                        </p>
+                      </div>
+
+                      {eventData.customFields.map(field => (
+                        <div key={field.id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-sm text-gray-500">
+                              {field.name}
+                            </label>
+                            <button
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-red-500 hover:text-red-700"
+                              aria-label="Remove field"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="date"
+                              className="flex-1 border rounded-md px-3 py-2"
+                              value={field.date}
+                              onChange={(e) => updateCustomField(field.id, e.target.value)} />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add Custom Field Input */}
+                      <div className="pt-4">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Enter new date field name"
                             className="flex-1 border rounded-md px-3 py-2"
-                            value={field.date}
-                            onChange={(e) => updateCustomField(field.id, e.target.value)}
-                          />
+                            value={newFieldName}
+                            onChange={(e) => setNewFieldName(e.target.value)} />
+                          <button
+                            onClick={addCustomField}
+                            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2"
+                            disabled={!newFieldName.trim()}
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Field
+                          </button>
                         </div>
                       </div>
-                    ))}
-  
-                    {/* Add Custom Field Input */}
-                    <div className="pt-4">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Enter new date field name"
-                          className="flex-1 border rounded-md px-3 py-2"
-                          value={newFieldName}
-                          onChange={(e) => setNewFieldName(e.target.value)}
-                        />
-                        <button
-                          onClick={addCustomField}
-                          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2"
-                          disabled={!newFieldName.trim()}
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Field
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-  
-              {/* Buttons */}
-              <div className="flex justify-end gap-4 mt-6">
-                <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
-                  Cancel
-                </button>
-                {/* <button 
-                  onClick={() => {
-                    handleSubmit();
-                    setSkipForm(true);
-                    setCurrentStep(3);
-                  }}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-                >
-                  Review and Launch
-                </button> */}
-                <button 
-                  onClick={handleNext}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md"
-                >
-                  Next
-                </button>
+                  </CardContent>
+                </Card>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-4 mt-6">
+                  <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
+                    Cancel
+                  </button>
+                  {/* <button
+      onClick={() => {
+        handleSubmit();
+        setSkipForm(true);
+        setCurrentStep(3);
+      }}
+      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+    >
+      Review and Launch
+    </button> */}
+                  <button
+                    onClick={handleNext}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-md"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
+            </div></>
         ) : (
           <FormBuilderOptions
           programId={generatedId}
@@ -677,7 +830,7 @@ const CardContent = ({ children, className = '' }) => (
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
-      <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-none h-full">
+      <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-hide h-full">
         <div className="flex items-center gap-2 mb-6">
           <CompanyLogo />
           <span className="font-medium truncate">
@@ -748,7 +901,7 @@ const CardContent = ({ children, className = '' }) => (
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-hide">
       <Header 
   activeTab={activeTab}
   selectedApplication={selectedApplication}

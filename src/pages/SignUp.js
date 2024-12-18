@@ -36,36 +36,28 @@ const SignUp = () => {
   const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
-    // Set up session timeout
-    const setupSessionTimeout = () => {
+    // Check for existing session
+    const checkSession = async () => {
+      const user = auth.currentUser;
       const sessionData = localStorage.getItem('sessionData');
-      if (sessionData) {
-        const { sessionStartTime } = JSON.parse(sessionData);
-        const timeElapsed = new Date().getTime() - new Date(sessionStartTime).getTime();
-  
-        if (timeElapsed >= SESSION_TIMEOUT) {
-          handleLogout();
+      
+      if (user && sessionData) {
+        const { sessionStartTime, category, expiresAt } = JSON.parse(sessionData);
+        const now = new Date().getTime();
+        const expiration = new Date(expiresAt).getTime();
+        
+        if (now < expiration) {
+          // Session is still valid
+          handleCategoryBasedRedirect(category);
         } else {
-          // Set timeout for remaining time
-          const remainingTime = SESSION_TIMEOUT - timeElapsed;
-          setTimeout(handleLogout, remainingTime);
+          // Session expired
+          handleLogout();
         }
       }
     };
   
-    setupSessionTimeout();
-  
-    // Protect routes from direct URL access using auth state change
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (!user) {
-        // User is not signed in, clear session and navigate to signup
-        localStorage.removeItem('user');
-        navigate('/signup');
-      }
-    });
-  
-    return () => unsubscribe(); // Cleanup listener on unmount
-  }, [navigate]);
+    checkSession();
+  }, []);
   
 
   const handleCategorySubmit = () => {
@@ -127,6 +119,11 @@ const SignUp = () => {
   };
   const handleLogout = async () => {
     try {
+      const user = auth.currentUser;
+      if (user) {
+        const sessionRef = doc(db, 'sessions', user.uid);
+        await setDoc(sessionRef, { isActive: false }, { merge: true });
+      }
       await signOut(auth);
       localStorage.removeItem('sessionData');
       navigate('/signup');
@@ -142,22 +139,29 @@ const SignUp = () => {
   const createUserSession = async (uid, category) => {
     try {
       const sessionRef = doc(db, 'sessions', uid);
+      const sessionStartTime = new Date().toISOString();
+      const expiresAt = new Date(new Date().getTime() + SESSION_TIMEOUT);
+      
       const sessionData = {
         uid,
         category,
-        createdAt: new Date(),
-        lastActivity: new Date(),
+        sessionStartTime,
+        lastActivity: sessionStartTime,
         isActive: true,
-        expiresAt: new Date(new Date().getTime() + SESSION_TIMEOUT)
+        expiresAt
       };
       
-      // await setDoc(sessionRef, sessionData);
+      // Store session in Firestore
+      await setDoc(sessionRef, sessionData);
       
+      // Store in localStorage with all necessary data
       localStorage.setItem('sessionData', JSON.stringify({
         uid,
         category,
-        sessionStartTime: new Date().toISOString()
+        sessionStartTime,
+        expiresAt: expiresAt.toISOString()
       }));
+      
     } catch (error) {
       console.error('Error creating session:', error);
       throw error;
