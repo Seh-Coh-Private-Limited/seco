@@ -16,9 +16,9 @@ import {
   Upload,
   X
 } from 'lucide-react';
-import { default as React, useCallback, useState } from 'react';
+import { default as React, useCallback, useEffect, useState } from 'react';
 import FProgramDetailPage from '../components/Reviewsection';
-import { addDoc, collection, db, getDocs, query, where } from '../firebase';
+import { addDoc, collection, db, doc, getDoc, getDocs, query, updateDoc, where } from '../firebase';
 import RegistrationInfo from './ri';
 
 const Card = ({ children, className = '' }) => (
@@ -44,19 +44,75 @@ const questionTypes = [
   { id: 'rating', icon: <Star className="w-4 h-4" />, label: 'Rating' }
 ];
 
-const FormBuilder = ({ programId }) => {
+const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent }) => {
   const [formTitle, setFormTitle] = useState('Registration Questions');
   const [formDescription, setFormDescription] = useState('We will ask guests the following questions when they register for the event.');
   const [sections, setSections] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [currentStep, setCurrentStep] = useState('edit');
+  // const [currentStep, setCurrentStep] = useState(2);
   const [selectedSection, setSelectedSection] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [newSectionDescription, setNewSectionDescription] = useState('');
   const [modalQuestions, setModalQuestions] = useState([]);
   const [selectedModalQuestion, setSelectedModalQuestion] = useState(null);
+  const [programStatus, setProgramStatus] = useState(null);
+  const [existingQuestions, setExistingQuestions] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const checkProgramStatus = async () => {
+      if (!userId) return;
+
+      try {
+        // Get user's program status
+        const userRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setProgramStatus(userData.programStatus);
+
+          // If program is active, fetch existing questions
+          if (userData.programStatus === 'active') {
+            const programRef = collection(db, "programmes");
+            const programQuery = query(programRef, where("id", "==", programId));
+            const programSnapshot = await getDocs(programQuery);
+
+            if (!programSnapshot.empty) {
+              const programDoc = programSnapshot.docs[0];
+              const formCollectionRef = collection(programDoc.ref, "form");
+              const formSnapshot = await getDocs(formCollectionRef);
+
+              if (!formSnapshot.empty) {
+                const formData = formSnapshot.docs[0].data();
+                
+                // Transform questions into sections format
+                const transformedQuestions = {
+                  id: Date.now(),
+                  title: '',
+                  description: '',
+                  questions: formData.questions.map(q => ({
+                    ...q,
+                    id: Date.now() + Math.random(),
+                  }))
+                };
+                
+                setSections([transformedQuestions]);
+                setExistingQuestions(formData.questions);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking program status:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkProgramStatus();
+  }, [userId, programId]);
   const resetModalState = () => {
     setNewSectionTitle('');
     setNewSectionDescription('');
@@ -464,26 +520,23 @@ const FormBuilder = ({ programId }) => {
       return section;
     }));
   };
-
-  const handleFormLaunch = async () => {
+  const submitQuestions = async () => {
     try {
-      // Validate form fields
       if (!formTitle.trim()) {
         alert('Please enter a form title');
         return;
       }
-  
+
       if (!programId) {
         alert('Invalid program ID. Please check and try again.');
         return;
       }
-  
+
       if (sections.length === 0) {
-        alert('Please add at least one section to the form');
+        // alert('Please add at least one section to the form');
         return;
       }
-  
-      // Construct the simplified form data structure without IDs
+
       const formData = {
         questions: sections.flatMap(section =>
           section.questions.map(q => ({
@@ -491,72 +544,165 @@ const FormBuilder = ({ programId }) => {
             title: q.title,
             description: q.description || "",
             required: q.required || false,
-            options: q.options || [], // Only included for multiple choice/checkbox questions
+            options: q.options || [],
           }))
         ),
       };
-      
-  
-      // Reference to the "programmes" collection and query by program ID
+
       const programmesRef = collection(db, "programmes");
       const q = query(programmesRef, where("id", "==", programId));
       const querySnapshot = await getDocs(q);
-  
+
       if (querySnapshot.empty) {
         alert('No matching program found. Please check the program ID.');
         return;
       }
-  
+
       const docRef = querySnapshot.docs[0].ref;
-  
-      // Add the simplified form to the "form" subcollection
-      const formRef = await addDoc(collection(docRef, "form"), formData);
-  
-      console.log("Form successfully created with ID:", formRef.id);
+
+      // If there are existing questions, update them instead of creating new ones
+      if (existingQuestions) {
+        const formCollectionRef = collection(docRef, "form");
+        const formSnapshot = await getDocs(formCollectionRef);
+        
+        if (!formSnapshot.empty) {
+          const formDoc = formSnapshot.docs[0];
+          await updateDoc(formDoc.ref, formData);
+        } else {
+          await addDoc(collection(docRef, "form"), formData);
+        }
+      } else {
+        await addDoc(collection(docRef, "form"), formData);
+      }
+
       setIsModalOpen(false);
-                  resetModalState();
-      alert('Form successfully launched!');
+      resetModalState();
+      // alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
+      
+      // Move to next step after successful submission
+      setCurrentStep(3);
     } catch (error) {
-      console.error("Error creating form:", error.message || error);
-      alert('Failed to launch form. Please try again.');
+      console.error("Error saving form:", error.message || error);
+      alert('Failed to save form. Please try again.');
     }
   };
+
+  const handleFormLaunch = async () => {
+    try {
+      // Validate form fields
+      if (!programId) {
+        alert("Invalid program ID. Please check and try again.");
+        return;
+      }
+      if (!userId) {
+        alert("Invalid user ID. Please check and try again.");
+        return;
+      }
+  
+      if (programId) {
+        // Update existing program
+        const programmesRef = collection(db, 'programmes');
+        const q = query(programmesRef, where('id', '==', programId));
+        const querySnapshot = await getDocs(q);
+  
+        if (!querySnapshot.empty) {
+          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+          await updateDoc(docRef, {
+            programStatus: 'completed',
+            updatedAt: new Date(),
+          });
+        }
+      }
+  
+      // Reference to the "users" collection and query by the `uid` field
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("uid", "==", userId));
+      const querySnapshot = await getDocs(q);
+  
+      if (querySnapshot.empty) {
+        alert("No user found with the given user ID.");
+        return;
+      }
+  
+      // Since userId is unique, get the first matching document
+      const userDocRef = querySnapshot.docs[0].ref;
+  
+      // Update `programStatus` and set `programId` to null for the matched user
+      await updateDoc(userDocRef, {
+        programStatus: "completed",
+        programid: null,
+      });
+  
+      setCurrentStep(1);
+      setShowCreateEvent(false); // Close the form creation view
+    alert('Form successfully launched!');
+  
+    } catch (error) {
+      console.error("Error updating user:", error.message || error);
+      alert("Failed to update user. Please try again.");
+    }
+  };
+  
+  
   const QuestionCard = ({ section, question, isReview = false }) => {
     const isSelected = selectedQuestion === question.id;
 
     if (isReview) {
       return (
-        <Card className="mb-4">
+        <Card className={`mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
           <CardContent>
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{question.title}</h3>
-              {question.type === 'multipleChoice' || question.type === 'checkbox' ? (
-                <div className="space-y-2 pl-4">
-                  {question.options.map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      {question.type === 'multipleChoice' ? (
-                        <Circle className="w-4 h-4" />
-                      ) : (
-                        <CheckSquare className="w-4 h-4" />
-                      )}
-                      <span>{option}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-500 italic">
-                  {question.type === 'shortText' && 'Short answer text field'}
-                  {question.type === 'longText' && 'Long answer text field'}
-                  {question.type === 'date' && 'Date picker'}
-                  {question.type === 'time' && 'Time picker'}
-                  {question.type === 'fileUpload' && 'File upload field'}
-                  {question.type === 'rating' && 'Rating selector'}
-                </div>
-              )}
+            <div className="flex items-start gap-4">
+              <div className="cursor-move text-gray-400">
+                <GripVertical className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={question.title || ''}
+                  onChange={(e) => updateQuestion(section.id, question.id, { title: e.target.value })}
+                  className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
+                  placeholder="Question"
+                />
+                {(question.type === 'multipleChoice' || question.type === 'checkbox') && (
+                  <div className="space-y-2">
+                    {question.options && question.options.map((option, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        {question.type === 'multipleChoice' ? (
+                          <Circle className="w-4 h-4" />
+                        ) : (
+                          <CheckSquare className="w-4 h-4" />
+                        )}
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...question.options];
+                            newOptions[index] = e.target.value;
+                            updateQuestion(section.id, question.id, { options: newOptions });
+                          }}
+                          className="flex-1 border-none focus:outline-none focus:ring-0"
+                          placeholder={`Option ${index + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(!question.type || (question.type !== 'multipleChoice' && question.type !== 'checkbox')) && (
+                  <div className="text-gray-400 text-sm">
+                    {question.type === 'shortText' && 'Short answer text'}
+                    {question.type === 'longText' && 'Long answer text'}
+                    {question.type === 'date' && 'Date'}
+                    {question.type === 'time' && 'Time'}
+                    {question.type === 'fileUpload' && 'File upload'}
+                    {question.type === 'rating' && 'Rating'}
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       );
+    
     }
 
     return (
@@ -728,7 +874,7 @@ const FormBuilder = ({ programId }) => {
     <div className="flex flex-col h-full">
       <AddSectionModal />
       <div className="flex-1">
-        {currentStep === 'edit' ? (
+        {currentStep === 2 ? (
           <div className="p-6 bg-gray-50">
             <div className="max-w-3xl mx-auto">
               <RegistrationInfo />
@@ -766,13 +912,17 @@ const FormBuilder = ({ programId }) => {
             <div className="max-w-3xl mx-auto flex justify-between">
               
               <div className="ml-auto">
-                {currentStep === 'edit' ? (
-                  <button
-                    onClick={() => setCurrentStep('3')}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Review & Launch <ArrowRight className="w-4 h-4" />
-                  </button>
+                {currentStep === 2 ? (
+                 <button
+                 onClick={() => {
+                   submitQuestions(); // Call the submitQuestions function
+                   setCurrentStep(3); // Move to the next step
+                 }}
+                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+               >
+                 Review & Launch <ArrowRight className="w-4 h-4" />
+               </button>
+               
                 ) : (
                   <button
                     onClick={handleFormLaunch}

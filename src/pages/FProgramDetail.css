@@ -6,7 +6,7 @@
   }
   
   /* Ensure content aligns precisely with borders */
-  .fborder-b, .fborder-t {
+  .border-b, .fborder-t {
     border-color: #d1d5db; /* Tailwind gray-300 */
     margin: 0;
   }
@@ -21,7 +21,7 @@
   }
   
   /* Ensure images and content stretch to full width without padding */
-  .fw-full {
+  .w-full {
     width: 100%;
   }
   

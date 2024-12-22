@@ -2,6 +2,7 @@ import {
   faBook,
   faBuilding,
   faCamera,
+  faChevronRight,
   faCog,
   faCommentDots,
   faFile,
@@ -11,7 +12,6 @@ import {
   faMap,
   faPlus,
   faQuestion,
-
   faQuestionCircle,
   faRocket,
   faSignOutAlt,
@@ -19,8 +19,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, where } from 'firebase/firestore';
-import { ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where } from 'firebase/firestore';
+import { Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
@@ -31,20 +31,24 @@ import FormResponses from './FormResponses';
 import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
-const FormBuilderOptions = ({ onOptionSelect, onBack,programId }) => {
+
+const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent  }) => {
+  const auth = getAuth();
+  const user = auth.currentUser;
   return (
     <div className="max-w-4xl mx-auto p-4">
       {/* Directly render the FormBuilder */}
-      <FormBuilder programId={programId}/>
+      <FormBuilder programId={programId} userId={user.uid} currentStep={currentStep}
+        setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent} />
 
-      <div className="flex justify-start mt-6">
+      {/* <div className="flex justify-start mt-6">
         <button
           onClick={onBack}
           className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
         >
           Back
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };
@@ -60,17 +64,33 @@ const FounderDashboard = () => {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [error, setError] = useState(null);
+  const [userStatus, setUserStatus] = useState(null);
+  const [programid, setprogramid] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
 
   
   const navigate = useNavigate();
   const auth = getAuth();
   const db = getFirestore();
+ 
   useEffect(() => {
     const checkSession = () => {
       const sessionData = localStorage.getItem('sessionData');
       if (!sessionData) {
-        navigate('/signup');
-        return;
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+            // User is still signed in with Firebase, create new session
+            const newSession = {
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hour session
+              userId: user.uid
+            };
+            localStorage.setItem('sessionData', JSON.stringify(newSession));
+            loadAllData();
+          } else {
+            navigate('/signup');
+          }
+        });
+        return () => unsubscribe();
       }
   
       const { expiresAt } = JSON.parse(sessionData);
@@ -78,23 +98,58 @@ const FounderDashboard = () => {
       const expiration = new Date(expiresAt).getTime();
       
       if (now >= expiration) {
-        handleLogout();
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+            // User is still signed in with Firebase, refresh session
+            const newSession = {
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              userId: user.uid
+            };
+            localStorage.setItem('sessionData', JSON.stringify(newSession));
+            loadAllData();
+          } else {
+            handleLogout();
+          }
+        });
+        return () => unsubscribe();
+      
       }
     };
   
     checkSession();
     // Check session every minute
-    const interval = setInterval(checkSession, 60000);
+    const interval = setInterval(checkSession, 300000);
     
     return () => clearInterval(interval);
   }, []);
-
+ 
   // Auth state change effect
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        // User is signed in, check/create session
+        let sessionData = localStorage.getItem('sessionData');
+        let session = sessionData ? JSON.parse(sessionData) : null;
+        
+        const now = new Date().getTime();
+        const needsNewSession = !session || 
+          now >= new Date(session.expiresAt).getTime() || 
+          session.userId !== user.uid;
+
+        if (needsNewSession) {
+          // Create new session
+          session = {
+            expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+            userId: user.uid
+          };
+          localStorage.setItem('sessionData', JSON.stringify(session));
+        }
+
+        // Load data regardless of session status
         loadAllData();
       } else {
+        // No user is signed in
+        localStorage.removeItem('sessionData');
         navigate('/signup');
       }
     });
@@ -106,10 +161,7 @@ const FounderDashboard = () => {
     setError(null);
     
     const user = auth.currentUser;
-    if (!user) {
-      navigate('/signup');
-      return;
-    }
+    if (!user) return;
 
     try {
       await Promise.all([
@@ -130,7 +182,7 @@ const FounderDashboard = () => {
         const userData = userDoc.data();
         setCompanyDetails({
           name: userData.companyName || 'Company Name',
-          logo: userData.logoUrl || userData.companyLogo || null
+          logo: userData.logoUrl || null
         });
       }
     } catch (error) {
@@ -144,7 +196,11 @@ const FounderDashboard = () => {
   const fetchProgrammes = async (user) => {
     try {
       const programmesQuery = await getDocs(
-        query(collection(db, 'programmes'), where('uid', '==', user.uid))
+        query(
+          collection(db, 'programmes'),
+          where('uid', '==', user.uid),
+          where('programStatus', '!=', 'active')
+        )
       );
       
       const fetchedProgrammes = programmesQuery.docs.map(doc => ({
@@ -159,6 +215,7 @@ const FounderDashboard = () => {
       setProgrammes([]);
     }
   };
+  
   // Add reload function to handle manual reloads
   const handleReload = () => {
     loadAllData();
@@ -219,58 +276,146 @@ const FounderDashboard = () => {
   const openSettings = () => {
     setActiveTab('settings'); // Switch to settings view
   };
-  
-  const Breadcrumb = ({ 
-    currentStep, 
-    setCurrentStep,
-    showCreateEvent
-  }) => {
-    const handleNavigate = (step) => {
-      // Only allow navigation to previous steps
-      if (step <= currentStep) {
-        setCurrentStep(step);
-      }
-    };
-  
-    // Don't show breadcrumbs when not creating a program
-    if (!showCreateEvent) {
-      return null;
+  // Update the Breadcrumb component
+  const Breadcrumb = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
+    // Handle Settings view
+    if (activeTab === 'settings') {
+      return (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <FontAwesomeIcon
+            icon={faChevronRight}
+            className="text-gray-400 w-3 h-3"
+          />
+          <span className="text-gray-900 font-medium">Settings</span>
+        </div>
+      );
     }
   
-    const steps = [
-      { step: 1, label: 'Basic Details' },
-      { step: 2, label: 'Form Builder' },
-      { step: 3, label: 'Review & Launch' }
-    ];
-  
-    return (
-      <div className="flex items-center space-x-2">
-        {steps.slice(0, currentStep).map((item, index) => (
-          <React.Fragment key={item.step}>
-            {index > 0 && <ChevronRight className="text-gray-400" size={16} />}
-            <button
-              onClick={() => handleNavigate(item.step)}
-              className={`flex items-center ${
-                currentStep === item.step 
-                  ? 'text-blue-600 font-medium' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <div className={`w-5 h-5 flex justify-center items-center rounded-full mr-2 text-sm
-                ${currentStep === item.step 
-                  ? 'bg-blue-600 text-white' 
-                  : 'border-2 border-gray-400 text-gray-400'
-                }`}
+    // Handle Program Creation steps
+    if (showCreateEvent) {
+      return (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <FontAwesomeIcon
+            icon={faChevronRight}
+            className="text-gray-400 w-3 h-3"
+          />
+          {currentStep === 1 && (
+            <span className="text-gray-900 font-medium">Basic Details</span>
+          )}
+          {currentStep === 2 && (
+            <>
+              <span 
+                className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+                onClick={() => setCurrentStep(1)}
               >
-                {item.step}
-              </div>
-              {item.label}
-            </button>
-          </React.Fragment>
-        ))}
-      </div>
-    );
+                Basic Details
+              </span>
+              <FontAwesomeIcon
+                icon={faChevronRight}
+                className="text-gray-400 w-3 h-3"
+              />
+              <span className="text-gray-900 font-medium">Form Builder</span>
+            </>
+          )}
+          {currentStep === 3 && (
+            <>
+              <span 
+                className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+                onClick={() => setCurrentStep(1)}
+              >
+                Basic Details
+              </span>
+              <FontAwesomeIcon
+                icon={faChevronRight}
+                className="text-gray-400 w-3 h-3"
+              />
+              <span 
+                className="text-gray-600 hover:text-gray-900 cursor-pointer"
+                onClick={() => setCurrentStep(2)}
+              >
+                Form Builder
+              </span>
+              <FontAwesomeIcon
+                icon={faChevronRight}
+                className="text-gray-400 w-3 h-3"
+              />
+              <span className="text-gray-900 font-medium">Review Section</span>
+            </>
+          )}
+        </div>
+      );
+    }
+  
+    // Return null if no conditions are met
+    return null;
   };
+  
+  
+  // const Breadcrumb = ({ 
+  //   activeTab,
+  //   selectedApplication,
+  //   selectedProgram,
+  //   setActiveTab,
+  //   currentStep,
+  //   setCurrentStep,
+  //   showCreateEvent
+  // }) => {
+  //   const getBreadcrumbItems = () => {
+  //     const items = [];
+      
+  //     // Only show breadcrumbs during program creation
+  //     if (showCreateEvent) {
+  //       // Always add Basic Details for both steps
+  //       items.push({
+  //         label: 'Basic Details',
+  //         onClick: () => setCurrentStep(1)
+  //       });
+        
+  //       // Add Form Builder for step 2
+  //       if (currentStep === 2) {
+  //         items.push({
+  //           label: 'Form Builder',
+  //           onClick: null // No onClick for current step
+  //         });
+  //       }
+  //     }
+      
+  //     return items;
+  //   };
+    
+  //   const breadcrumbItems = getBreadcrumbItems();
+    
+  //   // Don't render anything if there are no items
+  //   if (breadcrumbItems.length === 0) return null;
+    
+  //   return (
+  //     <div className="flex items-center gap-2 text-sm text-gray-600">
+  //       {breadcrumbItems.map((item, index) => (
+  //         <React.Fragment key={item.label}>
+  //           {index > 0 && (
+  //             <FontAwesomeIcon
+  //               icon={faChevronRight}
+  //               className="text-gray-400 w-3 h-3 mx-2"
+  //             />
+  //           )}
+  //           {item.onClick ? (
+  //             <button
+  //               onClick={item.onClick}
+  //               className="text-gray-600 hover:text-gray-900 focus:outline-none"
+  //             >
+  //               {item.label}
+  //             </button>
+  //           ) : (
+  //             <span className="text-gray-900 font-medium">
+  //               {item.label}
+  //             </span>
+  //           )}
+  //         </React.Fragment>
+  //       ))}
+  //     </div>
+  //   );
+  // };
+  
   
   
   
@@ -324,7 +469,137 @@ const StepIndicator = ({ currentStep }) => {
     </div>
   );
 };
-const HomePage = () => {
+const HomePage = ({ userStatus, 
+  programid, 
+  showCreateEvent, 
+  setShowCreateEvent, 
+  currentStep, 
+  setCurrentStep  }) => {
+    const auth = getAuth();
+  const db = getFirestore();
+  //  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  // const [currentStep, setCurrentStep] = useState(1);
+  const [eventData, setEventData] = useState(null);
+  const [isClosing, setIsClosing] = useState(false); // Add state to track closing operation
+
+  useEffect(() => {
+    const fetchUserStatus = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
+
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('uid', '==', user.uid)
+        );
+        const querySnapshot = await getDocs(usersQuery);
+
+        if (!querySnapshot.empty) {
+          const userData = querySnapshot.docs[0].data();
+          setUserStatus(userData.programStatus || null);
+          setprogramid(userData.programid || null);
+        }
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+      } finally {
+        // setIsLoading(false);
+      }
+    };
+
+    fetchUserStatus();
+  }, [auth, db, navigate]);
+ 
+
+  // Get userStatus and programid from parent component's state
+  // const { userStatus, programid } = { userStatus, programid };
+  // const oncloseoperation = async () => {
+  //   if (isClosing) return; // Prevent multiple simultaneous close operations
+    
+  //   setIsClosing(true);
+  //   try {
+  //     // Reference to the "users" collection and query by the `uid` field
+  //     const usersRef = collection(db, "users");
+  //     const q = query(usersRef, where("uid", "==", auth.currentUser.uid));
+  //     const querySnapshot = await getDocs(q);
+
+  //     if (!querySnapshot.empty) {
+  //       const userDocRef = querySnapshot.docs[0].ref;
+  //       await updateDoc(userDocRef, {
+  //         programStatus: "completed",
+  //         programid: null,
+  //       });
+  //     }
+      
+  //     // Close the form immediately after database update
+  //     setShowCreateEvent(false);
+  //     setCurrentStep(1);
+  //   } catch (error) {
+  //     console.error('Error closing form:', error);
+  //   } finally {
+  //     setIsClosing(false);
+  //   }
+  // };
+  const handleClose = async () => {
+    setIsClosing(true); // Set closing state
+
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("uid", "==", auth.currentUser.uid));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDocRef = querySnapshot.docs[0].ref;
+        await updateDoc(userDocRef, {
+          programStatus: "completed",
+          programid: null,
+        });
+      }
+
+      setShowCreateEvent(false);
+      setCurrentStep(1);
+
+      // Keep isClosing true for 2 seconds after the form closes
+      setTimeout(() => {
+        setIsClosing(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error closing form:', error);
+      setIsClosing(false);
+    }
+  };
+  useEffect(() => {
+    // Only proceed if not currently closing
+    if (isClosing) return;
+
+    if (userStatus === 'active' && programid) {
+      // Add a delay before checking program status
+      const timer = setTimeout(() => {
+        const fetchExistingProgram = async () => {
+          try {
+            const programmesRef = collection(db, 'programmes');
+            const q = query(programmesRef, where('id', '==', programid));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+              const programData = querySnapshot.docs[0].data();
+              setEventData(programData);
+              setShowCreateEvent(true);
+            }
+          } catch (error) {
+            console.error('Error fetching existing program:', error);
+          }
+        };
+    
+        fetchExistingProgram();
+      }, 2000); // 2 second delay
+
+      return () => clearTimeout(timer);
+    }
+  }, [userStatus, programid, isClosing]);
   return (
     <div className="md:px-56 overflow-none mt-8">
       {/* <div className="p-4">
@@ -358,37 +633,45 @@ const HomePage = () => {
 
      
  
-      {!showCreateEvent ? (
-        
+     
+      {showCreateEvent ? (
+       <CreateEventForm 
+       onClose={handleClose}
+       initialData={eventData}
+       programId={programid}
+       currentStep={currentStep}
+       setCurrentStep={setCurrentStep}
+       isClosing={isClosing}
+     />
+      ) : (
+        // Rest of your existing HomePage content
         <div className="flex-1 flex flex-col items-center justify-center mt-28">
-          <div className="bg-gray-50 rounded-lg p-8 max-w-lg w-full text-center">  
-            <div className="mb-4">
-              <Plus className="w-12 h-12 text-gray-400 mx-auto" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Create your first form</h2>
-            <p className="text-gray-600 mb-6">
-              Get started by creating an event, program, or cohort to begin collecting responses.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => setShowCreateEvent(true)}
-                className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Plus size={16} />
-               
-              </button>
-              <button
-                onClick={() => setShowCreateEvent(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-              >
-               
-                New Program
-              </button>
-            </div>
+        <div className="bg-gray-50 rounded-lg p-8 max-w-lg w-full text-center">  
+          <div className="mb-4">
+            <Plus className="w-12 h-12 text-gray-400 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Create your first form</h2>
+          <p className="text-gray-600 mb-6">
+            Get started by creating an event, program, or cohort to begin collecting responses.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => setShowCreateEvent(true)}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Plus size={16} />
+             
+            </button>
+            <button
+              onClick={() => setShowCreateEvent(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+             
+              New Program
+            </button>
           </div>
         </div>
-      ) : (
-        <CreateEventForm onClose={() => setShowCreateEvent(false)} />
+      </div>
       )}
     </div>
   );
@@ -398,10 +681,12 @@ const Header = ({
   selectedApplication, 
   setActiveTab, 
   openSettings,
-  currentStep = 1, // Ensure it starts from 1
+  currentStep,
   selectedProgram,
-  setCurrentStep
+  setCurrentStep,
+  showCreateEvent
 }) => {
+  
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200 z-10">
       <div className="flex items-center gap-4">
@@ -414,15 +699,23 @@ const Header = ({
         >
           seco
         </h6>
-
+        {console.log("currentStep",currentStep)}  
         <Breadcrumb 
-          activeTab={activeTab} 
+          currentStep={currentStep} 
+          showCreateEvent={showCreateEvent}
+          setCurrentStep={setCurrentStep}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}  // Pass the prop here
+        />
+        {/* <Breadcrumb 
+          activeTab={activeTab}
           selectedApplication={selectedApplication}
           selectedProgram={selectedProgram}
           setActiveTab={setActiveTab}
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
-        />
+          showCreateEvent={showCreateEvent}
+        /> */}
       </div>
       
       <a
@@ -459,33 +752,71 @@ const CardContent = ({ children, className = '' }) => (
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('sessionData'); // Clear session data
       await signOut(auth);
       navigate('/signup');
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
-  const CreateEventForm = ({ onClose }) => {
-    const [currentStep, setCurrentStep] = useState(1);
-    const [eventImage, setEventImage] = useState(null);
-    const [skipForm, setSkipForm] = useState(false);
-    const [selectedFormOption, setSelectedFormOption] = useState(null);
-    const [newFieldName, setNewFieldName] = useState('');
-    const [eventData, setEventData] = useState({
-      name: '',
-      startDate: '',
-      startTime: '',
-      endDate: '',
-      endTime: '',
-      sector: '',
-      location: '',
-      description: '',
-      Eligibility: '',
-      Incentives: '',
-      isPublic: true,
-      calendar: 'Google Calendar',
-      customFields: [] // Add this for dynamic date fields
-    });
+  const CreateEventForm = ({ onClose, 
+    initialData, 
+    programId,
+    currentStep,
+    setCurrentStep,
+    isClosing }) => {
+    // console.log('Initial Data:', initialData); // Enhanced logging
+    // const [currentStep, setCurrentStep] = useState(1);
+
+    // const [currentStep, setCurrentStep] = useState(1);
+  const [eventImage, setEventImage] = useState(null);
+  const [skipForm, setSkipForm] = useState(false);
+  const [selectedFormOption, setSelectedFormOption] = useState(null);
+  const [newFieldName, setNewFieldName] = useState('');
+  // const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    console.log('Current Step:', currentStep);
+  }, [currentStep]);
+  // Single source of truth for event data
+  const [eventData, setEventData] = useState({
+    name: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    sector: '',
+    location: '',
+    description: '',
+    Eligibility: '',
+    Incentives: '',
+    isPublic: true,
+    calendar: 'Google Calendar',
+    customFields: []
+  });
+
+  // Use useEffect to update state when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      console.log('Updating event data with initial data:', initialData);
+      setEventData(prevData => ({
+        ...prevData,
+        name: initialData.name || '',
+        startDate: initialData.startDate || '',
+        endDate: initialData.endDate || '',
+        sector: initialData.sector || '',
+        location: initialData.location || '',
+        description: initialData.description || '',
+        isPublic: initialData.isPublic !== undefined ? initialData.isPublic : true,
+        calendar: initialData.calendar || 'Google Calendar',
+        customFields: initialData.customFields || []
+      }));
+
+      if (initialData.image) {
+        setEventImage(initialData.image);
+      }
+    }
+  }, [initialData]);
     const modules = {
       toolbar: [
         [{ 'header': '1'}, { 'header': '2'}],
@@ -520,12 +851,16 @@ const CardContent = ({ children, className = '' }) => (
     const handleNext = () => {
       handleSubmit();
       setCurrentStep(2);
-     
     };
   
     const handleBack = () => {
       setCurrentStep(1);
     };
+    const handleStepChange = (step) => {
+      setCurrentStep(step);
+    };
+  
+   
   
     // Add these functions for managing custom fields
     const addCustomField = () => {
@@ -559,20 +894,77 @@ const CardContent = ({ children, className = '' }) => (
   
     const handleSubmit = async () => {
       try {
-        const docRef = await addDoc(collection(db, 'programmes'), {
-          ...eventData,
-          image: eventImage,
-          id: generatedId,
-          uid: auth.currentUser.uid,
-          createdAt: new Date(),
-        });
-        console.log('Event added with ID:', docRef.id);
-        // onClose();
+        if (programId) {
+          // Update existing program
+          const programmesRef = collection(db, 'programmes');
+          const q = query(programmesRef, where('id', '==', programId));
+          const querySnapshot = await getDocs(q);
+    
+          if (!querySnapshot.empty) {
+            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+            await updateDoc(docRef, {
+              ...eventData,
+              image: eventImage,
+              programStatus: 'active',
+              updatedAt: new Date(),
+            });
+    
+            // Update user's program status and program ID
+            const usersQuery = query(
+              collection(db, 'users'),
+              where('uid', '==', auth.currentUser.uid)
+            );
+            const userSnapshot = await getDocs(usersQuery);
+    
+            if (!userSnapshot.empty) {
+              const userDoc = userSnapshot.docs[0];
+              const userDocRef = doc(db, 'users', userDoc.id);
+              await updateDoc(userDocRef, {
+                programStatus: 'active', // Update the status to 'active' or a relevant value
+                programid: programId, // Update the programId field
+              });
+            }
+          }
+        } else {
+          // Create new program
+          const docRef = await addDoc(collection(db, 'programmes'), {
+            ...eventData,
+            image: eventImage,
+            id: generatedId,
+            uid: auth.currentUser.uid,
+            programStatus: 'active',
+            createdAt: new Date(),
+          });
+    
+          // Update user's program status
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const querySnapshot = await getDocs(usersQuery);
+    
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: 'active',
+              programid: generatedId,
+            });
+          }
+        }
       } catch (e) {
-        console.error('Error adding event: ', e);
+        console.error('Error saving program: ', e);
       }
     };
-  
+    
+    useEffect(() => {
+      console.log('Current eventData:', eventData);
+    }, [eventData]);
+
+    const handleClose = () => {
+      if (isClosing) return;
+      onClose();
+    };
     return (
       <div className="max-w-4xl mx-auto p-4">
         
@@ -588,8 +980,8 @@ const CardContent = ({ children, className = '' }) => (
               type="text"
               placeholder="Event Name"
               className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
-              value={eventData.name}
-              onChange={(e) => setEventData({ ...eventData, name: e.target.value })} />
+              value={eventData.name || ''}
+              onChange={(e) => setEventData(prev => ({ ...prev, name: e.target.value }))} />
           </div><div className="grid grid-cols-3 gap-6">
               {/* Left column - Image upload */}
               <div className="col-span-1">
@@ -742,9 +1134,13 @@ const CardContent = ({ children, className = '' }) => (
 
                 {/* Buttons */}
                 <div className="flex justify-end gap-4 mt-6">
-                  <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
-                    Cancel
-                  </button>
+                <button 
+          onClick={handleClose}
+          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+          disabled={isClosing}
+        >
+          {isClosing ? 'Closing...' : 'Cancel'}
+        </button>
                   {/* <button
       onClick={() => {
         handleSubmit();
@@ -766,12 +1162,15 @@ const CardContent = ({ children, className = '' }) => (
             </div></>
         ) : (
           <FormBuilderOptions
-          programId={generatedId}
-            onOptionSelect={(option) => {
-              setSelectedFormOption(option);
-            }}
-            onBack={() => setCurrentStep(1)}
-          />
+    programId={userStatus === 'active' ? programid : generatedId}
+    onOptionSelect={(option) => {
+      setSelectedFormOption(option);
+    }}
+    onBack={handleBack}
+    currentStep={currentStep}
+    setCurrentStep={setCurrentStep}
+    setShowCreateEvent={setShowCreateEvent} // Pass this prop
+  />
         )}
       </div>
     );
@@ -807,8 +1206,9 @@ const CardContent = ({ children, className = '' }) => (
   );
 
   const ProgramHeader = ({ program }) => (
+    <div className="md:px-56 overflow-none mt-8">
     <div className="border-b border-gray-200 p-4">
-      <h2 className="text-2xl font-bold mb-4">{program.title || 'Untitled Program'}</h2>
+      <h2 className="text-2xl font-bold mb-4">{program.name || 'Untitled Program'}</h2>
       <div className="flex space-x-6">
         {['summary', 'formResponses', 'editProgram', 'editForm'].map((tab) => (
           <button
@@ -824,6 +1224,7 @@ const CardContent = ({ children, className = '' }) => (
           </button>
         ))}
       </div>
+    </div>
     </div>
   );
 
@@ -855,7 +1256,7 @@ const CardContent = ({ children, className = '' }) => (
                 <NavItem
                   key={programme.id}
                   icon={faFile}
-                  label={programme.title || 'Untitled Program'}
+                  label={programme.name || 'Untitled Program'}
                   active={selectedProgram?.id === programme.id}
                   onClick={() => handleProgramClick(programme)}
                 />
@@ -902,20 +1303,31 @@ const CardContent = ({ children, className = '' }) => (
 
       {/* Main content */}
       <div className="flex-1 overflow-auto scrollbar-hide">
+        
       <Header 
-  activeTab={activeTab}
-  selectedApplication={selectedApplication}
-  setActiveTab={setActiveTab}
-  openSettings={openSettings}
-/>
+          activeTab={activeTab}
+          selectedApplication={selectedApplication}
+          setActiveTab={setActiveTab}
+          openSettings={openSettings}
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          showCreateEvent={showCreateEvent}
+        />
         <main className="h-full">
-        {activeTab === 'home' && <HomePage />}
+        {activeTab === 'home' && <HomePage 
+              userStatus={userStatus} 
+              programid={programid}
+              showCreateEvent={showCreateEvent}
+              setShowCreateEvent={setShowCreateEvent}
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+            />}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full">
               <ProgramHeader program={selectedProgram} />
               <div className="p-4">
                 {activeProgramTab === 'summary' && (
-                  <div>
+                  <div className='md:px-56 overflow-none mt-8'>
                     <h3 className="text-lg font-semibold mb-4">Program Summary</h3>
                     {/* Add program summary content */}
                   </div>
@@ -926,6 +1338,7 @@ const CardContent = ({ children, className = '' }) => (
 
 {activeProgramTab === 'formResponses' && (
     <div className="h-full">
+      <div className="md:px-56 overflow-none mt-8">
       <div className="p-4">
         <div className="flex justify-between items-center mb-6">
           {/* <h3 className="text-lg font-semibold">Form Responses</h3>
@@ -935,6 +1348,7 @@ const CardContent = ({ children, className = '' }) => (
         </div>
         <FormResponses programId={selectedProgram.id} />
       </div>
+      </div>
     </div>
   )}
 
@@ -942,13 +1356,13 @@ const CardContent = ({ children, className = '' }) => (
 
 
                 {activeProgramTab === 'editProgram' && (
-                  <div>
+                  <div className="md:px-56 overflow-none mt-8">
                     <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
                     {/* Add edit program form */}
                   </div>
                 )}
                 {activeProgramTab === 'editForm' && (
-                  <div>
+                  <div className="md:px-56 overflow-none mt-8">
                     <h3 className="text-lg font-semibold mb-4">Edit Form</h3>
                     {/* Add edit form content */}
                   </div>
