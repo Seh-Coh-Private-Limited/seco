@@ -19,6 +19,7 @@
     "firebase": "^10.14.1",
     "font-awesome": "^4.7.0",
     "html-react-parser": "^5.2.1",
+    "html-to-text": "^9.0.5",
     "lucide-react": "^0.456.0",
     "otp-input-react": "^0.3.0",
     "quill": "^2.0.3",

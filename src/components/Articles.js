@@ -118,7 +118,8 @@ function Articles({ handleTabChange }) {
         <FProgramCard
           key={program.id}
           id={program.id}
-          title={program.title}
+          title={program.name}
+          category={program.sector}
           image={program.image}
           location={program.location}
           description={program.description}
