@@ -44,7 +44,7 @@ const questionTypes = [
   { id: 'rating', icon: <Star className="w-4 h-4" />, label: 'Rating' }
 ];
 
-const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent }) => {
+const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent,onFormLaunchSuccess, }) => {
   const [formTitle, setFormTitle] = useState('Registration Questions');
   const [formDescription, setFormDescription] = useState('We will ask guests the following questions when they register for the event.');
   const [sections, setSections] = useState([]);
@@ -267,14 +267,15 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
               <GripVertical className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <input
-                type="text"
-                value={localTitle}
-                onChange={handleTitleChange}
-                onBlur={handleTitleBlur}
-                className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
-                placeholder="Question"
-              />
+            <input
+  type="text"
+  value={localTitle}
+  onChange={handleTitleChange}
+  onBlur={handleTitleBlur}
+  onFocus={() => setLocalTitle(prev => prev === "Question" ? "" : prev)}
+  className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
+  placeholder={localTitle ? "" : "Question"}
+/>
               {(question.type === 'multipleChoice' || question.type === 'checkbox') && (
                 <div className="space-y-2">
                   {question.options.map((option, index) => (
@@ -331,21 +332,25 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
 
   // Enhanced Modal component
   const AddSectionModal = () => {
-    const [showQuestionTypes, setShowQuestionTypes] = useState(true); // Set to true by default
+    const [questions, setQuestions] = useState([]);
 
     if (!isModalOpen) return null;
+
+    const addQuestion = (typeId) => {
+        const newQuestion = addModalQuestion(typeId);
+        setQuestions([...questions, newQuestion]);
+    };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="p-6 border-b">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">Add Questions</h2>
+                        <h2 className="text-xl font-semibold">Questions</h2>
                         <button
                             onClick={() => {
                                 setIsModalOpen(false);
                                 resetModalState();
-                                setShowQuestionTypes(false);
                             }}
                             className="text-gray-500 hover:text-gray-700"
                         >
@@ -356,26 +361,23 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
 
                 <div className="p-6 flex-1 overflow-y-auto">
                     <div className="space-y-6">
-                        <div>
-                            <h3 className="text-lg font-medium mb-4">Questions</h3>
-                            {modalQuestions.map(question => (
-                                <ModalQuestionCard key={question.id} question={question} />
+                        {modalQuestions.map(question => (
+                            <ModalQuestionCard key={question.id} question={question} />
+                        ))}
+                        
+                        <h3 className="text-lg font-medium mb-4">Add Questions</h3>
+                        
+                        <div className="grid grid-cols-4 gap-2 mt-4">
+                            {questionTypes.map(type => (
+                                <button
+                                    key={type.id}
+                                    onClick={() => addQuestion(type.id)}
+                                    className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
+                                >
+                                    {type.icon}
+                                    <span>{type.label}</span>
+                                </button>
                             ))}
-                            
-                            <div className="grid grid-cols-4 gap-2 mt-4">
-                                {questionTypes.map(type => (
-                                    <button
-                                        key={type.id}
-                                        onClick={() => {
-                                            addModalQuestion(type.id);
-                                        }}
-                                        className="p-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md flex flex-col items-center gap-1"
-                                    >
-                                        {type.icon}
-                                        <span>{type.label}</span>
-                                    </button>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -386,17 +388,13 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                             onClick={() => {
                                 setIsModalOpen(false);
                                 resetModalState();
-                                setShowQuestionTypes(false);
                             }}
                             className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
                         >
                             Cancel
                         </button>
                         <button
-                            onClick={() => {
-                                handleAddSection();
-                                setShowQuestionTypes(false);
-                            }}
+                            onClick={handleAddSection}
                             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                             disabled={!modalQuestions.length}
                         >
@@ -591,20 +589,20 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
     try {
       // Validate form fields
       if (!programId) {
-        alert("Invalid program ID. Please check and try again.");
+        alert('Invalid program ID. Please check and try again.');
         return;
       }
       if (!userId) {
-        alert("Invalid user ID. Please check and try again.");
+        alert('Invalid user ID. Please check and try again.');
         return;
       }
-  
+
       if (programId) {
         // Update existing program
         const programmesRef = collection(db, 'programmes');
         const q = query(programmesRef, where('id', '==', programId));
         const querySnapshot = await getDocs(q);
-  
+
         if (!querySnapshot.empty) {
           const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
           await updateDoc(docRef, {
@@ -613,36 +611,39 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
           });
         }
       }
-  
+
       // Reference to the "users" collection and query by the `uid` field
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("uid", "==", userId));
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('uid', '==', userId));
       const querySnapshot = await getDocs(q);
-  
+
       if (querySnapshot.empty) {
-        alert("No user found with the given user ID.");
+        alert('No user found with the given user ID.');
         return;
       }
-  
+
       // Since userId is unique, get the first matching document
       const userDocRef = querySnapshot.docs[0].ref;
-  
+
       // Update `programStatus` and set `programId` to null for the matched user
       await updateDoc(userDocRef, {
-        programStatus: "completed",
+        programStatus: 'completed',
         programid: null,
       });
-  
+
       setCurrentStep(1);
       setShowCreateEvent(false); // Close the form creation view
-    alert('Form successfully launched!');
-  
+      alert('Form successfully launched!');
+
+      // Trigger the callback to notify the parent component
+      if (onFormLaunchSuccess) {
+        onFormLaunchSuccess();
+      }
     } catch (error) {
-      console.error("Error updating user:", error.message || error);
-      alert("Failed to update user. Please try again.");
+      console.error('Error updating user:', error.message || error);
+      alert('Failed to update user. Please try again.');
     }
   };
-  
   
   const QuestionCard = ({ section, question, isReview = false }) => {
     const isSelected = selectedQuestion === question.id;
@@ -873,7 +874,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   return (
     <div className="flex flex-col h-full">
       <AddSectionModal />
-      <div className="flex-1">
+      <div className="flex-1 w-full overflow-y-auto">
         {currentStep === 2 ? (
           <div className="p-6 bg-gray-50">
             <div className="max-w-3xl mx-auto">
@@ -903,7 +904,9 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
             </div>
           </div>
         ) : (
+          <div className="w-full">
           <FProgramDetailPage programId={programId} />
+          </div>
         )}
       </div>
     
@@ -925,11 +928,12 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                
                 ) : (
                   <button
-                    onClick={handleFormLaunch}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                  >
-                    Launch Form <ArrowRight className="w-4 h-4" />
-                  </button>
+                 
+                  onClick={handleFormLaunch}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 mt-auto"
+                >
+                  Launch Form <ArrowRight className="w-4 h-4" />
+                </button>
                 )}
               </div>
             </div>

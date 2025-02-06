@@ -39,7 +39,7 @@ const defaultFormData = {
     },
     contacts: [defaultContactFields] 
   };
-const SettingsForm = () => {
+const SettingsForm = ({ onProfileUpdate }) => {
     const auth = getAuth();
     // const [formData, setFormData] = useState(defaultFormData);
     const [formData, setFormData] = React.useState({
@@ -285,6 +285,9 @@ const SettingsForm = () => {
       try {
         const db = getFirestore();
         await setDoc(doc(db, 'users', user.uid), formData, { merge: true });
+        if (onProfileUpdate) {
+          await onProfileUpdate();
+        }
         alert('Settings updated successfully!');
         setError(''); // Clear any previous errors
       } catch (error) {

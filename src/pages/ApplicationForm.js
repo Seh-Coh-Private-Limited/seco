@@ -181,7 +181,7 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
 
     try {
       const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyCVO0SZ7YlX7uTsbwaDKuXRJsDKtnO7pts',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyC4XSyDhbh7P-9oyibbHR0Zp8_z5fWgD6A',
         {
           method: 'POST',
           headers: {

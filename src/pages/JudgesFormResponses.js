@@ -4,7 +4,7 @@ import { faClose, faGripVertical ,faPenToSquare,faTimes} from '@fortawesome/free
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db,doc,updateDoc ,getDoc } from '../firebase';
 
-const FormResponses = ({ programId, loading = false }) => {
+const JudgesFormResponses = ({ programId, loading = false }) => {
   const [responses, setResponses] = useState([]);
   const [selectedRow, setSelectedRow] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -28,9 +28,8 @@ const FormResponses = ({ programId, loading = false }) => {
     
   });
   const [selectedJudges, setSelectedJudges] = useState({});
-  const [selectedJudgeTab, setSelectedJudgeTab] = useState('average');
-  const [judgeScores, setJudgeScores] = useState({});
-  const [judgeRemarks, setJudgeRemarks] = useState({});
+  const [currentJudgeId, setCurrentJudgeId] = useState(null);
+
   const [visibleRemarks, setVisibleRemarks] = useState({});
 
   const toggleRemarkVisibility = (category) => {
@@ -54,37 +53,9 @@ const FormResponses = ({ programId, loading = false }) => {
     'mobile',
     'category',
     'website',
-    'assignedJudge' 
+   
   ];
-  const fetchJudges = async (programDocId) => {
-    try {
-      if (!programDocId) {
-        console.log("No program doc ID provided");
-        return;
-      }
-
-      // First get the program document reference
-      const judgesCollectionRef = collection(db, 'programmes', programDocId, 'judges');
-      const judgesSnapshot = await getDocs(judgesCollectionRef);
-      
-      if (judgesSnapshot.empty) {
-        console.log("No judges found for this program");
-        setJudges([]);
-        return;
-      }
-
-      const judgesList = judgesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      console.log("Fetched judges:", judgesList); // Debug log
-      setJudges(judgesList);
-    } catch (error) {
-      console.error('Error fetching judges:', error);
-      setJudges([]); // Set empty array on error
-    }
-  };
+  
 
 // Handle judge assignment
 const handleJudgeAssignment = async (responseId, judgeId, action) => {
@@ -207,10 +178,9 @@ const handleJudgeAssignment = async (responseId, judgeId, action) => {
 
 
 
-// Update save function
 const handleSaveScores = async () => {
   try {
-    if (!programId || !selectedRow) return;
+    if (!programId || !selectedRow || !currentJudgeId) return;
 
     const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
     const programSnapshot = await getDocs(programQuery);
@@ -218,42 +188,36 @@ const handleSaveScores = async () => {
     const programDocId = programSnapshot.docs[0].id;
 
     const responseRef = doc(db, 'programmes', programDocId, 'formResponses', selectedRow.id);
+    
+    // Update only the current judge's scores and remarks
     await updateDoc(responseRef, {
-      'startupData.judgeScores': judgeScores,
-      'startupData.judgeRemarks': judgeRemarks
+      [`startupData.judgeScores.${currentJudgeId}`]: scores,
+      [`startupData.judgeRemarks.${currentJudgeId}`]: remarks
     });
 
+    // Update local state
     setResponses(prev => prev.map(response => 
       response.id === selectedRow.id ? {
         ...response,
         startupData: {
           ...response.startupData,
-          judgeScores,
-          judgeRemarks
+          judgeScores: {
+            ...response.startupData.judgeScores,
+            [currentJudgeId]: scores
+          },
+          judgeRemarks: {
+            ...response.startupData.judgeRemarks,
+            [currentJudgeId]: remarks
+          }
         }
       } : response
     ));
+
   } catch (error) {
     console.error('Error saving scores:', error);
   }
 };
-// Add average calculation function
-const calculateAverages = () => {
-  const categories = ['Team', 'Market Potential', 'Competition', 'Differentiation', 'Metrics', 'Exit Potential'];
-  const averages = {};
-  
-  categories.forEach(category => {
-    const validJudges = selectedRow.startupData?.assignedJudges?.filter(judgeId => 
-      judgeScores[judgeId]?.[category] > 0
-    ) || [];
-    
-    averages[category] = validJudges.length > 0 
-      ? validJudges.reduce((sum, judgeId) => sum + (judgeScores[judgeId]?.[category] || 0), 0) / validJudges.length
-      : 0;
-  });
-  
-  return averages;
-};
+
 // Handle status change
 const handleStatusChange = async (responseId, newStatus) => {
   try {
@@ -306,64 +270,53 @@ const handleStatusChange = async (responseId, newStatus) => {
 };
   const defaultColumnWidth = 200;
 
-  const handleScoreChange = (judgeId, category, score) => {
-    setJudgeScores(prev => ({
+  const handleScoreChange = (category, score) => {
+    setScores(prev => ({
       ...prev,
-      [judgeId]: {
-        ...prev[judgeId],
-        [category]: score
-      }
+      [category]: score
     }));
   };
-// Handle remark change
-const handleRemarkChange = (judgeId, category, value) => {
-  setJudgeRemarks(prev => ({
-    ...prev,
-    [judgeId]: {
-      ...prev[judgeId],
+  
+  const handleRemarkChange = (category, value) => {
+    setRemarks(prev => ({
+      ...prev,
       [category]: value
-    }
-  }));
-};
+    }));
+  };
   // Initialize column widths only for fixed fields
   const initializeColumnsAndWidths = () => {
     const initialWidths = {};
-  
+
+    // Add fixed fields
     fixedFields.forEach(field => {
       initialWidths[field] = defaultColumnWidth;
     });
-  
-    initialWidths['averageScore'] = defaultColumnWidth;
+
+    // Add status and actions columns
     initialWidths['status'] = defaultColumnWidth;
     initialWidths['actions'] = defaultColumnWidth;
-  
+
     setColumnWidths(initialWidths);
-    setColumns([...fixedFields, 'averageScore']);
+    setColumns(fixedFields);
   };
 
   useEffect(() => {
-    if (selectedRow) {
-      const initialScores = {};
-      const initialRemarks = {};
+    if (selectedRow && currentJudgeId) {
+      const judgeScores = selectedRow.startupData?.judgeScores?.[currentJudgeId] || {
+        'Team': 0,
+        'Market Potential': 0,
+        'Competition': 0,
+        'Differentiation': 0,
+        'Metrics': 0,
+        'Exit Potential': 0,
+      };
       
-      // Initialize scores and remarks for each judge
-      judges.forEach(judge => {
-        initialScores[judge.id] = selectedRow.startupData?.judgeScores?.[judge.id] || {
-          'Team': 0,
-          'Market Potential': 0,
-          'Competition': 0,
-          'Differentiation': 0,
-          'Metrics': 0,
-          'Exit Potential': 0,
-        };
-        
-        initialRemarks[judge.id] = selectedRow.startupData?.judgeRemarks?.[judge.id] || {};
-      });
+      const judgeRemarks = selectedRow.startupData?.judgeRemarks?.[currentJudgeId] || {};
   
-      setJudgeScores(initialScores);
-      setJudgeRemarks(initialRemarks);
+      setScores(judgeScores);
+      setRemarks(judgeRemarks);
     }
-  }, [selectedRow, judges]);
+  }, [selectedRow, currentJudgeId]);
 
   const handleResizeStart = (e, column) => {
     e.preventDefault();
@@ -499,57 +452,80 @@ const handleRemarkChange = (judgeId, category, value) => {
 
   useEffect(() => {
     const fetchResponses = async () => {
-      if (!programId) {
-        console.log("No programId provided");
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        const user = auth.currentUser;
-        if (!user) {
-          console.log("No authenticated user");
+        if (!programId) {
+          console.log("No programId provided");
           return;
         }
-
-        // First, get the programme document
-        const programmeQuery = query(
-          collection(db, 'programmes'),
-          where('id', '==', programId)
-        );
-        const programmeSnapshot = await getDocs(programmeQuery);
-
-        if (programmeSnapshot.empty) {
-          console.error('No programme found with the provided programId');
-          return;
+        
+        try {
+          setIsLoading(true);
+          const user = auth.currentUser;
+          if (!user) {
+            console.log("No authenticated user");
+            return;
+          }
+       
+          // Find the judge document
+          const judgesQuery = query(
+            collection(db, 'judges'),
+            where('email', '==', user.email)
+          );
+          const judgeSnapshot = await getDocs(judgesQuery);
+       
+          if (judgeSnapshot.empty) {
+            console.log("No judge found for the current user");
+            setResponses([]);
+            return;
+          }
+       
+          const judgeDoc = judgeSnapshot.docs[0];
+          const judgeId = judgeDoc.id;
+          setCurrentJudgeId(judgeId);
+          const judgesProgramId = judgeDoc.data().programId;
+       
+          // Verify programme match
+          const programmeQuery = query(
+            collection(db, 'programmes'),
+            where('id', '==', judgesProgramId)
+          );
+          const programmeSnapshot = await getDocs(programmeQuery);
+       
+          if (programmeSnapshot.empty) {
+            console.error('No programme found for the judge');
+            setResponses([]);
+            return;
+          }
+       
+          const programmeDoc = programmeSnapshot.docs[0];
+       
+          // Fetch form responses
+          const formResponsesRef = collection(db, 'programmes', programmeDoc.id, 'formResponses');
+          const querySnapshot = await getDocs(formResponsesRef);
+       
+          const fetchedResponses = querySnapshot.docs
+            .filter(doc => {
+              const startupData = doc.data().startupData || {};
+              const assignedJudges = startupData.assignedJudges || [];
+              return assignedJudges.includes(judgeId);
+            })
+            .map(doc => ({
+              id: doc.id,
+              responses: doc.data().responses || [],
+              startupData: doc.data().startupData || {},
+              submittedAt: doc.data().submittedAt,
+            }));
+       
+          console.log("Filtered responses:", fetchedResponses);
+          setResponses(fetchedResponses);
+          initializeColumnsAndWidths();
+       
+        } catch (error) {
+          console.error('Error fetching responses:', error);
+          setResponses([]);
+        } finally {
+          setIsLoading(false);
         }
-
-        const programmeDoc = programmeSnapshot.docs[0];
-        // Pass the actual document ID to fetchJudges
-        await fetchJudges(programmeDoc.id);
-
-        const formResponsesRef = collection(db, 'programmes', programmeDoc.id, 'formResponses');
-        const querySnapshot = await getDocs(formResponsesRef);
-
-        const fetchedResponses = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          responses: doc.data().responses || [],
-          startupData: doc.data().startupData || {},
-          submittedAt: doc.data().submittedAt,
-        }));
-
-        console.log("Fetched responses:", fetchedResponses); // Debug log
-        setResponses(fetchedResponses);
-        initializeColumnsAndWidths();
-
-      } catch (error) {
-        console.error('Error fetching responses:', error);
-        setResponses([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
+       };
     fetchResponses();
   }, [programId]);
 
@@ -608,7 +584,7 @@ const renderTableRow = (item) => (
     <td className="px-4 py-2 border border-gray-300 rounded-lg bg-white">
       <input
         type="checkbox"
-        checked={selectedItems.includes(item.id)} // Ensure selectedItems is managed in state
+        checked={selectedItems.includes(item.id)} // Add state management for selected items
         onChange={() => handleCheckboxChange(item.id)}
       />
     </td>
@@ -622,53 +598,54 @@ const renderTableRow = (item) => (
         }}
       >
         {column === 'assignedJudge' ? (
-          <div className="flex flex-col space-y-2">
-            {/* Display assigned judges with remove button */}
-            <div className="flex flex-wrap gap-2">
-              {(item.startupData?.assignedJudges || []).map((judgeId) => {
-                const judge = judges.find((j) => j.id === judgeId);
-                return judge ? (
-                  <div key={judgeId} className="flex items-center bg-blue-100 px-2 py-1 rounded">
-                    <span className="text-sm">{judge.name}</span>
-                    <button
-                      onClick={() => handleJudgeAssignment(item.id, judgeId, 'remove')}
-                      className="ml-2 text-gray-500 hover:text-red-500"
-                    >
-                      <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : null;
-              })}
+            <div className="flex flex-col space-y-2">
+              {/* Display assigned judges with remove button */}
+              <div className="flex flex-wrap gap-2">
+                {(item.startupData?.assignedJudges || []).map(judgeId => {
+                  const judge = judges.find(j => j.id === judgeId);
+                  return judge ? (
+                    <div key={judgeId} className="flex items-center bg-blue-100 px-2 py-1 rounded">
+                      <span className="text-sm">{judge.name}</span>
+                      <button
+                        onClick={() => handleJudgeAssignment(item.id, judgeId, 'remove')}
+                        className="ml-2 text-gray-500 hover:text-red-500"
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+              
+              {/* 
+               dropdown */}
+              <div className="flex items-center">
+                <select
+                  className="w-full px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleJudgeAssignment(item.id, e.target.value, 'add');
+                      e.target.value = ''; // Reset select after adding
+                    }
+                  }}
+                >
+                  <option value="">Add Judge</option>
+                  {judges
+                    .filter(judge => !(item.startupData?.assignedJudges || []).includes(judge.id))
+                    .map((judge) => (
+                      <option key={judge.id} value={judge.id}>
+                        {judge.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
-
-            {/* Dropdown to assign judges */}
-            <div className="flex items-center">
-              <select
-                className="w-full px-2 py-1 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleJudgeAssignment(item.id, e.target.value, 'add');
-                    e.target.value = ''; // Reset select after adding
-                  }
-                }}
-              >
-                <option value="">Add Judge</option>
-                {judges
-                  .filter((judge) => !(item.startupData?.assignedJudges || []).includes(judge.id))
-                  .map((judge) => (
-                    <option key={judge.id} value={judge.id}>
-                      {judge.name}
-                    </option>
-                  ))}
-              </select>
+          ) : (
+            <div className="truncate">
+              {formatValue(item.startupData?.[column])}
             </div>
-          </div>
-        ) : (
-          <div className="truncate">
-            {formatValue(item.startupData?.[column])}
-          </div>
-        )}
+          )}
       </td>
     ))}
     <td
@@ -685,7 +662,6 @@ const renderTableRow = (item) => (
         <option value="Rejected">Rejected</option>
       </select>
     </td>
-
     <td
       className="px-4 py-2 border border-gray-300 rounded-lg"
       style={{ width: columnWidths['actions'] }}
@@ -697,35 +673,8 @@ const renderTableRow = (item) => (
         &#8230;
       </button>
     </td>
-
-    <td
-      className="px-4 py-2 border border-gray-300 rounded-lg"
-      style={{ width: columnWidths['averageScore'] }}
-    >
-      {(() => {
-        const judgeScores = item.startupData?.judgeScores;
-        if (!judgeScores || Object.keys(judgeScores).length === 0) {
-          return '-';
-        }
-
-        let totalScore = 0;
-        let totalCategories = 0;
-
-        Object.values(judgeScores).forEach((scores) => {
-          if (scores && typeof scores === 'object') {
-            Object.values(scores).forEach((score) => {
-              totalScore += score;
-              totalCategories += 1;
-            });
-          }
-        });
-
-        return totalCategories > 0 ? ((totalScore / (totalCategories * 6)) * 5).toFixed(1) : '-';
-      })()}
-    </td>
   </tr>
 );
-
   return (
     <div className="container mx-auto px-6 py-6 my-8">
       <div className="flex items-center mb-4">
@@ -898,111 +847,58 @@ const renderTableRow = (item) => (
           {/* Right Panel - Fixed Scoring */}
           <div className="w-1/3 border-l p-4 flex flex-col">
   <div className="space-y-6 sticky top-0 overflow-auto">
-    {/* Judge Dropdown and Average Tab */}
-    <div className="flex space-x-2 overflow-x-auto">
-      {/* Judge Dropdown */}
-      <select
-        value={selectedJudgeTab}
-        onChange={(e) => setSelectedJudgeTab(e.target.value)}
-        className={`px-3 py-1 rounded-full text-sm ${
-          selectedJudgeTab !== 'average'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-200 text-gray-700'
-        }`}
+    <div className="space-y-4">
+      {Object.keys(scores).map((category) => (
+        <div key={category} className="space-y-1">
+          <div className="flex justify-between items-center">
+            <div className="text-sm font-medium">{category}</div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-gray-500">Rationale</span>
+              <button
+                onClick={() => toggleRemarkVisibility(category)}
+                className="text-blue-600 hover:text-blue-800 text-sm px-2 rounded-full hover:bg-gray-100 w-6 h-6 flex items-center justify-center"
+              >
+                <FontAwesomeIcon icon={faPenToSquare} />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1">
+            {[1, 2, 3, 4, 5].map((point) => (
+              <button
+                key={point}
+                onClick={() => handleScoreChange(category, point)}
+                className={`w-8 h-8 rounded ${
+                  scores[category] >= point
+                    ? 'bg-yellow-400 text-white'
+                    : 'bg-gray-100 text-gray-400'
+                }`}
+              >
+                {point}
+              </button>
+            ))}
+          </div>
+          {visibleRemarks[category] && (
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Remarks for {category}
+              </label>
+              <textarea
+                value={remarks[category] || ''}
+                onChange={(e) => handleRemarkChange(category, e.target.value)}
+                className="w-full p-2 border rounded-md text-sm h-16 resize-none"
+                placeholder={`Add remarks for ${category}...`}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      <button 
+        className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        onClick={handleSaveScores}
       >
-        <option value="" disabled>Select Judge</option>
-        {selectedRow.startupData?.assignedJudges?.map(judgeId => {
-          const judge = judges.find(j => j.id === judgeId);
-          return (
-            <option key={judgeId} value={judgeId}>
-              {judge?.name || 'Judge'}
-            </option>
-          );
-        })}
-      </select>
-
-      {/* Average Tab */}
-      <button
-        onClick={() => setSelectedJudgeTab('average')}
-        className={`px-3 py-1 rounded-full text-sm ${
-          selectedJudgeTab === 'average'
-            ? 'bg-green-600 text-white'
-            : 'bg-gray-200 text-gray-700'
-        }`}
-      >
-        Average
+        Save Scores
       </button>
     </div>
-
-    {/* Content based on selected tab */}
-    {selectedJudgeTab === 'average' ? (
-      // Average Scores Section
-      <div className="space-y-4">
-        {Object.entries(calculateAverages()).map(([category, average]) => (
-          <div key={category} className="space-y-1">
-            <div className="text-sm font-medium">{category}</div>
-            <div className="text-lg font-semibold text-blue-600">
-              {average.toFixed(1)}
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      // Judge Scoring Section
-      <div className="space-y-4">
-        {Object.keys(scores).map((category) => (
-          <div key={category} className="space-y-1">
-            <div className="flex justify-between items-center">
-              <div className="text-sm font-medium">{category}</div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-500">Rationale</span>
-                <button
-                  onClick={() => toggleRemarkVisibility(category)}
-                  className="text-blue-600 hover:text-blue-800 text-sm px-2 rounded-full hover:bg-gray-100 w-6 h-6 flex items-center justify-center"
-                >
-                  <FontAwesomeIcon icon={faPenToSquare} />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              {[1, 2, 3, 4, 5].map((point) => (
-                <button
-                  key={point}
-                  onClick={() => handleScoreChange(category, point)}
-                  className={`w-8 h-8 rounded ${
-                    scores[category] >= point
-                      ? 'bg-yellow-400 text-white'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  {point}
-                </button>
-              ))}
-            </div>
-            {/* Remarks Toggle */}
-            {visibleRemarks[category] && (
-              <div className="mt-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Remarks for {category}
-                </label>
-                <textarea
-                  value={remarks[category] || ''}
-                  onChange={(e) => handleRemarkChange(category, e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm h-16 resize-none"
-                  placeholder={`Add remarks for ${category}...`}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-        <button 
-          className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          onClick={handleSaveScores}
-        >
-          Save Scores
-        </button>
-      </div>
-    )}
   </div>
 </div>
         </div>
@@ -1014,4 +910,4 @@ const renderTableRow = (item) => (
   );
 };
 
-export default FormResponses;
+export default JudgesFormResponses;

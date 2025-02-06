@@ -1,12 +1,1 @@
-@media (max-width: 768px) {
-    
-    .header,
-    .details,
-    .eligibility,
-    .incentives,
-    .portfolio,
-    .faq {
-      display: table-column;
-      width: 100%; /* Stack elements */
-    }
-}
+/*  */

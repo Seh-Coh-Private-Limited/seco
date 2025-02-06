@@ -11,7 +11,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase'; // Make sure to import db from firebase config
+import { auth, db,collection,where,query,getDocs } from '../firebase'; // Make sure to import db from firebase config
 
 const SignUp = () => {
   // Existing state management code remains the same
@@ -141,10 +141,15 @@ const SignUp = () => {
       const sessionRef = doc(db, 'sessions', uid);
       const sessionStartTime = new Date().toISOString();
       const expiresAt = new Date(new Date().getTime() + SESSION_TIMEOUT);
+      const isJudge = await checkIfJudge(auth.currentUser.email);
+      
+      // Set the category properly, ensuring it's never undefined
+      const finalCategory = isJudge ? 'incubator' : (category || 'default'); // Added fallback value
       
       const sessionData = {
         uid,
-        category,
+        category: finalCategory, // Use the properly defined category
+        isJudge,
         sessionStartTime,
         lastActivity: sessionStartTime,
         isActive: true,
@@ -157,7 +162,7 @@ const SignUp = () => {
       // Store in localStorage with all necessary data
       localStorage.setItem('sessionData', JSON.stringify({
         uid,
-        category,
+        category: finalCategory, // Use the same category as stored in Firestore
         sessionStartTime,
         expiresAt: expiresAt.toISOString()
       }));
@@ -167,13 +172,22 @@ const SignUp = () => {
       throw error;
     }
   };
-
-  const handleCategoryBasedRedirect = (selectedCategory) => {
-    if (selectedCategory === 'startup') {
-      navigate('/fdashboard');
-    } else if (selectedCategory === 'incubator') {
-      navigate('/dashboard');
-    }
+  const checkIfJudge = async (email) => {
+    const judgesRef = collection(db, 'judges');
+    const q = query(judgesRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  };
+  
+  const handleCategoryBasedRedirect = (category) => {
+    const sessionData = JSON.parse(localStorage.getItem('sessionData'));
+  if (sessionData?.isJudge) {
+    navigate('/judgedashboard');
+  } else if (category === 'startup') {
+    navigate('/fdashboard');
+  } else {
+    navigate('/dashboard');
+  }
   };
 
   // Modified createUserDocument function with session handling
@@ -265,7 +279,12 @@ const validatePassword = (password) => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(userCredential.user.uid, userData.category);
-        handleCategoryBasedRedirect(userData.category);
+        const isJudge = await checkIfJudge(email);
+        if (isJudge) {
+          navigate('/judgedashboard');
+        } else {
+          handleCategoryBasedRedirect(userData.category);
+        }
       } else {
         throw new Error('User account not found');
       }
@@ -294,7 +313,12 @@ const validatePassword = (password) => {
       });
       
 
-      handleCategoryBasedRedirect(category);
+      const isJudge = await checkIfJudge(email);
+      if (isJudge) {
+        navigate('/judgedashboard');
+      } else {
+        handleCategoryBasedRedirect(category);
+      }
     }
   } catch (err) {
     console.error('Email auth error:', err);
@@ -319,7 +343,15 @@ useEffect(() => {
       const result = await signInWithPopup(auth, provider);
       const userRef = doc(db, 'users', result.user.uid);
       const userSnap = await getDoc(userRef);
+      const email = result.user.email;
+      const isJudge = await checkIfJudge(email);
   
+      // Redirect judges immediately
+      if (isJudge) {
+        await createUserSession(result.user.uid, 'incubator');
+        return navigate('/judgedashboard');
+      }
+
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(result.user.uid, userData.category);

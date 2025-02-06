@@ -19,9 +19,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where,deleteDoc,setDoc,serverTimestamp } from 'firebase/firestore';
 import { Plus, Trash2 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useCallback } from 'react';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
 import './Dashboard.css';
@@ -32,26 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
-const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent  }) => {
-  const auth = getAuth();
-  const user = auth.currentUser;
-  return (
-    <div className="max-w-4xl mx-auto p-4">
-      {/* Directly render the FormBuilder */}
-      <FormBuilder programId={programId} userId={user.uid} currentStep={currentStep}
-        setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent} />
 
-      {/* <div className="flex justify-start mt-6">
-        <button
-          onClick={onBack}
-          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-        >
-          Back
-        </button>
-      </div> */}
-    </div>
-  );
-};
 const FounderDashboard = () => {
   const [companyDetails, setCompanyDetails] = useState(null);
   const [logoError, setLogoError] = useState(false);
@@ -67,7 +48,27 @@ const FounderDashboard = () => {
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
-
+  const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent ,onFormLaunchSuccess   }) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        {/* Directly render the FormBuilder */}
+        <FormBuilder programId={programId} userId={user.uid} currentStep={currentStep}
+          setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent}    onFormLaunchSuccess={onFormLaunchSuccess}  // Pass fetchProgrammes as a prop
+  />
+  
+        {/* <div className="flex justify-start mt-6">
+          <button
+            onClick={onBack}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+          >
+            Back
+          </button>
+        </div> */}
+      </div>
+    );
+  };
   
   const navigate = useNavigate();
   const auth = getAuth();
@@ -112,7 +113,6 @@ const FounderDashboard = () => {
           }
         });
         return () => unsubscribe();
-      
       }
     };
   
@@ -156,70 +156,77 @@ const FounderDashboard = () => {
 
     return () => unsubscribe();
   }, [auth, navigate]);
-  const loadAllData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    const user = auth.currentUser;
-    if (!user) return;
+  // Modified loadAllData function
+  
+// Pass reloadCompanyDetails to SettingsForm
+const renderSettingsForm = () => (
+  <SettingsForm onProfileUpdate={reloadCompanyDetails} />
+);
 
-    try {
-      await Promise.all([
-        fetchCompanyDetails(user),
-        fetchProgrammes(user)
-      ]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Failed to load some data');
-    } finally {
-      setLoading(false);
+const fetchCompanyDetails = useCallback(async (user) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      setCompanyDetails({
+        name: userData.companyName || 'Company Name',
+        logoUrl: userData.logoUrl || userData.companyLogo || null
+      });
     }
-  };
-  const fetchCompanyDetails = async (user) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setCompanyDetails({
-          name: userData.companyName || 'Company Name',
-          logo: userData.logoUrl || null
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching company details:', error);
-      setError('Failed to load company details');
-      setCompanyDetails({ name: 'Company Name', logo: null });
+  } catch (error) {
+    console.error('Error fetching company details:', error);
+    setError('Failed to load company details');
+    setCompanyDetails({ name: 'Company Name', logoUrl: null });
+  }
+}, [db]);
+
+  const reloadCompanyDetails = useCallback(async () => {
+    const user = auth.currentUser;
+    if (user) {
+      await fetchCompanyDetails(user);
     }
-  };
+  }, [auth, fetchCompanyDetails]);
 
   // Function to fetch programmes
-  const fetchProgrammes = async (user) => {
-    try {
-      const programmesQuery = await getDocs(
-        query(
-          collection(db, 'programmes'),
-          where('uid', '==', user.uid),
-          where('programStatus', '!=', 'active')
-        )
-      );
-      
-      const fetchedProgrammes = programmesQuery.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setProgrammes(fetchedProgrammes);
-    } catch (error) {
-      console.error('Error fetching programmes:', error);
-      setError('Failed to load programmes');
-      setProgrammes([]);
-    }
-  };
+ // Inside FounderDashboard component
+const fetchProgrammes = useCallback(async (user) => {
+  try {
+    const programmesQuery = await getDocs(
+      query(
+        collection(db, 'programmes'),
+        where('uid', '==', user.uid),
+        where('programStatus', '==', 'completed')
+      )      
+    );
+    
+    const fetchedProgrammes = programmesQuery.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    setProgrammes(fetchedProgrammes);
+  } catch (error) {
+    console.error('Error fetching programmes:', error);
+    setError('Failed to load programmes');
+    setProgrammes([]);
+  }
+}, [db]); // Add dependency array
   
   // Add reload function to handle manual reloads
   const handleReload = () => {
     loadAllData();
   };
+
+  // Inside FounderDashboard component
+useEffect(() => {
+  const fetchData = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      await fetchProgrammes(user);
+    }
+  };
+  fetchData();
+}, [auth, fetchProgrammes]); // Add fetchProgrammes to dependencies
   // Fetch company details
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -272,7 +279,25 @@ const FounderDashboard = () => {
 
     fetchProgrammes();
   }, [auth, db]);
+  const loadAllData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    const user = auth.currentUser;
+    if (!user) return;
 
+    try {
+      await Promise.all([
+        fetchCompanyDetails(user),
+        fetchProgrammes(user)
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setError('Failed to load some data');
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, fetchCompanyDetails]);
   const openSettings = () => {
     setActiveTab('settings'); // Switch to settings view
   };
@@ -474,7 +499,8 @@ const HomePage = ({ userStatus,
   showCreateEvent, 
   setShowCreateEvent, 
   currentStep, 
-  setCurrentStep  }) => {
+  setCurrentStep,
+  onFormLaunchSuccess   }) => {
     const auth = getAuth();
   const db = getFirestore();
   //  const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -601,7 +627,7 @@ const HomePage = ({ userStatus,
     }
   }, [userStatus, programid, isClosing]);
   return (
-    <div className="md:px-56 overflow-none mt-8">
+    <div className="md:px-56 overflow-auto mt-8">
       {/* <div className="p-4">
         <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2>
       </div> */}
@@ -635,14 +661,15 @@ const HomePage = ({ userStatus,
  
      
       {showCreateEvent ? (
-       <CreateEventForm 
-       onClose={handleClose}
-       initialData={eventData}
-       programId={programid}
-       currentStep={currentStep}
-       setCurrentStep={setCurrentStep}
-       isClosing={isClosing}
-     />
+      <CreateEventForm 
+      onClose={handleClose}
+      initialData={eventData}
+      programId={programid}
+      currentStep={currentStep}
+      setCurrentStep={setCurrentStep}
+      isClosing={isClosing}
+      onFormLaunchSuccess={onFormLaunchSuccess} // Pass fetchProgrammes as a prop
+    />
       ) : (
         // Rest of your existing HomePage content
         <div className="flex-1 flex flex-col items-center justify-center mt-28">
@@ -684,13 +711,20 @@ const Header = ({
   currentStep,
   selectedProgram,
   setCurrentStep,
-  showCreateEvent
+  showCreateEvent,
+  setShowCreateEvent 
 }) => {
-  
+  const handleLogoClick = () => {
+    // Reset all necessary states to return to home
+    setActiveTab('home');
+    setShowCreateEvent(false);
+    setCurrentStep(1);
+  };
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200 z-10">
       <div className="flex items-center gap-4">
         <h6
+        onClick={handleLogoClick}
           className="text-black font-bold hover:opacity-80 transition-opacity px-2"
           style={{
             fontFamily: 'CustomFont',
@@ -764,7 +798,9 @@ const CardContent = ({ children, className = '' }) => (
     programId,
     currentStep,
     setCurrentStep,
-    isClosing }) => {
+    fetchProgrammes ,
+    isClosing,
+    onFormLaunchSuccess  }) => {
     // console.log('Initial Data:', initialData); // Enhanced logging
     // const [currentStep, setCurrentStep] = useState(1);
 
@@ -849,8 +885,10 @@ const CardContent = ({ children, className = '' }) => (
     };
   
     const handleNext = () => {
-      handleSubmit();
-      setCurrentStep(2);
+      handleSubmit(() => {
+        // fetchProgrammes(auth.currentUser); // Refresh the programmes list
+        setCurrentStep(2);
+      });
     };
   
     const handleBack = () => {
@@ -892,7 +930,7 @@ const CardContent = ({ children, className = '' }) => (
       });
     };
   
-    const handleSubmit = async () => {
+    const handleSubmit = async (onSuccess) => {
       try {
         if (programId) {
           // Update existing program
@@ -952,11 +990,15 @@ const CardContent = ({ children, className = '' }) => (
             });
           }
         }
+    
+        // Call the onSuccess callback to refresh the programmes list
+        if (onSuccess) {
+          onSuccess();
+        }
       } catch (e) {
         console.error('Error saving program: ', e);
       }
     };
-    
     useEffect(() => {
       console.log('Current eventData:', eventData);
     }, [eventData]);
@@ -1017,7 +1059,7 @@ const CardContent = ({ children, className = '' }) => (
               <div className="col-span-2">
                 <Card>
                   <CardContent className="p-6 space-y-6">
-                    <div className="w-full p-3 border rounded-md">
+                    <div className="w-full p-3 rounded-md">
                       <ReactQuill
                         theme="snow"
                         value={eventData.description}
@@ -1054,28 +1096,30 @@ const CardContent = ({ children, className = '' }) => (
 
                       </div>
                       <div className="flex gap-4">
-                        <div className="flex-1">
-                          <label className="block text-sm text-gray-500 mb-1">
-                            Application Start Date *
-                          </label>
-                          <input
-                            type="date"
-                            className="w-full border rounded-md px-3 py-2"
-                            value={eventData.startDate}
-                            onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
-                            required />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-sm text-gray-500 mb-1">
-                            Application End Date *
-                          </label>
-                          <input
-                            type="date"
-                            className="w-full border rounded-md px-3 py-2"
-                            value={eventData.endDate}
-                            onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
-                            required />
-                        </div></div>
+    <div className="flex-1">
+        <label className="block text-sm text-gray-500 mb-1">
+            Application Start Date *
+        </label>
+        <input
+            type="date"
+            className="w-full border rounded-md px-3 py-2"
+            value={eventData.startDate}
+            onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
+            required />
+    </div>
+    <div className="flex-1">
+        <label className="block text-sm text-gray-500 mb-1">
+            Application End Date *
+        </label>
+        <input
+            type="date"
+            className="w-full border rounded-md px-3 py-2"
+            value={eventData.endDate}
+            onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
+            min={eventData.startDate} // Add min attribute to prevent earlier dates
+            required />
+    </div>
+</div>
 
                       {/* Custom Date Fields */}
                       <div className="pt-6 border-t">
@@ -1084,7 +1128,7 @@ const CardContent = ({ children, className = '' }) => (
                           Add any additional program dates (e.g., Interview Rounds, Pitch Day, Demo Day)
                         </p>
                       </div>
-
+<div className='additional-dates-container space-y-4'>
                       {eventData.customFields.map(field => (
                         <div key={field.id}>
                           <div className="flex items-center justify-between mb-1">
@@ -1108,7 +1152,7 @@ const CardContent = ({ children, className = '' }) => (
                           </div>
                         </div>
                       ))}
-
+</div>
                       {/* Add Custom Field Input */}
                       <div className="pt-4">
                         <div className="flex gap-2">
@@ -1170,12 +1214,15 @@ const CardContent = ({ children, className = '' }) => (
     currentStep={currentStep}
     setCurrentStep={setCurrentStep}
     setShowCreateEvent={setShowCreateEvent} // Pass this prop
+    onFormLaunchSuccess={onFormLaunchSuccess}
   />
         )}
       </div>
     );
   };
-  const CompanyLogo = () => {
+  const CompanyLogo = ({ companyDetails }) => {
+    const [logoError, setLogoError] = useState(false);
+  
     if (logoError || !companyDetails?.logoUrl) {
       return (
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
@@ -1183,8 +1230,9 @@ const CardContent = ({ children, className = '' }) => (
         </div>
       );
     }
+  
     return (
-      <img 
+      <img
         src={companyDetails.logoUrl}
         alt="Company Logo"
         className="w-8 h-8 rounded-full object-cover border border-gray-200"
@@ -1210,7 +1258,7 @@ const CardContent = ({ children, className = '' }) => (
     <div className="border-b border-gray-200 p-4">
       <h2 className="text-2xl font-bold mb-4">{program.name || 'Untitled Program'}</h2>
       <div className="flex space-x-6">
-        {['summary', 'formResponses', 'editProgram', 'editForm'].map((tab) => (
+        {['summary', 'formResponses', 'editProgram', 'editForm','addJudges'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveProgramTab(tab)}
@@ -1227,13 +1275,146 @@ const CardContent = ({ children, className = '' }) => (
     </div>
     </div>
   );
+  
+  const [judges, setJudges] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: ''
+  });
+  
+  // Update dependency array to include selectedProgram.id
+  useEffect(() => {
+    if (selectedProgram?.id) {
+      fetchJudges();
+    }
+  }, [selectedProgram?.id]); // This will re-run whenever selectedProgram.id changes
 
+  const fetchProgramDocument = async () => {
+    try {
+      const programmesRef = collection(db, 'programmes');
+      const q = query(programmesRef, where('id', '==', selectedProgram.id));
+      const snapshot = await getDocs(q);
+  
+      if (snapshot.empty) {
+        console.error('No matching program found');
+        return null;
+      }
+  
+      const programDoc = snapshot.docs[0];
+      return programDoc;
+    } catch (error) {
+      console.error('Error fetching program document:', error);
+      return null;
+    }
+  };
+  
+  const fetchJudges = async () => {
+    try {
+      const programDoc = await fetchProgramDocument();
+      if (!programDoc) {
+        console.error('Program document not found');
+        return;
+      }
+  
+      // Query the judges collection directly with program filter
+      const judgesRef = collection(db, 'judges');
+      const q = query(judgesRef, where('programId', '==', selectedProgram.id));
+      const snapshot = await getDocs(q);
+      
+      const judgesList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setJudges(judgesList);
+    } catch (error) {
+      console.error('Error fetching judges:', error);
+    }
+  };
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleAddJudge = async () => {
+    if (!formData.name || !formData.email) {
+      alert('Please fill in both name and email');
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      const programDoc = await fetchProgramDocument();
+      if (!programDoc) {
+        console.error('Program document not found');
+        return;
+      }
+  
+      // Generate a unique ID that will be used in both collections
+      const judgeId = doc(collection(db, 'judges')).id;
+  
+      // Add to programmes/{programDoc.id}/judges subcollection
+      await setDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId), {
+        id: judgeId,
+        name: formData.name,
+        email: formData.email,
+        createdAt: serverTimestamp()
+      });
+  
+      // Add to separate judges collection
+      await setDoc(doc(db, 'judges', judgeId), {
+        id: judgeId,
+        name: formData.name,
+        email: formData.email,
+        programId: selectedProgram.id,
+        createdAt: serverTimestamp()
+      });
+  
+      // Reset form and refresh judges list
+      setFormData({ name: '', email: '' });
+      fetchJudges();
+    } catch (error) {
+      console.error('Error adding judge:', error);
+      alert('Error adding judge. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleRemoveJudge = async (judgeId) => {
+    if (window.confirm('Are you sure you want to remove this judge?')) {
+      setLoading(true);
+      try {
+        const programDoc = await fetchProgramDocument();
+        if (!programDoc) {
+          console.error('Program document not found');
+          return;
+        }
+  
+        // Remove from programmes/{programDoc.id}/judges subcollection
+        await deleteDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId));
+  
+        // Remove from separate judges collection using the same ID
+        await deleteDoc(doc(db, 'judges', judgeId));
+  
+        fetchJudges();
+      } catch (error) {
+        console.error('Error removing judge:', error);
+        alert('Error removing judge. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-hide h-full">
         <div className="flex items-center gap-2 mb-6">
-          <CompanyLogo />
+        <CompanyLogo companyDetails={companyDetails} />
           <span className="font-medium truncate">
             {companyDetails?.name || 'Loading...'}
           </span>
@@ -1302,7 +1483,7 @@ const CardContent = ({ children, className = '' }) => (
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto scrollbar-hide">
+      <div className="flex-1 flex flex-col overflow-hidden">
         
       <Header 
           activeTab={activeTab}
@@ -1312,8 +1493,9 @@ const CardContent = ({ children, className = '' }) => (
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
           showCreateEvent={showCreateEvent}
+          setShowCreateEvent={setShowCreateEvent} 
         />
-        <main className="h-full">
+        <main className="flex-1 overflow-y-auto">
         {activeTab === 'home' && <HomePage 
               userStatus={userStatus} 
               programid={programid}
@@ -1321,11 +1503,12 @@ const CardContent = ({ children, className = '' }) => (
               setShowCreateEvent={setShowCreateEvent}
               currentStep={currentStep}
               setCurrentStep={setCurrentStep}
+              onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
             />}
           {activeTab === 'program' && selectedProgram && (
-            <div className="h-full">
+            <div className="h-full flex flex-col">
               <ProgramHeader program={selectedProgram} />
-              <div className="p-4">
+              <div className="flex-1 overflow-y-auto">
                 {activeProgramTab === 'summary' && (
                   <div className='md:px-56 overflow-none mt-8'>
                     <h3 className="text-lg font-semibold mb-4">Program Summary</h3>
@@ -1367,16 +1550,80 @@ const CardContent = ({ children, className = '' }) => (
                     {/* Add edit form content */}
                   </div>
                 )}
+                {activeProgramTab === 'addJudges' && (
+  <div className="md:px-56 overflow-none mt-8">
+  <h3 className="text-lg font-semibold mb-4">Add Judges</h3>
+  <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+    <div>
+      <label className="block text-sm font-medium mb-1">Name</label>
+      <input
+        type="text"
+        name="name"
+        value={formData.name}
+        onChange={handleInputChange}
+        className="w-full px-3 py-2 border rounded-lg"
+        placeholder="Enter judge's name"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-1">Email</label>
+      <input
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleInputChange}
+        className="w-full px-3 py-2 border rounded-lg"
+        placeholder="Enter judge's email"
+      />
+    </div>
+    <button
+      type="button"
+      onClick={handleAddJudge}
+      disabled={loading}
+      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"
+    >
+      {loading ? 'Adding...' : 'Add Judge'}
+    </button>
+  </form>
+
+  <div className="mt-8">
+    <h4 className="text-lg font-semibold mb-4">Judges List</h4>
+    <ul className="space-y-4">
+      {judges.map((judge) => (
+        <li key={judge.id} className="flex justify-between items-center p-4 border rounded-lg">
+          <div>
+            <p className="font-medium">{judge.name}</p>
+            <p className="text-sm text-gray-600">{judge.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRemoveJudge(judge.id)}
+            disabled={loading}
+            className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 disabled:bg-red-300"
+          >
+            Remove
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+)}
+
               </div>
             </div>
           )}
 
 {/*  */}
-<div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
-  {activeTab === 'settings' && (
-    <SettingsForm />
-  )}
-</div>
+{/* <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+{activeTab === 'settings' && renderSettingsForm()}
+
+</div> */}
+{activeTab === 'settings' && (
+      <div className="flex-1 overflow-y-auto p-8">
+        {renderSettingsForm()}
+      </div>
+    )}
         </main>
       </div>
 

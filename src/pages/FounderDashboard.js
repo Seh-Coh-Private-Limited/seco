@@ -116,7 +116,7 @@ const FounderDashboard = () => {
           
           const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
             id: doc.id,
-            title: doc.data().title
+            title: doc.data().programTitle
           }));
           
           setApplications(fetchedApplications);
@@ -665,12 +665,12 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
                   </div>
                 )}
                 
-                {/* {activeApplicationTab === 'editForm' && (
+                {activeApplicationTab === 'addJudges' && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Edit Form</h3>
+                    <h3 className="text-lg font-semibold mb-4">Add Judges</h3>
                    
                   </div>
-                )} */}
+                )}
               </div>
             </div>
           )}

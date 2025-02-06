@@ -14,6 +14,7 @@ import ProgramInsertPage from './pages/programInsertPage'; // Capitalized the co
 import SignUpPage from './pages/SignUp';
 import StartupRegistrationForm from './pages/StartupRegistrationForm';
 import Mediator from './components/Mediator';
+import JudgeDashboard from './pages/JudgeDashboard';
 
 
 function App() {
@@ -21,7 +22,7 @@ function App() {
     <Router>
       <Routes>
       <Route path="/program/:programId" element={<ProgramDetail />} />
-
+        <Route path="/judgedashboard" element={<JudgeDashboard/>}/>
         <Route path="/ddd" element={<DDashboard />} />  
         <Route path="/idashboard" element={<IDashboard />} />
         <Route path="/startupregform" element={<StartupRegistrationForm />} />

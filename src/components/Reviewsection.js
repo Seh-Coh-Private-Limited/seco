@@ -278,9 +278,9 @@ const FProgramDetailPage = ({ programId }) => {
                 {name}
               </p>
         <div className="flex border-b border-gray-300 justify-left mt-4"></div>
-      <div className='bg-white h-full w-full font-poppins justify-center'>
-        <div className='flex justify-center mt-4 '>
-          <div className='w-full lg:w-4/6 grid grid-cols-1 lg:grid-cols-3 gap-8 '> 
+      <div className='bg-white w-full font-poppins justify-center'>
+      <div className='flex justify-center mt-4'>
+      <div className='w-full grid grid-cols-1 lg:grid-cols-3 gap-8'> 
             <div className='col-span-1 lg:col-span-3 order-1 lg:order-1'>
               <img
                 src={image}
@@ -326,8 +326,9 @@ const FProgramDetailPage = ({ programId }) => {
 
 
           <div 
-                className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] h-auto overflow-y-auto overflow-x-hidden lg:mb-40 p-4'
+                className='col-span-1 order-3 lg:order-3 lg:sticky lg:top-20 h-auto overflow-y-auto overflow-x-hidden p-4'
                 style={{ 
+                  
                   '-ms-overflow-style': 'none',
                   scrollbarWidth: 'none'
                 }}
@@ -336,7 +337,7 @@ const FProgramDetailPage = ({ programId }) => {
                 <div className='mt-4'>
                   <div className='flex justify-between mb-4'>
                     <button
-                      onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+                      // onClick={() => window.location.href = 'https://getseco.com/contact-1'}
                       className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8"
                       style={{ fontFamily: 'CFont' }}
                     >

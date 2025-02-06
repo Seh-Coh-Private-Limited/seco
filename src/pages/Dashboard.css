@@ -16,4 +16,8 @@
   .ql-editor li {
     list-style-type: none; /* Prevent any conflicting styles from other list types */
   }
-  
+  /* In your Dashboard.css */
+.additional-dates-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
