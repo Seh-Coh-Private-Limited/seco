@@ -3,7 +3,7 @@ import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firesto
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import { Send, User } from "lucide-react";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState,useLayoutEffect } from 'react';
 
 import { db } from '../firebase';
 
@@ -367,6 +367,9 @@ const Application = ({ programId ,onFormSubmitSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
   const auth = getAuth();
+  useEffect(() => {
+    console.log("inputValue updated:", inputValue);
+  }, [inputValue]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -963,31 +966,34 @@ const handleOptionSelect = (answer) => {
 const AutoResizeTextarea = ({ value, onChange, onKeyPress, placeholder, disabled }) => {
   const textareaRef = useRef(null);
 
-  const adjustHeight = () => {
+  useLayoutEffect(() => {
     const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = '48px';
-      if (textarea.scrollHeight > 48) {
-        textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
-      }
-    }
-  };
+    if (!textarea) return;
 
-  useEffect(() => {
-    adjustHeight();
+    const scrollTop = textarea.scrollTop;
+    const selectionStart = textarea.selectionStart;
+    
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    textarea.scrollTop = scrollTop;
+
+    requestAnimationFrame(() => {
+      if (document.activeElement === textarea) {
+        textarea.setSelectionRange(selectionStart, selectionStart);
+      }
+    });
   }, [value]);
 
   const handleChange = (e) => {
-    // Pass the entire event to the parent's onChange handler
-    onChange(e);
-    // Don't call setInputValue directly here
+    const { value } = e.target; // Extract value from the event
+    onChange(value); // Pass the value to the parent
   };
 
   return (
     <textarea
       ref={textareaRef}
       value={value}
-      onChange={handleChange}
+      onInput={handleChange}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -997,14 +1003,16 @@ const AutoResizeTextarea = ({ value, onChange, onKeyPress, placeholder, disabled
       placeholder={placeholder}
       disabled={disabled}
       rows={1}
-      className="flex-grow p-3 border rounded-lg focus:outline-none focus:border-blue-500 resize-none min-h-[48px] max-h-[150px] overflow-y-auto"
-      style={{ 
+      className="flex-grow p-3 border rounded-lg focus:outline-none focus:border-blue-500 resize-none min-h-[48px] max-h-[150px] overflow-y-auto w-full"
+      style={{
         lineHeight: '24px',
-        padding: '11px 12px'
+        padding: '11px 12px',
+        transition: 'height 0.2s ease-out',
       }}
     />
   );
 };
+
 
 const ChatInput = ({
   inputValue,
@@ -1029,6 +1037,7 @@ const ChatInput = ({
   const handleChange = (e) => {
     setInputValue(e.target.value); // Update state with the new value
   };
+
 
   // Handle Enter key press
   const handleKeyDown = (e) => {
@@ -1112,19 +1121,13 @@ const ChatInput = ({
     <div className="p-4 border-t">
       <div className="flex flex-col gap-4">
         <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={inputValue} // Controlled value
-            onChange={handleChange} // Handle input changes
-            onKeyDown={handleKeyDown} // Handle Enter key
+
+        <AutoResizeTextarea
+            value={inputValue}
+            onChange={setInputValue} // Pass the setState function directly
+            onKeyPress={handleKeyDown}
             placeholder="Type your message..."
             disabled={isLoading || !hasSeenTypewriter}
-            className="w-full p-3 pr-12 border rounded-lg focus:outline-none focus:border-blue-500 resize-none"
-            style={{
-              minHeight: "48px",
-              maxHeight: "150px",
-              lineHeight: "24px",
-            }}
           />
         </div>
 
@@ -1226,10 +1229,9 @@ const ChatInput = ({
 
 
 
-const handleInputChange = (e) => {
-  setInputValue(e.target.value); // Update state with the new value
+const handleInputChange = (value) => {
+  setInputValue(value);
 };
-
   if (isInitializing) {
     return (
       <div className="md:px-56 h-screen flex flex-col items-center justify-center">
@@ -1412,18 +1414,12 @@ const handleInputChange = (e) => {
               <Send className="h-6 w-6" />
             </button>
           </div> */}<ChatInput
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            handleSubmit={handleSubmit}
-            isLoading={isLoading}
-            hasSeenTypewriter={hasSeenTypewriter}
-            isRecording={false}
-            handleVoiceRecord={() => {}}
-            handleFileUpload={() => {}}
-            getCurrentQuestionType={() => "text"}
-            recognition={null}
-            hasSubmitted={false}
-          />
+        inputValue={inputValue}
+        setInputValue={handleInputChange} // Pass the handler
+        handleSubmit={handleSubmit}
+        isLoading={isLoading}
+        hasSeenTypewriter={hasSeenTypewriter}
+      />
         </div>
       </div>
     </div>

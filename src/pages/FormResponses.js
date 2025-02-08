@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClose, faGripVertical ,faPenToSquare,faTimes} from '@fortawesome/free-solid-svg-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db,doc,updateDoc ,getDoc } from '../firebase';
+import { Building2, Info, MapPin, Mail, Image, User, Phone, Share2,Link,MessageCircle } from 'lucide-react';
 
 const FormResponses = ({ programId, loading = false }) => {
   const [responses, setResponses] = useState([]);
@@ -49,7 +50,7 @@ const FormResponses = ({ programId, loading = false }) => {
   // Fixed fields that we want to display in the table
   const fixedFields = [
     'companyName',
-    'founderName',
+    
     'email',
     'mobile',
     'category',
@@ -333,12 +334,12 @@ const handleRemarkChange = (judgeId, category, value) => {
       initialWidths[field] = defaultColumnWidth;
     });
   
-    initialWidths['averageScore'] = defaultColumnWidth;
+    
     initialWidths['status'] = defaultColumnWidth;
     initialWidths['actions'] = defaultColumnWidth;
-  
+    initialWidths['averageScore'] = defaultColumnWidth;
     setColumnWidths(initialWidths);
-    setColumns([...fixedFields, 'averageScore']);
+    setColumns([...fixedFields]);
   };
 
   useEffect(() => {
@@ -460,19 +461,22 @@ const handleRemarkChange = (judgeId, category, value) => {
     setShowModal(true);
   };
 
-  const formatValue = (value) => {
-    if (value === undefined || value === null) return '-';
-    
-    if (typeof value === 'object') {
-      if ('seconds' in value && 'nanoseconds' in value) {
-        return new Date(value.seconds * 1000).toLocaleString();
-      }
-      if ('question' in value && 'answer' in value) {
-        return value.answer;
-      }
-      return JSON.stringify(value);
+  const formatValue = (item, field) => {
+    if (!item.startupData) return '-';
+  
+    switch (field) {
+      case 'mobile':
+        // Access mobile from contacts array
+        return item.startupData.contacts?.[0]?.mobile || '-';
+        
+      case 'website':
+        // Access website from social map
+        return item.startupData.social?.website || '-';
+        
+      default:
+        // For all other fields, return the direct value from startupData
+        return item.startupData[field] || '-';
     }
-    return value.toString();
   };
   // const formatValue = (item, field) => {
   //   // Access startupData fields directly
@@ -485,7 +489,7 @@ const handleRemarkChange = (judgeId, category, value) => {
   const getDisplayName = (field) => {
     const displayNames = {
       companyName: 'Company Name',
-      founderName: 'Founder Name',
+     
       email: 'Email',
       mobile: 'Mobile',
       category: 'Category',
@@ -666,7 +670,7 @@ const renderTableRow = (item) => (
           </div>
         ) : (
           <div className="truncate">
-            {formatValue(item.startupData?.[column])}
+            {formatValue(item, column)}
           </div>
         )}
       </td>
@@ -725,17 +729,188 @@ const renderTableRow = (item) => (
     </td>
   </tr>
 );
+// Handle bulk judge assignment
+const handleBulkJudgeAssignment = async (judgeId) => {
+  if (!judgeId || selectedItems.length === 0 || !programId) {
+    console.error('Missing required parameters for bulk judge assignment');
+    return;
+  }
 
+  try {
+    // First, query for the program document
+    const programQuery = query(
+      collection(db, 'programmes'),
+      where('id', '==', programId)
+    );
+    const programSnapshot = await getDocs(programQuery);
+
+    if (programSnapshot.empty) {
+      console.error('No program found with the provided ID');
+      return;
+    }
+
+    const programDoc = programSnapshot.docs[0];
+    
+    // Process each selected response
+    for (const responseId of selectedItems) {
+      const responseRef = doc(db, 'programmes', programDoc.id, 'formResponses', responseId);
+      const responseDoc = await getDoc(responseRef);
+
+      if (!responseDoc.exists()) {
+        console.error(`Response document ${responseId} not found`);
+        continue;
+      }
+
+      // Get current assigned judges array
+      const currentJudges = responseDoc.data().startupData?.assignedJudges || [];
+      
+      // Only add if judge isn't already assigned
+      if (!currentJudges.includes(judgeId)) {
+        const updatedJudges = [...currentJudges, judgeId];
+
+        // Update the response document
+        await updateDoc(responseRef, {
+          'startupData.assignedJudges': updatedJudges
+        });
+
+        // Update in programme's judges collection
+        const programJudgeRef = doc(db, 'programmes', programDoc.id, 'judges', judgeId);
+        const programJudgeDoc = await getDoc(programJudgeRef);
+
+        if (programJudgeDoc.exists()) {
+          const currentProgramApplicants = programJudgeDoc.data().applicants || [];
+          if (!currentProgramApplicants.includes(responseId)) {
+            await updateDoc(programJudgeRef, {
+              applicants: [...currentProgramApplicants, responseId]
+            });
+          }
+        }
+
+        // Update in main judges collection
+        const mainJudgeRef = doc(db, 'judges', judgeId);
+        const mainJudgeDoc = await getDoc(mainJudgeRef);
+
+        if (mainJudgeDoc.exists()) {
+          const currentMainApplicants = mainJudgeDoc.data().applicants || [];
+          if (!currentMainApplicants.includes(responseId)) {
+            await updateDoc(mainJudgeRef, {
+              applicants: [...currentMainApplicants, responseId]
+            });
+          }
+        }
+
+        // Update local state
+        setResponses(prev => prev.map(response => {
+          if (response.id === responseId) {
+            return {
+              ...response,
+              startupData: {
+                ...response.startupData,
+                assignedJudges: updatedJudges
+              }
+            };
+          }
+          return response;
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error in bulk judge assignment:', error);
+  }
+};
+
+// Handle bulk status change
+const handleBulkStatusChange = async (newStatus) => {
+  if (!newStatus || selectedItems.length === 0 || !programId) {
+    console.error('Missing required parameters for bulk status change');
+    return;
+  }
+
+  try {
+    // First, query for the program document
+    const programQuery = query(
+      collection(db, 'programmes'),
+      where('id', '==', programId)
+    );
+    const programSnapshot = await getDocs(programQuery);
+
+    if (programSnapshot.empty) {
+      console.error('No program found with the provided ID');
+      return;
+    }
+
+    const programDoc = programSnapshot.docs[0];
+
+    // Process each selected response
+    for (const responseId of selectedItems) {
+      const responseRef = doc(db, 'programmes', programDoc.id, 'formResponses', responseId);
+      
+      // Update the status
+      await updateDoc(responseRef, {
+        'startupData.status': newStatus
+      });
+
+      // Update local state
+      setResponses(prev => prev.map(response => {
+        if (response.id === responseId) {
+          return {
+            ...response,
+            startupData: {
+              ...response.startupData,
+              status: newStatus
+            }
+          };
+        }
+        return response;
+      }));
+    }
+  } catch (error) {
+    console.error('Error in bulk status change:', error);
+  }
+};
+const getIcon = (key) => {
+  const icons = {
+    companyName: <Building2 size={16} className="text-white" />,
+    bio: <Info size={16} className="text-white" />,
+    cityState: <MapPin size={16} className="text-white" />,
+    email: <Mail size={16} className="text-white" />,
+    logoUrl: <Image size={16} className="text-white" />,
+    contacts: <User size={16} className="text-white" />,
+    social: <Share2 size={16} className="text-white" />
+  };
+  return icons[key] || <Info size={16} className="text-white" />;
+};
   return (
-    <div className="container mx-auto px-6 py-6 my-8">
-      <div className="flex items-center mb-4">
+    <div className="container mx-auto py-2 my-2">
+
+      <div className="flex justify-end mb-4">
         <input
           type="text"
           placeholder="Filter by company name..."
-          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
         />
+        <div className="flex space-x-2">
+    <select
+      className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      onChange={(e) => handleBulkJudgeAssignment(e.target.value)}
+    >
+      <option value="">Assign Judge</option>
+      {judges.map(judge => (
+        <option key={judge.id} value={judge.id}>{judge.name}</option>
+      ))}
+    </select>
+    <select
+      className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      onChange={(e) => handleBulkStatusChange(e.target.value)}
+    >
+      <option value="">Change Status</option>
+      <option value="Pending">Pending</option>
+      <option value="Accepted">Accepted</option>
+      <option value="Rejected">Rejected</option>
+    </select>
+  </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border-l-4 border-[#F99F31]">
@@ -743,9 +918,20 @@ const renderTableRow = (item) => (
           <table className="w-full border border-gray-300 rounded-lg">
             <thead>
               <tr>
-                <th className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg w-[50px]">
-                  <input type="checkbox" />
-                </th>
+              <th className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg w-[50px]">
+  <input
+    type="checkbox"
+    checked={selectedItems.length === filteredData.length}
+    onChange={(e) => {
+      if (e.target.checked) {
+        setSelectedItems(filteredData.map(item => item.id));
+
+      } else {
+        setSelectedItems([]);
+      }
+    }}
+  />
+</th>
                 {columns.map((column) => (
                   <th 
                     key={column}
@@ -797,6 +983,22 @@ const renderTableRow = (item) => (
                     </div>
                   </div>
                 </th>
+                <th 
+      className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg relative group"
+      style={{ width: columnWidths['averageScore'] }}
+    >
+      <div className="flex items-center justify-between">
+        <span>Average Score</span>
+        <div
+          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 group-hover:opacity-100"
+          onMouseDown={(e) => handleResizeStart(e, 'averageScore')}
+        >
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 -translate-x-1/2">
+            <FontAwesomeIcon icon={faGripVertical} className="text-gray-400" />
+          </div>
+        </div>
+      </div>
+    </th>
               </tr>
             </thead>
             <tbody>
@@ -858,38 +1060,147 @@ const renderTableRow = (item) => (
               {activeTab === 'companyInfo' ? (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">Company Information</h3>
-                  {Object.entries(selectedRow.startupData || {}).map(([key, value]) => (
-                    typeof value === 'object' ? null : (
-                      <div key={key} className="flex items-start space-x-3 mb-4">
-                        <div className="bg-blue-500 p-2 rounded">
-                          <span className="text-white">#</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
-                            <div className="text-gray-600">{value}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ))}
+                  <>
+  {/* Main startup data */}
+  {Object.entries({
+    companyName: selectedRow.startupData?.companyName || 'Not Available',
+    bio: selectedRow.startupData?.bio || 'Not Available',
+    cityState: selectedRow.startupData?.cityState || 'Not Available',
+    email: selectedRow.startupData?.email || 'Not Available',
+    logoUrl: selectedRow.startupData?.logoUrl || null
+  }).map(([key, value]) => (
+    <div key={key} className="flex items-start space-x-3 mb-4">
+      <div className="bg-blue-500 p-2 rounded">
+        {getIcon(key)}
+      </div>
+      <div className="flex-1">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
+          {key === 'logoUrl' ? (
+            value ? (
+              <img src={value} alt="Logo" className="h-24 w-24 object-contain mt-2" />
+            ) : (
+              <div className="text-gray-400 mt-2">No logo available</div>
+            )
+          ) : (
+            <div className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+              {value}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  ))}
+
+  {/* Contacts section */}
+  <div className="flex items-start space-x-3 mb-4">
+    <div className="bg-blue-500 p-2 rounded">
+      {getIcon('contacts')}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">Contact Details</div>
+        <div className="space-y-2 mt-2">
+          {Object.entries({
+            designation: selectedRow.startupData?.contacts?.[0]?.designation || 'Not Available',
+            email: selectedRow.startupData?.contacts?.[0]?.email || 'Not Available',
+            firstName: selectedRow.startupData?.contacts?.[0]?.firstName || 'Not Available',
+            lastName: selectedRow.startupData?.contacts?.[0]?.lastName || 'Not Available',
+            mobile: selectedRow.startupData?.contacts?.[0]?.mobile || 'Not Available'
+          }).map(([key, value]) => (
+            <div key={key} className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <span className="font-medium">{getDisplayName(key)}: </span>
+              {value}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Social media section */}
+  <div className="flex items-start space-x-3 mb-4">
+    <div className="bg-blue-500 p-2 rounded">
+      {getIcon('social')}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">Social Media</div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {Object.entries({
+            instagram: selectedRow.startupData?.social?.instagram || null,
+            linkedin: selectedRow.startupData?.social?.linkedin || null,
+            tiktok: selectedRow.startupData?.social?.tiktok || null,
+            twitter: selectedRow.startupData?.social?.twitter || null,
+            website: selectedRow.startupData?.social?.website || null,
+            youtube: selectedRow.startupData?.social?.youtube || null
+          }).map(([key, value]) => (
+            <div key={key}>
+              {value ? (
+                <a 
+                  href={
+                    key === 'website' 
+                      ? value 
+                      : `https://${key}.com/${key === 'tiktok' ? '@' : ''}${value}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  {getDisplayName(key)}
+                </a>
+              ) : (
+                <span className="text-gray-400">{getDisplayName(key)}: Not Available</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</>
                 </div>
               ) : (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">Form Responses</h3>
-                  {selectedRow.responses?.map((response, index) => (
-                    <div key={index} className="flex items-start space-x-3 mb-4">
-                      <div className="bg-blue-500 p-2 rounded">
-                        <span className="text-white">#</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="font-medium text-gray-800">{response.question}</div>
-                          <div className="text-gray-600">{response.answer}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  {selectedRow.responses?.slice(1).map((response, index) => (
+  <div key={index} className="flex items-start space-x-3 mb-4">
+    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
+      {response.answer.includes('https://') ? (
+        <Link className="w-5 h-5 text-white" />
+      ) : (
+        <MessageCircle className="w-5 h-5 text-white" />
+      )}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">{response.question}</div>
+        <div className="text-gray-600">
+          {response.answer.includes('https://') ? (
+            <div className="mt-2">
+              <div 
+                className="border rounded p-4 cursor-resize-v"
+                style={{ 
+                  height: '300px',
+                  overflow: 'auto',
+                  resize: 'vertical'
+                }}
+              >
+                <iframe 
+                  src={response.answer}
+                  className="w-full h-full border-0"
+                  title="URL Preview"
+                />
+              </div>
+            </div>
+          ) : (
+            response.answer
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+))}
                 </div>
               )}
             </div>
@@ -902,24 +1213,27 @@ const renderTableRow = (item) => (
     <div className="flex space-x-2 overflow-x-auto">
       {/* Judge Dropdown */}
       <select
-        value={selectedJudgeTab}
-        onChange={(e) => setSelectedJudgeTab(e.target.value)}
-        className={`px-3 py-1 rounded-full text-sm ${
-          selectedJudgeTab !== 'average'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-200 text-gray-700'
-        }`}
-      >
-        <option value="" disabled>Select Judge</option>
-        {selectedRow.startupData?.assignedJudges?.map(judgeId => {
-          const judge = judges.find(j => j.id === judgeId);
-          return (
-            <option key={judgeId} value={judgeId}>
-              {judge?.name || 'Judge'}
-            </option>
-          );
-        })}
-      </select>
+  value={selectedJudgeTab || ""}
+  onChange={(e) => setSelectedJudgeTab(e.target.value)}
+  className={`px-3 py-1 rounded-full text-sm ${
+    selectedJudgeTab && selectedJudgeTab !== "average"
+      ? "bg-blue-600 text-white"
+      : "bg-gray-200 text-gray-700"
+  }`}
+>
+  <option value="" >
+    Select Judge
+  </option>
+  {selectedRow.startupData?.assignedJudges?.map((judgeId) => {
+    const judge = judges.find((j) => j.id === judgeId);
+    return (
+      <option key={judgeId} value={judgeId}>
+        {judge?.name || "Judge"}
+      </option>
+    );
+  })}
+</select>
+
 
       {/* Average Tab */}
       <button
@@ -968,9 +1282,8 @@ const renderTableRow = (item) => (
               {[1, 2, 3, 4, 5].map((point) => (
                 <button
                   key={point}
-                  onClick={() => handleScoreChange(category, point)}
                   className={`w-8 h-8 rounded ${
-                    scores[category] >= point
+                    judgeScores[selectedJudgeTab]?.[category] >= point
                       ? 'bg-yellow-400 text-white'
                       : 'bg-gray-100 text-gray-400'
                   }`}
@@ -979,28 +1292,18 @@ const renderTableRow = (item) => (
                 </button>
               ))}
             </div>
-            {/* Remarks Toggle */}
             {visibleRemarks[category] && (
               <div className="mt-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Remarks for {category}
                 </label>
-                <textarea
-                  value={remarks[category] || ''}
-                  onChange={(e) => handleRemarkChange(category, e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm h-16 resize-none"
-                  placeholder={`Add remarks for ${category}...`}
-                />
+                <div className="w-full p-2 border rounded-md text-sm bg-gray-50">
+                  {judgeRemarks[selectedJudgeTab]?.[category] || "No remarks available"}
+                </div>
               </div>
             )}
           </div>
         ))}
-        <button 
-          className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          onClick={handleSaveScores}
-        >
-          Save Scores
-        </button>
       </div>
     )}
   </div>

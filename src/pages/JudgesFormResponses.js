@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClose, faGripVertical ,faPenToSquare,faTimes} from '@fortawesome/free-solid-svg-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db,doc,updateDoc ,getDoc } from '../firebase';
+import { Building2, Info, MapPin, Mail, Image, User, Phone, Share2,Link,MessageCircle } from 'lucide-react';
 
 const JudgesFormResponses = ({ programId, loading = false }) => {
   const [responses, setResponses] = useState([]);
@@ -48,7 +49,6 @@ const JudgesFormResponses = ({ programId, loading = false }) => {
   // Fixed fields that we want to display in the table
   const fixedFields = [
     'companyName',
-    'founderName',
     'email',
     'mobile',
     'category',
@@ -413,19 +413,22 @@ const handleStatusChange = async (responseId, newStatus) => {
     setShowModal(true);
   };
 
-  const formatValue = (value) => {
-    if (value === undefined || value === null) return '-';
-    
-    if (typeof value === 'object') {
-      if ('seconds' in value && 'nanoseconds' in value) {
-        return new Date(value.seconds * 1000).toLocaleString();
-      }
-      if ('question' in value && 'answer' in value) {
-        return value.answer;
-      }
-      return JSON.stringify(value);
+  const formatValue = (item, field) => {
+    if (!item.startupData) return '-';
+  
+    switch (field) {
+      case 'mobile':
+        // Access mobile from contacts array
+        return item.startupData.contacts?.[0]?.mobile || '-';
+        
+      case 'website':
+        // Access website from social map
+        return item.startupData.social?.website || '-';
+        
+      default:
+        // For all other fields, return the direct value from startupData
+        return item.startupData[field] || '-';
     }
-    return value.toString();
   };
   // const formatValue = (item, field) => {
   //   // Access startupData fields directly
@@ -643,8 +646,8 @@ const renderTableRow = (item) => (
             </div>
           ) : (
             <div className="truncate">
-              {formatValue(item.startupData?.[column])}
-            </div>
+            {formatValue(item, column)}
+          </div>
           )}
       </td>
     ))}
@@ -675,26 +678,109 @@ const renderTableRow = (item) => (
     </td>
   </tr>
 );
+const handleBulkStatusChange = async (newStatus) => {
+  if (!newStatus || selectedItems.length === 0 || !programId) {
+    console.error('Missing required parameters for bulk status change');
+    return;
+  }
+
+  try {
+    // First, query for the program document
+    const programQuery = query(
+      collection(db, 'programmes'),
+      where('id', '==', programId)
+    );
+    const programSnapshot = await getDocs(programQuery);
+
+    if (programSnapshot.empty) {
+      console.error('No program found with the provided ID');
+      return;
+    }
+
+    const programDoc = programSnapshot.docs[0];
+
+    // Process each selected response
+    for (const responseId of selectedItems) {
+      const responseRef = doc(db, 'programmes', programDoc.id, 'formResponses', responseId);
+      
+      // Update the status
+      await updateDoc(responseRef, {
+        'startupData.status': newStatus
+      });
+
+      // Update local state
+      setResponses(prev => prev.map(response => {
+        if (response.id === responseId) {
+          return {
+            ...response,
+            startupData: {
+              ...response.startupData,
+              status: newStatus
+            }
+          };
+        }
+        return response;
+      }));
+    }
+  } catch (error) {
+    console.error('Error in bulk status change:', error);
+  }
+};
+
+const getIcon = (key) => {
+  const icons = {
+    companyName: <Building2 size={16} className="text-white" />,
+    bio: <Info size={16} className="text-white" />,
+    cityState: <MapPin size={16} className="text-white" />,
+    email: <Mail size={16} className="text-white" />,
+    logoUrl: <Image size={16} className="text-white" />,
+    contacts: <User size={16} className="text-white" />,
+    social: <Share2 size={16} className="text-white" />
+  };
+  return icons[key] || <Info size={16} className="text-white" />;
+};
   return (
-    <div className="container mx-auto px-6 py-6 my-8">
-      <div className="flex items-center mb-4">
+    <div className="container mx-auto  py-6 my-8">
+      <div className="flex justify-end mb-4">
         <input
           type="text"
           placeholder="Filter by company name..."
-          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
           value={companyFilter}
           onChange={(e) => setCompanyFilter(e.target.value)}
         />
+        <div className="flex space-x-2">
+    <select
+      className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      onChange={(e) => handleBulkStatusChange(e.target.value)}
+    >
+      <option value="">Change Status</option>
+      <option value="Pending">Pending</option>
+      <option value="Accepted">Accepted</option>
+      <option value="Rejected">Rejected</option>
+    </select>
+  </div>
       </div>
+
 
       <div className="overflow-x-auto rounded-xl border-l-4 border-[#F99F31]">
         <div className="min-w-[1200px]" ref={tableRef}>
           <table className="w-full border border-gray-300 rounded-lg">
             <thead>
               <tr>
-                <th className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg w-[50px]">
-                  <input type="checkbox" />
-                </th>
+              <th className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg w-[50px]">
+  <input
+    type="checkbox"
+    checked={selectedItems.length === filteredData.length}
+    onChange={(e) => {
+      if (e.target.checked) {
+        setSelectedItems(filteredData.map(item => item.id));
+      } else {
+        setSelectedItems([]);
+      }
+    }}
+  />
+</th>
                 {columns.map((column) => (
                   <th 
                     key={column}
@@ -807,38 +893,147 @@ const renderTableRow = (item) => (
               {activeTab === 'companyInfo' ? (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">Company Information</h3>
-                  {Object.entries(selectedRow.startupData || {}).map(([key, value]) => (
-                    typeof value === 'object' ? null : (
-                      <div key={key} className="flex items-start space-x-3 mb-4">
-                        <div className="bg-blue-500 p-2 rounded">
-                          <span className="text-white">#</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
-                            <div className="text-gray-600">{value}</div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ))}
+                  <>
+  {/* Main startup data */}
+  {Object.entries({
+    companyName: selectedRow.startupData?.companyName || 'Not Available',
+    bio: selectedRow.startupData?.bio || 'Not Available',
+    cityState: selectedRow.startupData?.cityState || 'Not Available',
+    email: selectedRow.startupData?.email || 'Not Available',
+    logoUrl: selectedRow.startupData?.logoUrl || null
+  }).map(([key, value]) => (
+    <div key={key} className="flex items-start space-x-3 mb-4">
+      <div className="bg-blue-500 p-2 rounded">
+        {getIcon(key)}
+      </div>
+      <div className="flex-1">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
+          {key === 'logoUrl' ? (
+            value ? (
+              <img src={value} alt="Logo" className="h-24 w-24 object-contain mt-2" />
+            ) : (
+              <div className="text-gray-400 mt-2">No logo available</div>
+            )
+          ) : (
+            <div className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+              {value}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  ))}
+
+  {/* Contacts section */}
+  <div className="flex items-start space-x-3 mb-4">
+    <div className="bg-blue-500 p-2 rounded">
+      {getIcon('contacts')}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">Contact Details</div>
+        <div className="space-y-2 mt-2">
+          {Object.entries({
+            designation: selectedRow.startupData?.contacts?.[0]?.designation || 'Not Available',
+            email: selectedRow.startupData?.contacts?.[0]?.email || 'Not Available',
+            firstName: selectedRow.startupData?.contacts?.[0]?.firstName || 'Not Available',
+            lastName: selectedRow.startupData?.contacts?.[0]?.lastName || 'Not Available',
+            mobile: selectedRow.startupData?.contacts?.[0]?.mobile || 'Not Available'
+          }).map(([key, value]) => (
+            <div key={key} className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <span className="font-medium">{getDisplayName(key)}: </span>
+              {value}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Social media section */}
+  <div className="flex items-start space-x-3 mb-4">
+    <div className="bg-blue-500 p-2 rounded">
+      {getIcon('social')}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">Social Media</div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {Object.entries({
+            instagram: selectedRow.startupData?.social?.instagram || null,
+            linkedin: selectedRow.startupData?.social?.linkedin || null,
+            tiktok: selectedRow.startupData?.social?.tiktok || null,
+            twitter: selectedRow.startupData?.social?.twitter || null,
+            website: selectedRow.startupData?.social?.website || null,
+            youtube: selectedRow.startupData?.social?.youtube || null
+          }).map(([key, value]) => (
+            <div key={key}>
+              {value ? (
+                <a 
+                  href={
+                    key === 'website' 
+                      ? value 
+                      : `https://${key}.com/${key === 'tiktok' ? '@' : ''}${value}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  {getDisplayName(key)}
+                </a>
+              ) : (
+                <span className="text-gray-400">{getDisplayName(key)}: Not Available</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</>
                 </div>
               ) : (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">Form Responses</h3>
-                  {selectedRow.responses?.map((response, index) => (
-                    <div key={index} className="flex items-start space-x-3 mb-4">
-                      <div className="bg-blue-500 p-2 rounded">
-                        <span className="text-white">#</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="font-medium text-gray-800">{response.question}</div>
-                          <div className="text-gray-600">{response.answer}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  {selectedRow.responses?.slice(1).map((response, index) => (
+  <div key={index} className="flex items-start space-x-3 mb-4">
+    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
+      {response.answer.includes('https://') ? (
+        <Link className="w-5 h-5 text-white" />
+      ) : (
+        <MessageCircle className="w-5 h-5 text-white" />
+      )}
+    </div>
+    <div className="flex-1">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="font-medium text-gray-800">{response.question}</div>
+        <div className="text-gray-600">
+          {response.answer.includes('https://') ? (
+            <div className="mt-2">
+              <div 
+                className="border rounded p-4 cursor-resize-v"
+                style={{ 
+                  height: '300px',
+                  overflow: 'auto',
+                  resize: 'vertical'
+                }}
+              >
+                <iframe 
+                  src={response.answer}
+                  className="w-full h-full border-0"
+                  title="URL Preview"
+                />
+              </div>
+            </div>
+          ) : (
+            response.answer
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+))}
                 </div>
               )}
             </div>

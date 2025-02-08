@@ -1506,7 +1506,7 @@ import JudgesFormResponses from './JudgesFormResponses';
   {activeProgramTab === 'formResponses' && (
       <div className="h-full">
         <div className="md:px-56 overflow-none mt-8">
-        <div className="p-4">
+        <div className="">
           <div className="flex justify-between items-center mb-6">
             {/* <h3 className="text-lg font-semibold">Form Responses</h3>
             <div className="text-sm text-gray-500">

@@ -329,7 +329,7 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
 
 
           <div 
-                className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] h-auto overflow-y-auto overflow-x-hidden  p-4'
+                className='col-span-1 order-3 lg:order-3 lg:sticky lg:top-20 h-auto overflow-y-auto overflow-x-hidden p-4'
                 style={{ 
                   '-ms-overflow-style': 'none',
                   scrollbarWidth: 'none'

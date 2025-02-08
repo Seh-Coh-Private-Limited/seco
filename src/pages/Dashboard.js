@@ -723,16 +723,21 @@ const Header = ({
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200 z-10">
       <div className="flex items-center gap-4">
-        <h6
-        onClick={handleLogoClick}
-          className="text-black font-bold hover:opacity-80 transition-opacity px-2"
-          style={{
-            fontFamily: 'CustomFont',
-            fontSize: '30px',
-          }}
-        >
-          seco
-        </h6>
+      <button
+  onClick={() => setActiveTab('home')}
+  className="focus:outline-none hover:bg-gray-100 rounded-lg"
+>
+  <h6
+    className="text-black font-bold hover:opacity-80 transition-opacity px-2"
+    style={{
+      fontFamily: 'CustomFont',
+      fontSize: '30px',
+      
+    }}
+  >
+    seco
+  </h6>
+</button>
         {console.log("currentStep",currentStep)}  
         <Breadcrumb 
           currentStep={currentStep} 
@@ -1522,7 +1527,7 @@ const CardContent = ({ children, className = '' }) => (
 {activeProgramTab === 'formResponses' && (
     <div className="h-full">
       <div className="md:px-56 overflow-none mt-8">
-      <div className="p-4">
+      <div className="">
         <div className="flex justify-between items-center mb-6">
           {/* <h3 className="text-lg font-semibold">Form Responses</h3>
           <div className="text-sm text-gray-500">
