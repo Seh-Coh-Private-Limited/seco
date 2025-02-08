@@ -195,8 +195,8 @@ const fetchProgrammes = useCallback(async (user) => {
       query(
         collection(db, 'programmes'),
         where('uid', '==', user.uid),
-        where('programStatus', '==', 'completed')
-      )      
+        where('programStatus', 'in', ['completed', 'draft']) // Fetch both completed and draft programmes
+      )        
     );
     
     const fetchedProgrammes = programmesQuery.docs.map(doc => ({
@@ -600,7 +600,7 @@ const HomePage = ({ userStatus,
   useEffect(() => {
     // Only proceed if not currently closing
     if (isClosing) return;
-
+  
     if (userStatus === 'active' && programid) {
       // Add a delay before checking program status
       const timer = setTimeout(() => {
@@ -613,7 +613,7 @@ const HomePage = ({ userStatus,
             if (!querySnapshot.empty) {
               const programData = querySnapshot.docs[0].data();
               setEventData(programData);
-              setShowCreateEvent(true);
+              setShowCreateEvent(true); // Remove this line
             }
           } catch (error) {
             console.error('Error fetching existing program:', error);
@@ -622,7 +622,7 @@ const HomePage = ({ userStatus,
     
         fetchExistingProgram();
       }, 2000); // 2 second delay
-
+  
       return () => clearTimeout(timer);
     }
   }, [userStatus, programid, isClosing]);
@@ -661,15 +661,16 @@ const HomePage = ({ userStatus,
  
      
       {showCreateEvent ? (
-      <CreateEventForm 
-      onClose={handleClose}
-      initialData={eventData}
-      programId={programid}
-      currentStep={currentStep}
-      setCurrentStep={setCurrentStep}
-      isClosing={isClosing}
-      onFormLaunchSuccess={onFormLaunchSuccess} // Pass fetchProgrammes as a prop
-    />
+     <CreateEventForm 
+     onClose={handleClose}
+     initialData={selectedProgram} // Pass the selected program data
+     programId={selectedProgram?.id || programid} // Pass the programId
+     currentStep={currentStep}
+     setCurrentStep={setCurrentStep}
+     isClosing={isClosing}
+     onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
+     fetchProgrammes={fetchProgrammes}
+   />
       ) : (
         // Rest of your existing HomePage content
         <div className="flex-1 flex flex-col items-center justify-center mt-28">
@@ -782,12 +783,18 @@ const CardContent = ({ children, className = '' }) => (
 );
 
 
-  const handleProgramClick = (program) => {
+const handleProgramClick = (program) => {
+  if (program.programStatus === 'draft') {
+    setShowCreateEvent(true);
+    setSelectedProgram(program); // Set the selected program
+    setCurrentStep(1); // Reset to the first step
+  } else {
     setActiveTab('program');
     setSelectedProgram(program);
     setActiveProgramTab('summary');
     setFormResponses([]);
-  };
+  }
+};
 
   const handleLogout = async () => {
     try {
@@ -835,7 +842,82 @@ const CardContent = ({ children, className = '' }) => (
     calendar: 'Google Calendar',
     customFields: []
   });
-
+  const handleSaveDraft = async () => {
+    try {
+      if (programId) {
+        // Update existing program
+        const programmesRef = collection(db, 'programmes');
+        const q = query(programmesRef, where('id', '==', programId));
+        const querySnapshot = await getDocs(q);
+  
+        if (!querySnapshot.empty) {
+          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+          await updateDoc(docRef, {
+            ...eventData,
+            image: eventImage,
+            programStatus: 'draft', // Set status to draft
+            updatedAt: new Date(),
+          });
+  
+          // Update user's program status and program ID
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const userSnapshot = await getDocs(usersQuery);
+  
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: 'draft', // Update the status to 'draft'
+              programid: programId, // Update the programId field
+            });
+          }
+        }
+      } else {
+        // Create new program
+        const docRef = await addDoc(collection(db, 'programmes'), {
+          ...eventData,
+          image: eventImage,
+          id: generatedId,
+          uid: auth.currentUser.uid,
+          programStatus: 'draft', // Set status to draft
+          createdAt: new Date(),
+        });
+  
+        // Update user's program status
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('uid', '==', auth.currentUser.uid)
+        );
+        const querySnapshot = await getDocs(usersQuery);
+  
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userDocRef = doc(db, 'users', userDoc.id);
+          await updateDoc(userDocRef, {
+            programStatus: 'draft',
+            programid: generatedId,
+          });
+        }
+      }
+  
+      // Show success message
+      alert('Draft saved successfully!');
+  
+      // Reload programmes
+      if (fetchProgrammes) {
+        await fetchProgrammes(auth.currentUser); // Fetch the updated list of programmes
+      }
+  
+      // Close the form after saving
+      handleClose(); // Call the function to close the form
+    } catch (e) {
+      console.error('Error saving draft: ', e);
+      alert('Error saving draft. Please try again.');
+    }
+  };
   // Use useEffect to update state when initialData changes
   useEffect(() => {
     if (initialData) {
@@ -948,7 +1030,7 @@ const CardContent = ({ children, className = '' }) => (
             await updateDoc(docRef, {
               ...eventData,
               image: eventImage,
-              programStatus: 'active',
+              programStatus: 'active', // Update status to active
               updatedAt: new Date(),
             });
     
@@ -963,7 +1045,7 @@ const CardContent = ({ children, className = '' }) => (
               const userDoc = userSnapshot.docs[0];
               const userDocRef = doc(db, 'users', userDoc.id);
               await updateDoc(userDocRef, {
-                programStatus: 'active', // Update the status to 'active' or a relevant value
+                programStatus: 'active', // Update the status to 'active'
                 programid: programId, // Update the programId field
               });
             }
@@ -1200,6 +1282,12 @@ const CardContent = ({ children, className = '' }) => (
     >
       Review and Launch
     </button> */}
+     <button
+            onClick={handleSaveDraft}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md"
+          >
+            Save as Draft
+          </button>
                   <button
                     onClick={handleNext}
                     className="px-4 py-2 bg-purple-600 text-white rounded-md"
@@ -1437,19 +1525,26 @@ const CardContent = ({ children, className = '' }) => (
         <div className="mt-8">
           <div className="text-sm text-gray-500 mb-2">Programs</div>
           <div className="ml-2">
-            {programmes.length > 0 ? (
-              programmes.map((programme) => (
-                <NavItem
-                  key={programme.id}
-                  icon={faFile}
-                  label={programme.name || 'Untitled Program'}
-                  active={selectedProgram?.id === programme.id}
-                  onClick={() => handleProgramClick(programme)}
-                />
-              ))
-            ) : (
-              <div className="text-gray-400 p-2">No programs available</div>
-            )}
+          {programmes.length > 0 ? (
+  programmes.map((programme) => (
+    <NavItem
+      key={programme.id}
+      icon={faFile}
+      label={
+        <>
+          {programme.name || 'Untitled Program'}
+          {programme.programStatus === 'draft' && (
+            <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Draft</span>
+          )}
+        </>
+      }
+      active={selectedProgram?.id === programme.id}
+      onClick={() => handleProgramClick(programme)}
+    />
+  ))
+) : (
+  <div className="text-gray-400 p-2">No programs available</div>
+)}
           </div>
         </div>
 
