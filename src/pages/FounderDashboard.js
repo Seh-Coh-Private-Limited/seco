@@ -20,7 +20,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, getFirestore, query, setDoc, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useCallback,setError } from 'react';
 import Articles from '../components/Articles';
 import SettingsForm from '../components/SettingsForm';
 import FFormResponses from './FFormResponses';
@@ -46,8 +46,10 @@ const FounderDashboard = () => {
     programId: null
   })
   const [activeApplicationTab, setActiveApplicationTab] = useState('summary');
+  const [eventDetails, setEventDetails] = useState(null);
 
-  
+  const [selectedProgramId, setSelectedProgramId] = useState(null); // Declare here
+
   const navigate = useNavigate();
   const auth = getAuth();
   const db = getFirestore();
@@ -160,6 +162,38 @@ const FounderDashboard = () => {
     
     return () => clearInterval(interval);
   }, [navigate, auth, db]);
+ 
+  const fetchCompanyDetails = useCallback(async (user) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCompanyDetails({
+          name: userData.companyName || 'Company Name',
+          logo: userData.logoUrl || userData.companyLogo || null
+        });
+        setLogoError(false); // Reset logo error state
+      }
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      setCompanyDetails({ name: 'Company Name', logo: null });
+    }
+  }, [db]);
+
+  const reloadCompanyDetails = useCallback(async () => {
+    const user = auth.currentUser;
+    if (user) {
+      await fetchCompanyDetails(user);
+    }
+  }, [auth, fetchCompanyDetails]);
+
+  // Replace all other company detail fetching useEffects with this single one
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      fetchCompanyDetails(user);
+    }
+  }, [fetchCompanyDetails]);
   // Fetch company details
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -197,6 +231,34 @@ const FounderDashboard = () => {
   
     fetchCompanyDetails();
   }, [auth, db, navigate]);
+  useEffect(() => {
+    const fetchProgramDetails = async () => {
+      if (selectedProgramId) {
+        try {
+          console.log(selectedProgramId);
+    
+          // Query Firestore to find document where the field matches selectedProgramId
+          const programQuery = query(collection(db, 'programmes'), where('id', '==', selectedProgramId));
+          const querySnapshot = await getDocs(programQuery);
+    
+          if (!querySnapshot.empty) {
+            // Assuming there's only one document that matches the query
+            const programDoc = querySnapshot.docs[0];
+            setEventDetails(programDoc.data()); // Update eventDetails with program details
+            console.log(programDoc.data());
+          } else {
+            console.log('No program found with the selectedProgramId');
+          }
+        } catch (error) {
+          console.error('Error fetching program details:', error);
+          setEventDetails(null); // Reset eventDetails if there's an error
+        }
+      }
+    };
+    
+  
+    fetchProgramDetails();
+  }, [selectedProgramId, db]);
   useEffect(() => {
     const fetchUserDataAndApplications = async () => {
       try {
@@ -270,7 +332,34 @@ const FounderDashboard = () => {
   // Fetch form responses when program or tab changes
  // Fetch form responses when program or tab changes
 // StepIndicator Component
+const reloadApplications = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
 
+    // Query users collection where uid field matches current user's uid
+    const usersRef = collection(db, 'users');
+    const userQuery = query(usersRef, where('uid', '==', user.uid));
+    const userSnapshot = await getDocs(userQuery);
+    
+    if (!userSnapshot.empty) {
+      const userDocRef = userSnapshot.docs[0].ref;
+      
+      // Fetch applications from subcollection
+      const applicationsCollection = collection(userDocRef, 'applications');
+      const applicationsSnapshot = await getDocs(applicationsCollection);
+      
+      const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        title: doc.data().programTitle
+      }));
+      
+      setApplications(fetchedApplications);
+    }
+  } catch (error) {
+    console.error('Error reloading applications:', error);
+  }
+};
 const Breadcrumb = ({ 
   activeTab, 
   selectedApplication, 
@@ -290,28 +379,15 @@ const Breadcrumb = ({
         });
         break;
 
-      case 'applicationform':
+      case 'programdetailpage':
         items.push(
           { 
             label: 'Discover', 
             onClick: () => setActiveTab('discover') 
           },
           { 
-            label: 'Application Form', 
-            onClick: () => setActiveTab('applicationform') 
-          }
-        );
-        break;
-
-      case 'eventdetailpage':
-        items.push(
-          { 
-            label: 'Discover', 
-            onClick: () => setActiveTab('discover') 
-          },
-          { 
-            label: eventDetails?.title || 'Event', 
-            onClick: () => setActiveTab('eventdetailpage') 
+            label: eventDetails?.name || 'Event', 
+            onClick: () => setActiveTab('programdetailpage') 
           }
         );
         break;
@@ -323,12 +399,15 @@ const Breadcrumb = ({
             onClick: () => setActiveTab('discover') 
           },
           { 
-            label: eventDetails?.title || 'Event', 
-            onClick: () => setActiveTab('eventdetailpage') 
+            label: eventDetails?.name || 'Event', 
+            onClick: () => {
+              setActiveTab('programdetailpage');
+              setSelectedProgramId(eventDetails?.id); // Make sure this matches the program ID field in your data
+            }
           },
           { 
             label: 'Application Form', 
-            onClick: () => setActiveTab('eventapplicationform') 
+            
           }
         );
         break;
@@ -336,10 +415,7 @@ const Breadcrumb = ({
       case 'application':
         if (selectedApplication) {
           items.push(
-            { 
-              label: 'Discover', 
-              onClick: () => setActiveTab('discover') 
-            },
+           
             { 
               label: selectedApplication.title || 'Untitled Application', 
               onClick: () => setActiveTab('application') 
@@ -391,7 +467,7 @@ const Breadcrumb = ({
   );
 };
 // Replace your existing header section in the return statement with this:
-const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) => {
+const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eventDetails }) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200">
       <div className="flex items-center gap-4">
@@ -413,6 +489,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
 
         <Breadcrumb 
           activeTab={activeTab} 
+          eventDetails={eventDetails}
           selectedApplication={selectedApplication}
           setActiveTab={setActiveTab}
         />
@@ -495,17 +572,19 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
     setFormResponses([]);
   };
   // const [activeTab, setActiveTab] = useState('discover');
-  const [selectedProgramId, setSelectedProgramId] = useState(null);
+  // const [selectedProgramId, setSelectedProgramId] = useState(null);
 
   const handleTabChange = (tab, programId) => {
+    console.log(tab);
+    console.log(programId);
     setActiveTab(tab);
     setSelectedProgramId(programId);
   };
   const ApplicationHeader = ({ application }) => (
-    <div className="border-b border-gray-200 p-4">
+    <div className=" border-b border-gray-200 p-4">
       {/* <h2 className="text-2xl font-bold mb-4">{application.title || 'Untitled Application'}</h2> */}
       <div className="flex space-x-6">
-        {['summary', 'editApplication'].map((tab) => (
+        {['summary', 'formresponses'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveApplicationTab(tab)}
@@ -606,6 +685,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
       <Header 
   activeTab={activeTab}
   selectedApplication={selectedApplication}
+  eventDetails={eventDetails} 
   setActiveTab={setActiveTab}
   openSettings={openSettings}
 />
@@ -624,7 +704,10 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
       {activeTab === 'programdetailpage' && (
         <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
           {/* Your Events component */}
-          <FProgramDetailPage programId={selectedProgramId} />
+          <FProgramDetailPage 
+      programId={selectedProgramId} 
+      handleTabChange={handleTabChange}  // Add this prop
+    />
           {/* <div className="p-4">
             <h3 className="text-lg font-semibold mb-4">Events</h3>
             <p className="text-gray-600">No events available</p>
@@ -635,7 +718,10 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
         <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
           {/* Your Applications component */}
           {/* <Applications programId={selectedProgramId} /> */}
-          <Application programId={selectedProgramId}/>
+          <Application 
+                programId={selectedProgramId} 
+                onFormSubmitSuccess={reloadApplications} 
+              />
           {/* <div className="p-4">
             <h3 className="text-lg font-semibold mb-4">Applications</h3>
             </div> */}
@@ -643,18 +729,22 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
       )}
           
           {activeTab === 'application' && selectedApplication && (
-            <div className="h-full">
+            <div className="md:px-56 overflow-none mt-8 h-full">
               <ApplicationHeader application={selectedApplication} />
               <div className="p-4">
                 {activeApplicationTab === 'summary' && (
                   <div className="h-full">
-                  <FFormResponses programId={selectedApplication.id} userId={auth.currentUser.uid} />
+                  <h3 className="text-lg font-semibold mb-4">Summary</h3>
                 </div>
                 )}
 
                 {activeApplicationTab === 'formResponses' && (
                   <div className="h-full">
-                    <FFormResponses programId={selectedApplication.id} userId={auth.currentUser.uid} />
+                  <FFormResponses 
+      programId={selectedApplication.id} 
+      userId={auth.currentUser.uid} 
+      isTabActive={activeApplicationTab === 'formResponses'}
+    />
                   </div>
                 )}
 
@@ -677,7 +767,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings }) 
 
 <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
   {activeTab === 'settings' && (
-    <SettingsForm />
+    <SettingsForm onProfileUpdate={reloadCompanyDetails}  />
   )}
 </div>
 

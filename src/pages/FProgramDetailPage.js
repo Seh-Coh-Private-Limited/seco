@@ -11,7 +11,7 @@ import { collection, db, getDocs, query, where } from '../firebase';
 
 
 
-const FProgramDetailPage = ({ programId }) => {
+const FProgramDetailPage = ({ programId,handleTabChange}) => {
   const navigate = useNavigate();
   const [programDetails, setProgramDetails] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
@@ -115,6 +115,10 @@ const FProgramDetailPage = ({ programId }) => {
   const handleSetActive = (to) => {
     setActiveTab(to);
   };
+  const setCurrentTab = (tab) => {
+    setActiveTab(tab);
+  };
+
   const sanitizedDescription = sanitizeHTML(description);
   const renderDescription = (description) => {
     // Sanitize the HTML to prevent XSS attacks
@@ -213,9 +217,7 @@ const FProgramDetailPage = ({ programId }) => {
       return acc;
     }, []);
   };
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-  };
+ 
   const TabButton = ({ tab, label }) => (
     <button
       onClick={() => handleTabChange(tab)}
@@ -295,7 +297,7 @@ const FProgramDetailPage = ({ programId }) => {
                       <div className="flex justify-start space-x-6">
                         <div className="flex border-b border-gray-300 rounded-3xl">
                           <button
-                            onClick={() => handleTabChange('details')}
+                            onClick={() => setCurrentTab('details')}
                             className={`text-sm mx-2 transition-colors duration-200 ${
                               activeTab === 'details'
                                 ? 'text-blue-600 border-b-2 border-blue-600'
@@ -321,12 +323,13 @@ const FProgramDetailPage = ({ programId }) => {
                     </div>
                   </nav>
 
+
                   {renderTabContent()}
                 </div>
 
 
           <div 
-                className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] h-auto overflow-y-auto overflow-x-hidden lg:mb-40 p-4'
+                className='col-span-1 mb-10 order-3 lg:order-3 lg:sticky lg:top-20 lg:h-[calc(100vh-4rem)] h-auto overflow-y-auto overflow-x-hidden  p-4'
                 style={{ 
                   '-ms-overflow-style': 'none',
                   scrollbarWidth: 'none'
@@ -336,7 +339,7 @@ const FProgramDetailPage = ({ programId }) => {
                 <div className='mt-4'>
                   <div className='flex justify-between mb-4'>
                     <button
-                      onClick={() => window.location.href = 'https://getseco.com/contact-1'}
+                     onClick={() => handleTabChange('applicationform', programId)}
                       className="rounded-xl text-sm text-black bg-[#F99F31] hover:text-gray-100 hover:bg-[#FACB82] w-full h-12 px-8"
                       style={{ fontFamily: 'CFont' }}
                     >

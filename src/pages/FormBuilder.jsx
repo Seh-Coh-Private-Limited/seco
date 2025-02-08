@@ -44,7 +44,7 @@ const questionTypes = [
   { id: 'rating', icon: <Star className="w-4 h-4" />, label: 'Rating' }
 ];
 
-const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent,onFormLaunchSuccess, }) => {
+const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent,onFormLaunchSuccess }) => {
   const [formTitle, setFormTitle] = useState('Registration Questions');
   const [formDescription, setFormDescription] = useState('We will ask guests the following questions when they register for the event.');
   const [sections, setSections] = useState([]);
@@ -63,7 +63,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   useEffect(() => {
     const checkProgramStatus = async () => {
       if (!userId) return;
-
+      console.log('Program ID in FormBuilder:', programId);
       try {
         // Get user's program status
         const userRef = doc(db, "users", userId);
@@ -394,12 +394,16 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                             Cancel
                         </button>
                         <button
-                            onClick={handleAddSection}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            disabled={!modalQuestions.length}
-                        >
-                            Save Questions
-                        </button>
+    onClick={() => {
+        handleAddSection();
+        submitQuestions();
+    }}
+    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+    disabled={!modalQuestions.length}
+>
+    Save Questions
+</button>
+
                     </div>
                 </div>
             </div>

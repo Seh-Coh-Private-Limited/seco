@@ -156,18 +156,66 @@ const SuggestionsCache = new Map();
 const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggestionClick }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState(null);
+  const [historicalResponses, setHistoricalResponses] = useState([]);
 
-  const generatePrompt = (type, question) => {
-    if (!question) return null;
+  useEffect(() => {
+    const fetchHistoricalResponses = async () => {
+      try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let allResponses = [];
     
-    switch (type) {
-      case 'shortText':
-        return `Please generate 3 short, concise responses for the question: "${question}". Format each response on a new line.`;
-      case 'longText':
-        return `Please generate 3 detailed responses for the question: "${question}". Format each response on a new line.`;
-      default:
-        return null;
-    }
+        for (const userDoc of usersSnapshot.docs) {
+          const formResponsesRef = collection(db, "users", userDoc.id, "formResponses");
+          const formResponsesSnapshot = await getDocs(formResponsesRef);
+    
+          formResponsesSnapshot.forEach(responseDoc => {
+            const responseData = responseDoc.data();
+            if (responseData.responses && Array.isArray(responseData.responses)) {
+              allResponses = [...allResponses, ...responseData.responses];
+            }
+          });
+        }
+    
+        setHistoricalResponses(allResponses);
+        console.log('Fetched historical responses:', allResponses);
+      } catch (err) {
+        console.error("Error fetching historical responses:", err);
+      }
+    };
+    
+    fetchHistoricalResponses();
+    
+  }, []);
+
+  const generatePrompt = (type, question, historicalResponses = []) => {
+    if (!question) return null;
+
+    const filteredResponses = historicalResponses
+      .filter(response => response && response.trim());
+
+    const hasHistoricalData = filteredResponses.length > 0;
+    const formattedResponses = hasHistoricalData
+      ? filteredResponses.map(response => `- ${response}`).join('\n')
+      : "No previous responses available.";
+
+    // Base prompt template for all question types
+    const basePrompt = `Question Type: ${type}
+Question: "${question}"
+
+${hasHistoricalData ? 'Previous responses:\n' + formattedResponses + '\n' : ''}
+
+Please generate 3 relevant, contextual suggestions that:
+1. Match the question type and format
+2. Are specific and actionable
+3. Use natural, conversational language
+4. Maintain similar patterns and terminology to historical responses (if available)
+${type === 'rating' ? '5. Include specific justification for the rating' : ''}
+${type === 'multipleChoice' || type === 'checkbox' ? '5. Reference specific options from the available choices' : ''}
+${type === 'date' || type === 'time' ? '5. Include reasoning for the suggested timing' : ''}
+
+Format each suggestion on a new line.`;
+
+    return basePrompt;
   };
 
   const fetchSuggestionsForQuestion = async (type, question) => {
@@ -176,7 +224,7 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
       return SuggestionsCache.get(cacheKey);
     }
 
-    const prompt = generatePrompt(type, question);
+    const prompt = generatePrompt(type, question, historicalResponses);
     if (!prompt) return [];
 
     try {
@@ -227,13 +275,11 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
       setSuggestions([]);
       setError(null);
       
-      // Only show suggestions for shortText and longText
-      if (!['shortText', 'longText'].includes(questionType) || !currentQuestion?.question) {
+      if (!currentQuestion?.question) {
         return;
       }
 
       try {
-        // Use the cached suggestions if available
         const currentSuggestions = await fetchSuggestionsForQuestion(
           questionType, 
           currentQuestion.question
@@ -250,9 +296,8 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
   // Prefetch suggestions for the next question
   useEffect(() => {
     const prefetchNextSuggestions = async () => {
-      if (nextQuestion?.question && ['shortText', 'longText'].includes(nextQuestion.type)) {
+      if (nextQuestion?.question) {
         try {
-          // Just fetch to cache, don't need to store the result
           await fetchSuggestionsForQuestion(
             nextQuestion.type,
             nextQuestion.question
@@ -266,11 +311,6 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
     prefetchNextSuggestions();
   }, [nextQuestion]);
 
-  // Only render for shortText and longText
-  if (!['shortText', 'longText'].includes(questionType)) {
-    return null;
-  }
-
   // Don't render if no suggestions available
   if (!suggestions.length) {
     return null;
@@ -278,7 +318,7 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
 
   return (
     <>
-      <div className="my-4 border-t border-gray-200" /> {/* Visual break */}
+      <div className="my-4 border-t border-gray-200" />
       <div className="space-y-2">
         <p className="text-sm text-gray-500 mb-2">Suggested responses:</p>
         {error ? (
@@ -309,8 +349,8 @@ const AISuggestions = ({ questionType, currentQuestion, nextQuestion, onSuggesti
 
 
 
-const Application = ({ programId }) => {
-  const [inputValue, setInputValue] = useState('');
+const Application = ({ programId ,onFormSubmitSuccess }) => {
+  const [inputValue, setInputValue] = useState(""); // State for textarea input
   const [currentQuestion, setCurrentQuestion] = useState(-1);
   const [answers, setAnswers] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -319,11 +359,11 @@ const Application = ({ programId }) => {
   const [messages, setMessages] = useState([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasSeenTypewriter, setHasSeenTypewriter] = useState(false);
-  const typewriterText = "This application is the first step towards turning vision into innovation. Let's begin!";
+  const typewriterText = "";
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [isStartupNameQuestion, setIsStartupNameQuestion] = useState(true);
-
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
   const auth = getAuth();
@@ -361,10 +401,10 @@ const Application = ({ programId }) => {
   }, []);
  // ... (keep all the imports and other components)
 
- const Message = ({ message, onOptionSelect, isLoading }) => {
+ const Message = ({ message, onOptionSelect, isLoading, hasSubmitted  }) => {
   const renderQuestionInput = () => {
     if (message.type !== 'bot') return null;
-
+    
     switch (message.questionType) {
       case 'multipleChoice':
       case 'checkbox':
@@ -605,8 +645,7 @@ const submitFormResponses = async () => {
       };
     });
 
-    // Add form response to program's formResponses subcollection
-    await setDoc(doc(db, 'programmes', programSnapshot.docs[0].id, 'formResponses', userId), {
+    const formData = {
       userId,
       startupName: answers.startupName,
       responses: formResponses,
@@ -614,7 +653,13 @@ const submitFormResponses = async () => {
         ...userStartupData,
       },
       submittedAt: new Date().toISOString()
-    });
+    };
+
+    // Add form response to program's formResponses subcollection
+    await setDoc(
+      doc(db, 'programmes', programSnapshot.docs[0].id, 'formResponses', userId), 
+      formData
+    );
 
     try {
       const sessionEmail = auth.currentUser.email;
@@ -627,6 +672,7 @@ const submitFormResponses = async () => {
         const programIdStr = String(programId);
     
         if (typeof userDocId === 'string' && typeof programIdStr === 'string') {
+          // Store application metadata in applications subcollection
           const applicationRef = doc(db, 'users', userDocId, 'applications', programIdStr);
           await setDoc(applicationRef, {
             programId: programIdStr,
@@ -634,15 +680,22 @@ const submitFormResponses = async () => {
             appliedAt: new Date().toISOString(),
             status: 'submitted',
           });
+
+          // Store form responses in formResponses subcollection
+          const formResponseRef = doc(db, 'users', userDocId, 'formResponses', programIdStr);
+          await setDoc(formResponseRef, formData);
     
-          console.log('Document inserted successfully in the applications subcollection');
+          console.log('Documents inserted successfully in applications and formResponses subcollections');
         }
       }
     } catch (error) {
-      console.error('Error inserting document:', error);
+      console.error('Error inserting documents:', error);
     }
 
     addMessage('Your application has been successfully submitted! We will review it and get back to you soon.', 'bot');
+    if (onFormSubmitSuccess) {
+      onFormSubmitSuccess();
+    }
   } catch (error) {
     console.error('Error submitting form responses:', error);
     addMessage('There was an error submitting your application. Please try again.', 'bot');
@@ -693,36 +746,49 @@ const submitFormResponses = async () => {
         if (programSnapshot.empty) throw new Error('Program not found');
     
         const programDoc = programSnapshot.docs[0];
-        setProgramTitle(programDoc.data().title);
+        setProgramTitle(programDoc.data().name);
     
+        // Check submission status first
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const submissionQuery = query(
+            collection(db, 'programmes', programDoc.id, 'formResponses'),
+            where('userId', '==', userId)
+          );
+          const submissionSnapshot = await getDocs(submissionQuery);
+
+          if (!submissionSnapshot.empty) {
+            setHasSubmitted(true);
+            const submissionData = submissionSnapshot.docs[0].data();
+            setAnswers(submissionData.responses.reduce((acc, response) => {
+              acc[response.question] = response.answer;
+              return acc;
+            }, {}));
+            // Add completion message
+            addMessage('Your application has been successfully submitted! You can view your application status in your dashboard.', 'bot');
+            setHasSeenTypewriter(true); // Skip typewriter for submitted applications
+            setIsStartupNameQuestion(false); // Ensure we don't show initial question
+            return; // Exit early if application is already submitted
+          }
+        }
+
+        // Only fetch and process questions if application hasn't been submitted
         const questionsSnapshot = await getDocs(
           collection(db, 'programmes', programDoc.id, 'form')
         );
     
         const fetchedQuestions = [];
-        
         questionsSnapshot.forEach((doc) => {
           const questionData = doc.data();
           if (Array.isArray(questionData.questions)) {
             questionData.questions.forEach((q) => {
-              // Process options
-              let processedOptions = [];
-              if (q.options) {
-                if (Array.isArray(q.options)) {
-                  processedOptions = q.options;
-                } else if (typeof q.options === 'object') {
-                  processedOptions = Object.values(q.options);
-                }
-              }
-
-              // Create a unique ID using both the document ID and question title
               const questionId = `${doc.id}_${q.title}`;
-              
               fetchedQuestions.push({
                 id: questionId,
                 question: q.title,
-                type: q.type || 'shortText', // Default to shortText if type is missing
-                options: processedOptions,
+                type: q.type || 'shortText',
+                options: Array.isArray(q.options) ? q.options : 
+                        (typeof q.options === 'object' ? Object.values(q.options) : []),
                 required: q.required || false,
                 description: q.description || ''
               });
@@ -730,7 +796,6 @@ const submitFormResponses = async () => {
           }
         });
 
-        console.log('Fetched questions:', fetchedQuestions);
         setQuestions(fetchedQuestions);
       } catch (error) {
         console.error('Error fetching program data:', error);
@@ -740,7 +805,7 @@ const submitFormResponses = async () => {
     };
 
     fetchProgramData();
-  }, [programId]);
+  }, [programId, auth.currentUser]);
 
   const handleTypewriterComplete = () => {
     setHasSeenTypewriter(true);
@@ -802,8 +867,7 @@ const handleSubmit = (e) => {
     e.preventDefault();
   }
 
-  if (!inputValue || isLoading || isInitializing || !hasSeenTypewriter) return;
-
+if (hasSubmitted || !inputValue || isLoading || isInitializing || !hasSeenTypewriter) return;
   setIsLoading(true);
   const userResponse = inputValue;
 
@@ -819,7 +883,7 @@ const handleSubmit = (e) => {
         startupName: userResponse
       }));
       setIsStartupNameQuestion(false);
-      
+      setInputValue("");
       // Move to first question if available
       if (questions.length > 0) {
         setCurrentQuestion(0);
@@ -942,48 +1006,33 @@ const AutoResizeTextarea = ({ value, onChange, onKeyPress, placeholder, disabled
   );
 };
 
-const ChatInput = ({ 
+const ChatInput = ({
   inputValue,
   setInputValue,
   handleSubmit,
   isLoading,
   hasSeenTypewriter,
-  isRecording,
-  handleVoiceRecord,
-  handleFileUpload,
-  getCurrentQuestionType,
-  recognition
 }) => {
   const textareaRef = useRef(null);
-  const [rows, setRows] = useState(1);
 
+  // Automatically adjust textarea height based on content
   useEffect(() => {
-    adjustTextareaHeight();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"; // Reset height
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        150
+      )}px`; // Set new height
+    }
   }, [inputValue]);
 
-  const adjustTextareaHeight = () => {
-    if (textareaRef.current) {
-      // Reset height to minimum to accurately calculate required height
-      textareaRef.current.style.height = 'auto';
-      
-      // Calculate new height based on scrollHeight
-      const newHeight = Math.min(textareaRef.current.scrollHeight, 150);
-      textareaRef.current.style.height = `${newHeight}px`;
-      
-      // Update rows based on content
-      const lineHeight = 24; // Matches the line-height in the CSS
-      const newRows = Math.ceil(newHeight / lineHeight);
-      setRows(newRows);
-    }
-  };
-
   const handleChange = (e) => {
-    const value = e.target.value;
-    setInputValue(value);
+    setInputValue(e.target.value); // Update state with the new value
   };
 
+  // Handle Enter key press
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isLoading && inputValue.trim() && hasSeenTypewriter) {
         handleSubmit();
@@ -991,23 +1040,90 @@ const ChatInput = ({
     }
   };
 
+  if (hasSubmitted) {
+    return (
+      <div className="p-4 border-t opacity-50">
+        <div className="flex flex-col gap-4">
+          <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={inputValue} // Controlled value
+            onChange={handleChange} // Handle input changes
+            onKeyDown={handleKeyDown} // Handle Enter key
+            placeholder="Type your message..."
+            disabled={isLoading || !hasSeenTypewriter}
+            className="w-full p-3 pr-12 border rounded-lg focus:outline-none focus:border-blue-500 resize-none"
+            style={{
+              minHeight: "48px",
+              maxHeight: "150px",
+              lineHeight: "24px",
+            }}
+          />
+          </div>
+
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <button
+                disabled={true}
+                className="p-3 bg-gray-100 border rounded-full cursor-not-allowed"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="8" y="2" width="8" height="13" rx="4" />
+                  <path d="M20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12" />
+                  <path d="M12 20L12 24" />
+                </svg>
+              </button>
+
+              <label className="p-3 bg-gray-100 border rounded-full cursor-not-allowed">
+                <input type="file" className="hidden" disabled={true} />
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M21.44 11.05L12.25 20.24C9.5 23 5 23 2.25 20.24C-0.5 17.5 -0.5 13 2.25 10.24L12.33 3.18C14.5 1 17.5 1 19.67 3.18C21.83 5.36 21.83 8.36 19.67 10.52L9.41 17.42C8.23 18.6 6.27 18.6 5.09 17.42C3.91 16.24 3.91 14.28 5.09 13.1L14.54 6.63" />
+                </svg>
+              </label>
+            </div>
+
+            <button
+              disabled={true}
+              className="p-3 bg-gray-100 border rounded-lg cursor-not-allowed"
+            >
+              <Send className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 border-t">
       <div className="flex flex-col gap-4">
         <div className="relative">
           <textarea
             ref={textareaRef}
-            value={inputValue}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
+            value={inputValue} // Controlled value
+            onChange={handleChange} // Handle input changes
+            onKeyDown={handleKeyDown} // Handle Enter key
             placeholder="Type your message..."
             disabled={isLoading || !hasSeenTypewriter}
-            rows={rows}
             className="w-full p-3 pr-12 border rounded-lg focus:outline-none focus:border-blue-500 resize-none"
             style={{
-              minHeight: '48px',
-              maxHeight: '150px',
-              lineHeight: '24px'
+              minHeight: "48px",
+              maxHeight: "150px",
+              lineHeight: "24px",
             }}
           />
         </div>
@@ -1017,39 +1133,73 @@ const ChatInput = ({
             <button
               onClick={handleVoiceRecord}
               className={`p-3 bg-white border rounded-full transition-colors duration-200
-                ${isRecording ? 'border-red-500 text-red-500 bg-red-50' : 'hover:bg-gray-50'}
-                ${(!hasSeenTypewriter || !recognition) ? 'opacity-50 cursor-not-allowed' : ''}
+                ${
+                  isRecording
+                    ? "border-red-500 text-red-500 bg-red-50"
+                    : "hover:bg-gray-50"
+                }
+                ${
+                  !hasSeenTypewriter || !recognition
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }
               `}
               disabled={isLoading || !hasSeenTypewriter || !recognition}
-              title={recognition ? 'Click to start/stop voice recording' : 'Speech recognition not supported'}
+              title={
+                recognition
+                  ? "Click to start/stop voice recording"
+                  : "Speech recognition not supported"
+              }
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="8" y="2" width="8" height="13" rx="4"/>
-                <path d="M20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12"/>
-                <path d="M12 20L12 24"/>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="8" y="2" width="8" height="13" rx="4" />
+                <path d="M20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12" />
+                <path d="M12 20L12 24" />
               </svg>
             </button>
 
-            <label 
+            <label
               className={`p-3 bg-white border rounded-full transition-colors duration-200
-                ${getCurrentQuestionType() === 'fileUpload' && !isLoading && hasSeenTypewriter
-                  ? 'hover:bg-gray-50 cursor-pointer'
-                  : 'opacity-50 cursor-not-allowed'}
+                ${
+                  getCurrentQuestionType() === "fileUpload" &&
+                  !isLoading &&
+                  hasSeenTypewriter
+                    ? "hover:bg-gray-50 cursor-pointer"
+                    : "opacity-50 cursor-not-allowed"
+                }
               `}
             >
               <input
                 type="file"
                 className="hidden"
                 onChange={handleFileUpload}
-                disabled={getCurrentQuestionType() !== 'fileUpload' || isLoading || !hasSeenTypewriter}
+                disabled={
+                  getCurrentQuestionType() !== "fileUpload" ||
+                  isLoading ||
+                  !hasSeenTypewriter
+                }
                 onClick={(e) => {
-                  if (getCurrentQuestionType() !== 'fileUpload') {
+                  if (getCurrentQuestionType() !== "fileUpload") {
                     e.preventDefault();
                   }
                 }}
               />
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.44 11.05L12.25 20.24C9.5 23 5 23 2.25 20.24C-0.5 17.5 -0.5 13 2.25 10.24L12.33 3.18C14.5 1 17.5 1 19.67 3.18C21.83 5.36 21.83 8.36 19.67 10.52L9.41 17.42C8.23 18.6 6.27 18.6 5.09 17.42C3.91 16.24 3.91 14.28 5.09 13.1L14.54 6.63"/>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21.44 11.05L12.25 20.24C9.5 23 5 23 2.25 20.24C-0.5 17.5 -0.5 13 2.25 10.24L12.33 3.18C14.5 1 17.5 1 19.67 3.18C21.83 5.36 21.83 8.36 19.67 10.52L9.41 17.42C8.23 18.6 6.27 18.6 5.09 17.42C3.91 16.24 3.91 14.28 5.09 13.1L14.54 6.63" />
               </svg>
             </label>
           </div>
@@ -1058,7 +1208,11 @@ const ChatInput = ({
             onClick={handleSubmit}
             disabled={isLoading || !inputValue.trim() || !hasSeenTypewriter}
             className={`p-3 bg-white border rounded-lg transition-colors duration-200
-              ${(!isLoading && inputValue.trim() && hasSeenTypewriter) ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}
+              ${
+                !isLoading && inputValue.trim() && hasSeenTypewriter
+                  ? "hover:bg-gray-50"
+                  : "opacity-50 cursor-not-allowed"
+              }
             `}
           >
             <Send className="h-6 w-6" />
@@ -1072,8 +1226,8 @@ const ChatInput = ({
 
 
 
-const handleInputChange = (newValue) => {
-  setInputValue(newValue);
+const handleInputChange = (e) => {
+  setInputValue(e.target.value); // Update state with the new value
 };
 
   if (isInitializing) {
@@ -1083,6 +1237,74 @@ const handleInputChange = (newValue) => {
       </div>
     );
   }
+  // if (hasSubmitted) {
+  //   return (
+  //     <div className="md:px-56 h-screen flex flex-col">
+  //       <div className="text-left mb-8">
+  //         <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
+  //         <div className="flex border-b border-gray-300 justify-left mt-4" />
+  //       </div>
+  
+  //       <div className="h-[650px] border rounded-lg shadow-lg flex flex-col bg-white scrollbar-hide">
+  //         <div className="flex-1 overflow-y-auto p-4">
+  //           {messages.map((message, index) => (
+  //             <Message 
+  //               key={index} 
+  //               message={message} 
+  //               onOptionSelect={handleOptionSelect}
+  //               isLoading={isLoading}
+  //               hasSubmitted={hasSubmitted}
+  //             />
+  //           ))}
+            
+  //           <div className="flex justify-start mt-4">
+  //             <div className="flex items-start gap-2 max-w-[80%]">
+  //               <BotAvatar />
+  //               <div className="bg-green-50 rounded-lg p-4">
+  //                 <div className="flex items-center gap-2 mb-2">
+  //                   <svg 
+  //                     className="w-6 h-6 text-green-500" 
+  //                     fill="none" 
+  //                     stroke="currentColor" 
+  //                     viewBox="0 0 24 24"
+  //                   >
+  //                     <path 
+  //                       strokeLinecap="round" 
+  //                       strokeLinejoin="round" 
+  //                       strokeWidth={2} 
+  //                       d="M5 13l4 4L19 7" 
+  //                     />
+  //                   </svg>
+  //                   <span className="font-semibold text-green-700">Application Submitted Successfully</span>
+  //                 </div>
+  //                 <p className="text-gray-600">
+  //                   Your responses have been recorded. You can view your application status in your dashboard.
+  //                 </p>
+  //               </div>
+  //             </div>
+  //           </div>
+  //         </div>
+  
+  //         <div className="border-t p-0 bg-white rounded-b-lg">
+  //           <ChatInput 
+  //             inputValue={inputValue}
+  //             setInputValue={setInputValue}
+  //             handleSubmit={handleSubmit}
+  //             isLoading={isLoading}
+  //             hasSeenTypewriter={hasSeenTypewriter}
+  //             isRecording={isRecording}
+  //             handleVoiceRecord={handleVoiceRecord}
+  //             handleFileUpload={handleFileUpload}
+  //             getCurrentQuestionType={getCurrentQuestionType}
+  //             recognition={recognition}
+  //             hasSubmitted={hasSubmitted}
+  //             disabled={true}
+  //           />
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="md:px-56 h-screen flex flex-col">
@@ -1100,7 +1322,7 @@ const handleInputChange = (newValue) => {
         )}
       </div>
 
-      <div className="h-[420px] border rounded-lg shadow-lg flex flex-col bg-white">
+      <div className="h-[650px] border rounded-lg shadow-lg flex flex-col bg-white scrollbar-hide">
         <div className="flex-1 overflow-y-auto p-4">
           {!hasSeenTypewriter ? (
             <div className="flex justify-start">
@@ -1118,6 +1340,7 @@ const handleInputChange = (newValue) => {
               message={message} 
               onOptionSelect={handleOptionSelect}
               isLoading={isLoading}
+              hasSubmitted={hasSubmitted}
             />
           ))
           )}
@@ -1188,18 +1411,19 @@ const handleInputChange = (newValue) => {
             >
               <Send className="h-6 w-6" />
             </button>
-          </div> */}<ChatInput 
-  inputValue={inputValue}
-  setInputValue={setInputValue}  // Pass setInputValue directly
-  handleSubmit={handleSubmit}
-  isLoading={isLoading}
-  hasSeenTypewriter={hasSeenTypewriter}
-  isRecording={isRecording}
-  handleVoiceRecord={handleVoiceRecord}
-  handleFileUpload={handleFileUpload}
-  getCurrentQuestionType={getCurrentQuestionType}
-  recognition={recognition}
-/>
+          </div> */}<ChatInput
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            handleSubmit={handleSubmit}
+            isLoading={isLoading}
+            hasSeenTypewriter={hasSeenTypewriter}
+            isRecording={false}
+            handleVoiceRecord={() => {}}
+            handleFileUpload={() => {}}
+            getCurrentQuestionType={() => "text"}
+            recognition={null}
+            hasSubmitted={false}
+          />
         </div>
       </div>
     </div>
@@ -1207,7 +1431,6 @@ const handleInputChange = (newValue) => {
 };
 
 export default Application;
-
 
 
 

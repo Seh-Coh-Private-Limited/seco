@@ -23,7 +23,7 @@ const FPopup = ({ isOpen, onClose, programDetails ,handleTabChange}) => {
   if (!program) return null;
 
   const {
-    title,
+    name,
     image,
     description,
     location,
@@ -229,9 +229,9 @@ const FPopup = ({ isOpen, onClose, programDetails ,handleTabChange}) => {
             <hr className="border-t border-black" />
           </div>
 
-          {image && <img src={image} alt={title} className="w-full h-auto object-cover mb-4" />}
+          {image && <img src={image} alt={name} className="w-full h-auto object-cover mb-4" />}
           
-          <h2 className="text-3xl font-bold mb-4 text-left">{title}</h2>
+          <h2 className="text-3xl font-bold mb-4 text-left">{name}</h2>
 
           <div className="flex items-start mb-4">
             <div className="flex items-center space-x-2">
