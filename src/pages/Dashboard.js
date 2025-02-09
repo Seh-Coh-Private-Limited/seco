@@ -48,6 +48,21 @@ const FounderDashboard = () => {
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [eventData, setEventData] = useState({
+    name: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    sector: '',
+    location: '',
+    description: '',
+    Eligibility: '',
+    Incentives: '',
+    isPublic: true,
+    calendar: 'Google Calendar',
+    customFields: []
+  });
   const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent ,onFormLaunchSuccess   }) => {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -374,7 +389,27 @@ useEffect(() => {
     // Return null if no conditions are met
     return null;
   };
-  
+  const handleNewProgramClick = () => {
+    setSelectedProgram(null); // Reset selected program
+    setEventData({
+      name: '',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
+      sector: '',
+      location: '',
+      description: '',
+      Eligibility: '',
+      Incentives: '',
+      isPublic: true,
+      calendar: 'Google Calendar',
+      customFields: []
+    });
+    setShowCreateEvent(true); // Show the create event form
+    setCurrentStep(1); // Reset to the first step
+  };
+
   
   // const Breadcrumb = ({ 
   //   activeTab,
@@ -636,13 +671,15 @@ const HomePage = ({ userStatus,
           <h1 className="text-4xl font-bold font-sans-serif">Home</h1>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowCreateEvent(true)}
+             onClick={handleNewProgramClick}
+            
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md flex items-center gap-2"
             >
              <FontAwesomeIcon icon={faPlus} size="sm" />
             </button>
             <button
-              onClick={() => setShowCreateEvent(true)}
+              onClick={handleNewProgramClick}
+              
               className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center gap-2"
             >
               
@@ -684,14 +721,16 @@ const HomePage = ({ userStatus,
           </p>
           <div className="flex gap-4 justify-center">
             <button
-              onClick={() => setShowCreateEvent(true)}
+              onClick={handleNewProgramClick}
+              
               className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
             >
               <Plus size={16} />
              
             </button>
             <button
-              onClick={() => setShowCreateEvent(true)}
+             onClick={handleNewProgramClick}
+            
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
             >
              
