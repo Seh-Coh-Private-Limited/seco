@@ -21,7 +21,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getAuth, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where,deleteDoc,setDoc,serverTimestamp } from 'firebase/firestore';
 import { Plus, Trash2 } from 'lucide-react';
-import React, { useEffect, useState,useCallback } from 'react';
+import React, { useEffect, useState,useCallback ,useRef} from 'react';
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
 import './Dashboard.css';
@@ -30,6 +30,7 @@ import FormResponses from './FormResponses';
 
 import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
+import IncubatorSettingsForm from '../components/IncubatorSettings';
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
 
@@ -48,14 +49,15 @@ const FounderDashboard = () => {
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [newCategory, setNewCategory] = useState('');
   const [eventData, setEventData] = useState({
     name: '',
     startDate: '',
     startTime: '',
     endDate: '',
     endTime: '',
-    sector: '',
-    location: '',
+    categories: [], // Array to store selected categories
+  location: '', // Field for location/venue
     description: '',
     Eligibility: '',
     Incentives: '',
@@ -63,14 +65,14 @@ const FounderDashboard = () => {
     calendar: 'Google Calendar',
     customFields: []
   });
-  const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent ,onFormLaunchSuccess   }) => {
+  const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent ,onFormLaunchSuccess, eventData   }) => {
     const auth = getAuth();
     const user = auth.currentUser;
     return (
       <div className="max-w-4xl mx-auto p-4">
         {/* Directly render the FormBuilder */}
         <FormBuilder programId={programId} userId={user.uid} currentStep={currentStep}
-          setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent}    onFormLaunchSuccess={onFormLaunchSuccess}  // Pass fetchProgrammes as a prop
+          setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent}    onFormLaunchSuccess={onFormLaunchSuccess} eventData={eventData} // Pass fetchProgrammes as a prop
   />
   
         {/* <div className="flex justify-start mt-6">
@@ -89,93 +91,16 @@ const FounderDashboard = () => {
   const auth = getAuth();
   const db = getFirestore();
  
-  useEffect(() => {
-    const checkSession = () => {
-      const sessionData = localStorage.getItem('sessionData');
-      if (!sessionData) {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-            // User is still signed in with Firebase, create new session
-            const newSession = {
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hour session
-              userId: user.uid
-            };
-            localStorage.setItem('sessionData', JSON.stringify(newSession));
-            loadAllData();
-          } else {
-            navigate('/signup');
-          }
-        });
-        return () => unsubscribe();
-      }
   
-      const { expiresAt } = JSON.parse(sessionData);
-      const now = new Date().getTime();
-      const expiration = new Date(expiresAt).getTime();
-      
-      if (now >= expiration) {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-            // User is still signed in with Firebase, refresh session
-            const newSession = {
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              userId: user.uid
-            };
-            localStorage.setItem('sessionData', JSON.stringify(newSession));
-            loadAllData();
-          } else {
-            handleLogout();
-          }
-        });
-        return () => unsubscribe();
-      }
-    };
   
-    checkSession();
-    // Check session every minute
-    const interval = setInterval(checkSession, 300000);
-    
-    return () => clearInterval(interval);
-  }, []);
  
-  // Auth state change effect
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // User is signed in, check/create session
-        let sessionData = localStorage.getItem('sessionData');
-        let session = sessionData ? JSON.parse(sessionData) : null;
-        
-        const now = new Date().getTime();
-        const needsNewSession = !session || 
-          now >= new Date(session.expiresAt).getTime() || 
-          session.userId !== user.uid;
-
-        if (needsNewSession) {
-          // Create new session
-          session = {
-            expiresAt: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
-            userId: user.uid
-          };
-          localStorage.setItem('sessionData', JSON.stringify(session));
-        }
-
-        // Load data regardless of session status
-        loadAllData();
-      } else {
-        // No user is signed in
-        localStorage.removeItem('sessionData');
-        navigate('/signup');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [auth, navigate]);
+ 
+  
   // Modified loadAllData function
   
 // Pass reloadCompanyDetails to SettingsForm
 const renderSettingsForm = () => (
-  <SettingsForm onProfileUpdate={reloadCompanyDetails} />
+  <IncubatorSettingsForm onProfileUpdate={reloadCompanyDetails} />
 );
 
 const fetchCompanyDetails = useCallback(async (user) => {
@@ -228,9 +153,7 @@ const fetchProgrammes = useCallback(async (user) => {
 }, [db]); // Add dependency array
   
   // Add reload function to handle manual reloads
-  const handleReload = () => {
-    loadAllData();
-  };
+
 
   // Inside FounderDashboard component
 useEffect(() => {
@@ -242,32 +165,98 @@ useEffect(() => {
   };
   fetchData();
 }, [auth, fetchProgrammes]); // Add fetchProgrammes to dependencies
-  // Fetch company details
-  useEffect(() => {
-    const fetchCompanyDetails = async () => {
+ useEffect(() => {
+    const checkSessionAndFetchData = async () => {
+      const sessionData = localStorage.getItem('sessionData');
+      
+      if (!sessionData) {
+        navigate('/signup');
+        return;
+      }
+  
       try {
-        const user = auth.currentUser;
-        // if (!user) {
-        //   navigate('/signup');
-        //   return;
-        // }
-
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setCompanyDetails({
-            name: userData.companyName || 'Company Name',
-            logo: userData.logoUrl || userData.companyLogo || null
-          });
+        const { uid, expiresAt } = JSON.parse(sessionData);
+        const currentTime = new Date().getTime();
+        const expiration = new Date(expiresAt).getTime();
+        
+        // Extend session instead of logging out
+        if (currentTime >= expiration) {
+          console.warn('Session is about to expire. Extending session.');
+          // Optionally update expiration in localStorage
+          const extendedSessionData = {
+            ...JSON.parse(sessionData),
+            expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString() // Extend by 24 hours
+          };
+          localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
         }
+  
+        // Verify the session in Firestore
+        const sessionRef = doc(db, 'sessions', uid);
+        const sessionDoc = await getDoc(sessionRef);
+        
+        if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
+          navigate('/signup');
+          return;
+        }
+  
+        // Fetch user and data
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
+  fetchCompanyDetails(user);
+        fetchProgrammes(user);
+  
       } catch (error) {
-        console.error('Error fetching company details:', error);
-        setCompanyDetails({ name: 'Company Name', logo: null });
+        console.error('Session check and data fetch error:', error);
+        
+        // Fallback states
+       
+        
+        // Do not automatically log out on errors
+        console.warn('There was an issue checking your session. Please try again.');
       }
     };
+  
+    // Initial check and data fetch
+    checkSessionAndFetchData();
+    
+    // Periodic session checks
+    const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Check every 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [navigate, auth, db]);
+// useEffect(() => {
+//   const fetchCompanyDetails = async () => {
+//     try {
+//       // if (!user) {
+//       //   navigate('/signup');
+//       //   return;
+//       // }
 
-    fetchCompanyDetails();
-  }, [auth, db, navigate]);
+//       // Query Firestore to find the user document where uid matches user.uid
+//       const q = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
+//       const querySnapshot = await getDocs(q);
+
+//       if (!querySnapshot.empty) {
+//         const userData = querySnapshot.docs[0].data();
+//         setCompanyDetails({
+//           name: userData.companyName || 'Company Name',
+//           logo: userData.logoUrl || userData.companyLogo || null
+//         });
+//       } else {
+//         setCompanyDetails({ name: 'Company Name', logo: null });
+//       }
+//     } catch (error) {
+//       console.error('Error fetching company details:', error);
+//       setCompanyDetails({ name: 'Company Name', logo: null });
+//     }
+//   };
+
+//   fetchCompanyDetails();
+// }, [auth, db, navigate]);
+
 
   // Fetch programmes
   useEffect(() => {
@@ -294,25 +283,7 @@ useEffect(() => {
 
     fetchProgrammes();
   }, [auth, db]);
-  const loadAllData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    const user = auth.currentUser;
-    if (!user) return;
-
-    try {
-      await Promise.all([
-        fetchCompanyDetails(user),
-        fetchProgrammes(user)
-      ]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Failed to load some data');
-    } finally {
-      setLoading(false);
-    }
-  }, [auth, fetchCompanyDetails]);
+ 
   const openSettings = () => {
     setActiveTab('settings'); // Switch to settings view
   };
@@ -397,8 +368,8 @@ useEffect(() => {
       startTime: '',
       endDate: '',
       endTime: '',
-      sector: '',
-      location: '',
+      categories: [], // Array to store selected categories
+      location: '', // Field for location/venue
       description: '',
       Eligibility: '',
       Incentives: '',
@@ -707,6 +678,8 @@ const HomePage = ({ userStatus,
      isClosing={isClosing}
      onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
      fetchProgrammes={fetchProgrammes}
+     eventData={eventData}
+     setEventData={setEventData}
    />
       ) : (
         // Rest of your existing HomePage content
@@ -848,6 +821,8 @@ const handleProgramClick = (program) => {
     initialData, 
     programId,
     currentStep,
+    eventData,
+    setEventData,
     setCurrentStep,
     fetchProgrammes ,
     isClosing,
@@ -866,21 +841,7 @@ const handleProgramClick = (program) => {
     console.log('Current Step:', currentStep);
   }, [currentStep]);
   // Single source of truth for event data
-  const [eventData, setEventData] = useState({
-    name: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
-    sector: '',
-    location: '',
-    description: '',
-    Eligibility: '',
-    Incentives: '',
-    isPublic: true,
-    calendar: 'Google Calendar',
-    customFields: []
-  });
+ 
   const handleSaveDraft = async () => {
     try {
       if (programId) {
@@ -966,7 +927,8 @@ const handleProgramClick = (program) => {
         name: initialData.name || '',
         startDate: initialData.startDate || '',
         endDate: initialData.endDate || '',
-        sector: initialData.sector || '',
+        categories: initialData.categories || [], // Initialize categories
+      location: initialData.location || '', // Initialize location
         location: initialData.location || '',
         description: initialData.description || '',
         isPublic: initialData.isPublic !== undefined ? initialData.isPublic : true,
@@ -996,9 +958,13 @@ const handleProgramClick = (program) => {
     
     const [description, setDescription] = useState("");
 
-    const handleChange = (value) => {
-      setEventData({ ...eventData, description: value });
-    };
+    const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEventData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
     const handleImageUpload = (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -1055,7 +1021,60 @@ const handleProgramClick = (program) => {
         )
       });
     };
+    const [inputValue, setInputValue] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const inputRef = useRef(null);
+    const dropdownRef = useRef(null);
   
+    const predefinedCategories = [
+      'Technology',
+      'Healthcare',
+      'Finance',
+      'Education',
+      'Marketing',
+      'Retail'
+    ];
+  
+    const filteredCategories = predefinedCategories.filter(category =>
+      category.toLowerCase().includes(inputValue.toLowerCase()) &&
+      (!eventData || !eventData.categories || !eventData.categories.includes(category))
+    );
+  
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+            inputRef.current && !inputRef.current.contains(event.target)) {
+          setIsDropdownOpen(false);
+        }
+      };
+  
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+  
+    const handleAddCategory = (category) => {
+      if (category.trim() && !eventData?.categories?.includes(category.trim())) {
+        setEventData(prev => ({
+          ...prev,
+          categories: [...(prev.categories || []), category.trim()] // Fallback to empty array if prev.categories is undefined
+        }));
+        setInputValue('');
+        setIsDropdownOpen(false);
+      }
+    };
+  
+    const handleRemoveCategory = (indexToRemove) => {
+      setEventData(prev => ({
+        ...prev,
+        categories: prev.categories.filter((_, index) => index !== indexToRemove)
+      }));
+    };
+  
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && inputValue.trim()) {
+        handleAddCategory(inputValue);
+      }
+    };
     const handleSubmit = async (onSuccess) => {
       try {
         if (programId) {
@@ -1129,9 +1148,43 @@ const handleProgramClick = (program) => {
       console.log('Current eventData:', eventData);
     }, [eventData]);
 
-    const handleClose = () => {
-      if (isClosing) return;
-      onClose();
+    const handleClose = async () => {
+      try {
+        // Delete the program if it exists
+        if (programId) {
+          const programmesRef = collection(db, 'programmes');
+          const q = query(programmesRef, where('id', '==', programId));
+          const querySnapshot = await getDocs(q);
+    
+          if (!querySnapshot.empty) {
+            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+            await deleteDoc(docRef);
+          }
+    
+          // Update user's program status and program ID
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const userSnapshot = await getDocs(usersQuery);
+    
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: null,
+              programid: null,
+            });
+          }
+        }
+    
+        // Close the form
+        setShowCreateEvent(false);
+        setCurrentStep(1);
+    
+      } catch (error) {
+        console.error('Error closing form:', error);
+      }
     };
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -1144,12 +1197,13 @@ const handleProgramClick = (program) => {
      
         {currentStep === 1 ? (
            <><div className="flex items-center justify-between mb-6 mt-8">
-            <input
-              type="text"
-              placeholder="Event Name"
-              className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
-              value={eventData.name || ''}
-              onChange={(e) => setEventData(prev => ({ ...prev, name: e.target.value }))} />
+           <input
+  type="text"
+  placeholder="Event Name"
+  className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
+  value={eventData?.name || ''} // Use optional chaining to avoid null errors
+  onChange={(e) => setEventData(prev => ({ ...prev, name: e.target.value }))}
+/>
           </div><div className="grid grid-cols-3 gap-6">
               {/* Left column - Image upload */}
               <div className="col-span-1">
@@ -1188,7 +1242,7 @@ const handleProgramClick = (program) => {
                     <div className="w-full p-3 rounded-md">
                       <ReactQuill
                         theme="snow"
-                        value={eventData.description}
+                        value={eventData?.description}
                         onChange={handleChange}
                         placeholder="Add Description"
                         modules={modules} // Use the custom toolbar
@@ -1197,23 +1251,75 @@ const handleProgramClick = (program) => {
                       />
                     </div>
 
-                    {/* Sector dropdown */}
                     <div className="mb-6">
-                      <label className="block text-sm text-gray-500 mb-1">Please Select Your sector</label>
-                      <select
-                        value={eventData.sector}
-                        onChange={(e) => setEventData({ ...eventData, sector: e.target.value })}
-                        className="w-full p-3 border rounded-md"
-                      >
-                        <option value="" disabled>Select Sector</option>
-                        <option value="Technology">Technology</option>
-                        <option value="Healthcare">Healthcare</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Education">Education</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Retail">Retail</option>
-                      </select>
-                    </div>
+      <label className="block text-sm text-gray-500 mb-1">Categories</label>
+      
+      <div className="flex flex-wrap gap-2 mb-2">
+  {eventData?.categories?.map((category, index) => (
+    <div key={index} className="flex items-center bg-gray-200 rounded-full px-3 py-1 text-sm">
+      {category}
+      <button
+        type="button"
+        onClick={() => handleRemoveCategory(index)}
+        className="ml-2 text-gray-600 hover:text-gray-800"
+      >
+        ×
+      </button>
+    </div>
+  ))}
+</div>
+
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setIsDropdownOpen(true);
+          }}
+          onFocus={() => setIsDropdownOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search or add custom category"
+          className="w-full p-3 border rounded-md"
+        />
+
+        {isDropdownOpen && (inputValue || filteredCategories.length > 0) && (
+          <div
+            ref={dropdownRef}
+            className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto"
+          >
+            {filteredCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleAddCategory(category)}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100"
+              >
+                {category}
+              </button>
+            ))}
+            {inputValue && !filteredCategories.includes(inputValue) && (
+              <button
+                onClick={() => handleAddCategory(inputValue)}
+                className="w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
+              >
+                Add "{inputValue}"
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+<div className="mb-6">
+  <label className="block text-sm text-gray-500 mb-1">Location/Venue</label>
+  <input
+    type="text"
+    placeholder="Enter location or venue"
+    value={eventData?.location}
+    onChange={(e) => setEventData({ ...eventData, location: e.target.value })}
+    className="w-full p-3 border rounded-md"
+  />
+</div>
 
                     {/* Required Date Fields */}
                     <div className="space-y-4">
@@ -1229,7 +1335,7 @@ const handleProgramClick = (program) => {
         <input
             type="date"
             className="w-full border rounded-md px-3 py-2"
-            value={eventData.startDate}
+            value={eventData?.startDate}
             onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
             required />
     </div>
@@ -1240,9 +1346,9 @@ const handleProgramClick = (program) => {
         <input
             type="date"
             className="w-full border rounded-md px-3 py-2"
-            value={eventData.endDate}
+            value={eventData?.endDate}
             onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
-            min={eventData.startDate} // Add min attribute to prevent earlier dates
+            min={eventData?.startDate} // Add min attribute to prevent earlier dates
             required />
     </div>
 </div>
@@ -1255,7 +1361,7 @@ const handleProgramClick = (program) => {
                         </p>
                       </div>
 <div className='additional-dates-container space-y-4'>
-                      {eventData.customFields.map(field => (
+                      {eventData?.customFields?.map(field => (
                         <div key={field.id}>
                           <div className="flex items-center justify-between mb-1">
                             <label className="block text-sm text-gray-500">
@@ -1347,6 +1453,7 @@ const handleProgramClick = (program) => {
     setCurrentStep={setCurrentStep}
     setShowCreateEvent={setShowCreateEvent} // Pass this prop
     onFormLaunchSuccess={onFormLaunchSuccess}
+    eventData={eventData}
   />
         )}
       </div>

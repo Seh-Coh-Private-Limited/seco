@@ -56,7 +56,7 @@ const FounderDashboard = () => {
   useEffect(() => {
     const checkSessionAndFetchData = async () => {
       const sessionData = localStorage.getItem('sessionData');
-      
+      console.log('Hi im being checked');
       if (!sessionData) {
         navigate('/signup');
         return;
@@ -102,6 +102,7 @@ const FounderDashboard = () => {
             name: userData.companyName || 'Company Name',   
             logo: userData.logoUrl || userData.companyLogo || null
           });
+          console.log('Success Reload of Company Details');
         }
   
         // Fetch applications
@@ -120,7 +121,7 @@ const FounderDashboard = () => {
             id: doc.id,
             title: doc.data().programTitle
           }));
-          
+          console.log('Success Reload of Program Details');
           setApplications(fetchedApplications);
         }
   

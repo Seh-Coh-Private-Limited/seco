@@ -42,7 +42,7 @@ const defaultFormData = {
     },
     contacts: [defaultContactFields] 
   };
-const SettingsForm = ({ onProfileUpdate }) => {
+const IncubatorSettingsForm = ({ onProfileUpdate }) => {
     const auth = getAuth();
     const [currentCity, setCurrentCity] = useState(null);
     // const [formData, setFormData] = useState(defaultFormData);
@@ -397,35 +397,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
         "Noida, Uttar Pradesh",
         "Gurgaon, Haryana",
         "Ranchi, Jharkhand",
-        "Raipur, Chhattisgarh",
-        "Trivandrum, Kerala",
-"Dehradun, Uttarakhand",
-"Nagaland, Kohima",
-"Udaipur, Rajasthan",
-"Vadodara, Gujarat",
-"Vijayawada, Andhra Pradesh",
-"Meerut, Uttar Pradesh",
-"Madurai, Tamil Nadu",
-"Kanpur, Uttar Pradesh",
-"Chennai, Tamil Nadu",
-"Belgaum, Karnataka",
-"Chandrapur, Maharashtra",
-"Faridabad, Haryana",
-"Patiala, Punjab",
-"Jodhpur, Rajasthan",
-"Jammu, Jammu & Kashmir",
-"Panaji, Goa",
-"Shimla, Himachal Pradesh",
-"Tirunelveli, Tamil Nadu",
-"Rajkot, Gujarat",
-"Bhavnagar, Gujarat",
-"Agartala, Tripura",
-"Imphal, Manipur",
-"Silchar, Assam",
-"Tezpur, Assam",
-"Aligarh, Uttar Pradesh",
-"Rourkela, Odisha"
-
+        "Raipur, Chhattisgarh"
       ];
     
       const fetchSuggestions = async (searchQuery) => {
@@ -459,7 +431,22 @@ const SettingsForm = ({ onProfileUpdate }) => {
           document.removeEventListener('mousedown', handleClickOutside);
         };
       }, []);
-    
+      const handleCustomEntry = (e) => {
+        if (e.key === 'Enter' || e.type === 'blur') {
+          const value = query.trim();
+          if (value) {
+            // Check if the input contains a comma
+            if (!value.includes(',')) {
+              // If no comma, append ", State/UT" to prompt user
+              setQuery(value + ", State/UT");
+              return;
+            }
+            setIsOpen(false);
+            setSuggestions([]);
+            onSelect(value);
+          }
+        }
+      };
       const handleInputChange = (e) => {
         const value = e.target.value;
         setQuery(value);
@@ -478,22 +465,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
         setSuggestions([]);
         onSelect(suggestion); // Pass the selected location back to the parent
       };
-      const handleCustomEntry = (e) => {
-        if (e.key === 'Enter' || e.type === 'blur') {
-          const value = query.trim();
-          if (value) {
-            // Check if the input contains a comma
-            if (!value.includes(',')) {
-              // If no comma, append ", State/UT" to prompt user
-              setQuery(value + ", State/UT");
-              return;
-            }
-            setIsOpen(false);
-            setSuggestions([]);
-            onSelect(value);
-          }
-        }
-      };
+    
       return (
         <div ref={wrapperRef} className="relative w-full max-w-lg">
           <div className="relative">
@@ -641,7 +613,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
 </div>
 
         <div>
-          <label className="block text-black font-medium mb-1">Company Name</label>
+          <label className="block text-black font-medium mb-1">Incubator Name</label>
           <input
             type="text"
             className="w-full max-w-lg h-10 border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
@@ -658,7 +630,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
             onChange={(e) => handleInputChange(null, 'bio', e.target.value)}
           />
         </div>
-        <div>
+        {/* <div>
           <label className="block text-black font-medium mb-1">Domain</label>
           <input
             type="text"
@@ -666,7 +638,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
             value={formData.DomainName}
             onChange={(e) => handleInputChange(null, 'DomainName', e.target.value)}
           />
-        </div>
+        </div> */}
         <div>
           <label className="block text-black font-medium mb-1">City/State</label>
           <LocationSearchInput
@@ -837,4 +809,4 @@ const SettingsForm = ({ onProfileUpdate }) => {
   );
 };
 
-export default SettingsForm;
+export default IncubatorSettingsForm;

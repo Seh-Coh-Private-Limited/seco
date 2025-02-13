@@ -223,7 +223,7 @@ const SignUp = () => {
 // Add password validation and security checks
 const validatePassword = (password) => {
   // Minimum requirements for password
-  const minLength = 12;
+  const minLength = 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumbers = /\d/.test(password);
@@ -463,9 +463,14 @@ useEffect(() => {
       <div className="px-4 py-3 bg-white">
         <div className="max-w-6xl flex justify-between gap-8">
           {/* Logo */}
-          <div className="text-xl font-semibold text-gray-900" style={{ fontFamily: 'CustomFont', fontSize: '30px', paddingLeft: '10px', paddingRight: '300px' }}>
-            seco
-          </div>
+          <div
+  className="text-xl font-semibold text-gray-900 cursor-pointer"
+  style={{ fontFamily: 'CustomFont', fontSize: '30px', paddingLeft: '10px', paddingRight: '300px' }}
+  onClick={() => window.location.href = 'https://discover.getseco.com/signup'}
+>
+  seco
+</div>
+
           {/* Progress Steps */}
           {/* <div className="flex items-center flex-1 justify-center gap-4">
             <div className="flex items-center gap-2">

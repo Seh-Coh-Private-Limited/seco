@@ -44,7 +44,7 @@ const questionTypes = [
   { id: 'rating', icon: <Star className="w-4 h-4" />, label: 'Rating' }
 ];
 
-const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent,onFormLaunchSuccess }) => {
+const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreateEvent,onFormLaunchSuccess,eventData }) => {
   const [formTitle, setFormTitle] = useState('Registration Questions');
   const [formDescription, setFormDescription] = useState('We will ask guests the following questions when they register for the event.');
   const [sections, setSections] = useState([]);
@@ -394,14 +394,18 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                             Cancel
                         </button>
                         <button
-    onClick={() => {
-        handleAddSection();
-        submitQuestions();
-    }}
-    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-    disabled={!modalQuestions.length}
+  onClick={() => {
+    try {
+      handleAddSection();
+      submitQuestions();
+    } catch (error) {
+      console.error('Error in button click handler:', error);
+    }
+  }}
+  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+  disabled={!modalQuestions.length}
 >
-    Save Questions
+  Save Questions
 </button>
 
                     </div>
@@ -909,7 +913,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
           </div>
         ) : (
           <div className="w-full">
-          <FProgramDetailPage programId={programId} />
+          <FProgramDetailPage programId={programId} eventData={eventData}/>
           </div>
         )}
       </div>
