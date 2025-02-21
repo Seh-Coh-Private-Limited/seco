@@ -504,6 +504,7 @@ const HomePage = ({ userStatus,
   programid, 
   showCreateEvent, 
   setShowCreateEvent, 
+  fetchProgrammes,
   currentStep, 
   setCurrentStep,
   onFormLaunchSuccess   }) => {
@@ -575,32 +576,50 @@ const HomePage = ({ userStatus,
   //   }
   // };
   const handleClose = async () => {
-    setIsClosing(true); // Set closing state
-
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("uid", "==", auth.currentUser.uid));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDocRef = querySnapshot.docs[0].ref;
-        await updateDoc(userDocRef, {
-          programStatus: "completed",
-          programid: null,
-        });
+      // Check if name is not null (i.e., some data has been entered)
+      if (eventData?.name) {
+        // Only proceed with deletion if programId exists
+        if (programid) {
+          // Delete the program if it exists
+          const programmesRef = collection(db, 'programmes');
+          const q = query(programmesRef, where('id', '==', programid));
+          const querySnapshot = await getDocs(q);
+  
+          if (!querySnapshot.empty) {
+            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+            await deleteDoc(docRef);
+          }
+  
+          // Update user's program status and program ID
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const userSnapshot = await getDocs(usersQuery);
+  
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: null,
+              programid: null,
+            });
+          }
+        }
       }
-
+  
+      // Close the form regardless of whether data was entered or not
       setShowCreateEvent(false);
       setCurrentStep(1);
-
-      // Keep isClosing true for 2 seconds after the form closes
-      setTimeout(() => {
-        setIsClosing(false);
-      }, 2000);
-
+  
+      // Reload programmes
+      if (fetchProgrammes) {
+        await fetchProgrammes(auth.currentUser);
+      }
+  
     } catch (error) {
       console.error('Error closing form:', error);
-      setIsClosing(false);
     }
   };
   useEffect(() => {
@@ -905,14 +924,15 @@ const handleProgramClick = (program) => {
   
       // Show success message
       alert('Draft saved successfully!');
-  
+        programId=null;
       // Reload programmes
       if (fetchProgrammes) {
         await fetchProgrammes(auth.currentUser); // Fetch the updated list of programmes
       }
   
       // Close the form after saving
-      handleClose(); // Call the function to close the form
+      setShowCreateEvent(false);
+      setCurrentStep(1); // Call the function to close the form
     } catch (e) {
       console.error('Error saving draft: ', e);
       alert('Error saving draft. Please try again.');
@@ -965,16 +985,18 @@ const handleProgramClick = (program) => {
       [name]: value
     }));
   };
-    const handleImageUpload = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setEventImage(reader.result);
-        };
-        reader.readAsDataURL(file);
-      }
-    };
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageDataUrl = reader.result;
+        setEventImage(imageDataUrl); // Set the image data URL for preview
+        setEventData(prev => ({ ...prev, image: imageDataUrl })); // Update eventData with the image URL
+      };
+      reader.readAsDataURL(file); // Convert the file to a data URL
+    }
+  };
   
     const handleNext = () => {
       handleSubmit(() => {
@@ -1148,43 +1170,14 @@ const handleProgramClick = (program) => {
       console.log('Current eventData:', eventData);
     }, [eventData]);
 
-    const handleClose = async () => {
-      try {
-        // Delete the program if it exists
-        if (programId) {
-          const programmesRef = collection(db, 'programmes');
-          const q = query(programmesRef, where('id', '==', programId));
-          const querySnapshot = await getDocs(q);
-    
-          if (!querySnapshot.empty) {
-            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-            await deleteDoc(docRef);
-          }
-    
-          // Update user's program status and program ID
-          const usersQuery = query(
-            collection(db, 'users'),
-            where('uid', '==', auth.currentUser.uid)
-          );
-          const userSnapshot = await getDocs(usersQuery);
-    
-          if (!userSnapshot.empty) {
-            const userDoc = userSnapshot.docs[0];
-            const userDocRef = doc(db, 'users', userDoc.id);
-            await updateDoc(userDocRef, {
-              programStatus: null,
-              programid: null,
-            });
-          }
-        }
-    
-        // Close the form
-        setShowCreateEvent(false);
-        setCurrentStep(1);
-    
-      } catch (error) {
-        console.error('Error closing form:', error);
-      }
+    const handleClose = () => {
+      if (isClosing) return;
+      onClose();
+    };
+
+    const handleCloseform = () => {
+      if (isClosing) return;
+      onClose();
     };
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -1213,9 +1206,9 @@ const handleProgramClick = (program) => {
                       className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
                       onClick={() => document.getElementById('imageUpload').click()}
                     >
-                      {eventImage ? (
+                      {eventData?.image ? (
                         <img
-                          src={eventImage}
+                          src={eventData.image}
                           alt="Event"
                           className="w-full h-full object-contain" />
                       ) : (
@@ -1407,9 +1400,19 @@ const handleProgramClick = (program) => {
                     </div>
                   </CardContent>
                 </Card>
-
+                
                 {/* Buttons */}
                 <div className="flex justify-end gap-4 mt-6">
+                  
+                {programid !== null && (
+    <button 
+      onClick={handleCloseform}
+      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+      disabled={isClosing}
+    >
+      {isClosing ? 'Closing...' : 'Close'}
+    </button>
+  )}
                 <button 
           onClick={handleClose}
           className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
@@ -1417,6 +1420,7 @@ const handleProgramClick = (program) => {
         >
           {isClosing ? 'Closing...' : 'Cancel'}
         </button>
+
                   {/* <button
       onClick={() => {
         handleSubmit();
@@ -1746,6 +1750,7 @@ const handleProgramClick = (program) => {
               userStatus={userStatus} 
               programid={programid}
               showCreateEvent={showCreateEvent}
+              fetchProgrammes={fetchProgrammes}
               setShowCreateEvent={setShowCreateEvent}
               currentStep={currentStep}
               setCurrentStep={setCurrentStep}

@@ -23,23 +23,22 @@ const FProgramDetailPage = ({ programId }) => {
   };
 
   useEffect(() => {
-    // Fetch the program details using the programId
     const fetchProgram = async () => {
       try {
         if (programId) {
           const fetchedProgram = await ffetchProgramById(programId);
           
-        //   if (!fetchedProgram) {
-        //     // Redirect to a 404 or programs page if no program is found
-        //     navigate('/programs');
-        //     return;
-        //   }
+          if (!fetchedProgram) {
+            console.error('No program found with the given ID');
+            navigate('/programs');
+            return;
+          }
           
           setProgramDetails(fetchedProgram);
           const programmesRef = collection(db, "programmes");
-
+  
           // Query the 'programmes' collection to find the document where 'id' matches 'programId'
-          const programmeQuery = query(programmesRef, where("id", "==", programId)); // Replace `programId` with the actual value
+          const programmeQuery = query(programmesRef, where("id", "==", programId));
           const programmeSnapshot = await getDocs(programmeQuery);
         
           if (!programmeSnapshot.empty) {
@@ -55,20 +54,20 @@ const FProgramDetailPage = ({ programId }) => {
             // Retrieve all questions from the 'questions' field in each form document
             const questions = formSnapshot.docs.flatMap((doc) => doc.data().questions || []);
         
-            console.log(questions);
+            console.log('Fetched Questions:', questions);
             // Set the state or handle the questions data
             setFormQuestions(questions);
           
-} else {
-  console.error('No document found with the matching programId');
-}
+          } else {
+            console.error('No document found with the matching programId');
+          }
         }
       } catch (error) {
         console.error('Error fetching program details:', error);
         navigate('/programs');
       }
     };
-
+  
     fetchProgram();
   }, [programId, navigate]);
 
@@ -97,7 +96,7 @@ const FProgramDetailPage = ({ programId }) => {
   const formatMonth = (date) => date.toLocaleString('default', { month: 'short' }).toUpperCase();
   const formatDay = (date) => date.getDate();
   const sanitizeHTML = (html) => {
-    return html.replace(/<script.*?>.*?<\/script>/gi, ""); // Remove <script> tags
+    return html?.replace(/<script.*?>.*?<\/script>/gi, ""); // Remove <script> tags
   };
   const formatCustomFieldDate = (dateString) => {
     const date = new Date(dateString);

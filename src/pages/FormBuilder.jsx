@@ -122,17 +122,28 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
 
   // Modified handleAddSection to include questions
   const handleAddSection = () => {
-    const newSection = {
-      id: Date.now(),
-      title: newSectionTitle,
-      description: newSectionDescription,
-      questions: modalQuestions
-    };
-    setSections([...sections, newSection]);
+    if (sections.length > 0) {
+      // Append to the existing section
+      const updatedSection = {
+        ...sections[0],
+        questions: [...sections[0].questions, ...modalQuestions]
+      };
+      setSections([updatedSection]);
+    } else {
+      // Create a new section
+      const newSection = {
+        id: Date.now(),
+        title: newSectionTitle,
+        description: newSectionDescription,
+        questions: modalQuestions
+      };
+      setSections([newSection]);
+    }
+    submitQuestions(); 
     setIsModalOpen(false);
     resetModalState();
+    // Call submitQuestions after updating the sections
   };
-
   // Add question within modal
   const addModalQuestion = (type) => {
     const newQuestion = {
@@ -397,7 +408,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   onClick={() => {
     try {
       handleAddSection();
-      submitQuestions();
+      // submitQuestions();
     } catch (error) {
       console.error('Error in button click handler:', error);
     }
@@ -584,9 +595,9 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
       setIsModalOpen(false);
       resetModalState();
       // alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
-      
+      alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
       // Move to next step after successful submission
-      setCurrentStep(3);
+      // setCurrentStep(3);
     } catch (error) {
       console.error("Error saving form:", error.message || error);
       alert('Failed to save form. Please try again.');
