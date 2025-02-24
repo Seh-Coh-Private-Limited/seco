@@ -6,8 +6,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipLoader } from 'react-spinners';
 import { ffetchProgramById } from '../components/ffetchprogram';
-import { collection, db, getDocs, query, where, doc, getDoc } from '../firebase';
-import { auth } from '../firebase'; // Import auth from firebase
+import { collection, db, getDocs, query, where } from '../firebase';
+
+
+
 
 const FProgramDetailPage = ({ programId }) => {
   const navigate = useNavigate();
@@ -15,24 +17,20 @@ const FProgramDetailPage = ({ programId }) => {
   const [activeTab, setActiveTab] = useState('details');
   const [openIndex, setOpenIndex] = useState(null);
   const [formQuestions, setFormQuestions] = useState([]);
-  const [contactInfo, setContactInfo] = useState(null);
-  const [socialLinks, setSocialLinks] = useState(null);
 
   const toggleAnswer = (index) => {
     setOpenIndex(openIndex === index ? null : index);
   };
 
   useEffect(() => {
-    
     const fetchProgram = async () => {
       try {
         if (programId) {
           const fetchedProgram = await ffetchProgramById(programId);
           
           if (!fetchedProgram) {
-            console.log(programId);
             console.error('No program found with the given ID');
-            // navigate('/programs');
+            navigate('/programs');
             return;
           }
           
@@ -69,35 +67,8 @@ const FProgramDetailPage = ({ programId }) => {
         navigate('/programs');
       }
     };
-
-    const fetchContactInfo = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-
-            // Fetch contacts (assuming it's an array field)
-            if (userData.contacts && userData.contacts.length > 0) {
-              setContactInfo(userData.contacts[0]); // Assuming you want the first contact
-            }
-
-            // Fetch social links (assuming it's a map field)
-            if (userData.social) {
-              setSocialLinks(userData.social);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching contact information:', error);
-      }
-    };
-
+  
     fetchProgram();
-    fetchContactInfo();
   }, [programId, navigate]);
 
   if (!programDetails) {
@@ -114,9 +85,10 @@ const FProgramDetailPage = ({ programId }) => {
     endDate,
     description,
     location,
-    categories = [],
+    categories=[],
     customFields = [],
     startDate,
+    
   } = programDetails;
 
   const formattedStartDate = new Date(startDate);
@@ -298,70 +270,6 @@ const FProgramDetailPage = ({ programId }) => {
         return null;
     }
   };
-
-  const renderContactSection = () => {
-    if (!contactInfo || !socialLinks) return null;
-
-    const { designation, email, firstName, lastName, linkedin, mobile } = contactInfo;
-    const { instagram, linkedin: socialLinkedin, tiktok, twitter, website, youtube } = socialLinks;
-
-    // Check if any required field is null
-    if (!designation || !email || !firstName || !lastName || !linkedin || !mobile) return null;
-
-    return (
-      <div className='text-sm mt-2'>
-        <p className='mb-2' style={{ fontFamily: 'CFont' }}>Contact the Host</p>
-        <hr className='my-4 border-t border-gray-300' />
-
-        <div className='mb-4'>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Person In Charge: 
-            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {firstName} {lastName}
-            </a>
-          </p>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Designation: 
-            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {designation}
-            </a>
-          </p>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Email ID:
-            <a href={`mailto:${email}`} className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {email}
-            </a>
-          </p>
-          
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-          LinkedIn:
-            <a href={linkedin} target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {linkedin}
-            </a>
-          </p>
-        </div>
-
-        <div className='flex flex-row gap-7 mb-4'>
-          <a href={twitter} target='_blank' rel='noopener noreferrer'>
-            <img src='../../twitter.png' alt='twitter' className='w-5 h-5 my-2' />
-          </a>
-          <a href={instagram} target='_blank' rel='noopener noreferrer'>
-            <img src='../../instagram.png' alt='instagram' className='w-5 h-5 my-2' />
-          </a>
-          <a href={socialLinkedin} target='_blank' rel='noopener noreferrer'>
-            <img src='../../linkedin.png' alt='linkedin' className='w-5 h-5 my-2' />
-          </a>
-          <a href={tiktok} target='_blank' rel='noopener noreferrer'>
-            <img src='../../tiktok.png' alt='tiktok' className='w-5 h-5 my-2' />
-          </a>
-          <a href={youtube} target='_blank' rel='noopener noreferrer'>
-            <img src='../../youtube.png' alt='youtube' className='w-5 h-5 my-2' />
-          </a>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div>
       <div className="overflow-auto">
@@ -571,7 +479,7 @@ const FProgramDetailPage = ({ programId }) => {
 
    
 
-    <div id="Hosted" className="mb-6"> {/* Added bottom margin */}
+  <div id="Hosted" className="mb-6"> {/* Added bottom margin */}
   <p style={{ fontFamily: "CFont" }}>industry</p>
   <hr className="my-4 border-t border-slate-300 mt-6" />
   <div className="flex flex-wrap gap-2 mt-2" style={{ fontFamily: "CFont" }}>
@@ -584,7 +492,7 @@ const FProgramDetailPage = ({ programId }) => {
   </div>
 </div>
 
-{renderContactSection()}
+
 
 {/* */}
 

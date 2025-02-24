@@ -143,28 +143,26 @@ const SignUp = () => {
       const expiresAt = new Date(new Date().getTime() + SESSION_TIMEOUT);
       const isJudge = await checkIfJudge(auth.currentUser.email);
       
-      // Set the category properly, ensuring it's never undefined
-      const finalCategory = isJudge ? 'incubator' : (category || 'default'); // Added fallback value
-      
+      const finalCategory = category || 'default';
       const sessionData = {
         uid,
-        category: finalCategory, // Use the properly defined category
+        category: finalCategory,
         isJudge,
         sessionStartTime,
         lastActivity: sessionStartTime,
         isActive: true,
-        expiresAt
+        expiresAt,
       };
       
-      // Store session in Firestore
+      console.log('Creating session with:', sessionData);
       await setDoc(sessionRef, sessionData);
       
-      // Store in localStorage with all necessary data
       localStorage.setItem('sessionData', JSON.stringify({
         uid,
-        category: finalCategory, // Use the same category as stored in Firestore
+        category: finalCategory,
+        isJudge,
         sessionStartTime,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       }));
       
     } catch (error) {
@@ -173,23 +171,42 @@ const SignUp = () => {
     }
   };
   const checkIfJudge = async (email) => {
-    const judgesRef = collection(db, 'judges');
-    const q = query(judgesRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
+    try {
+      const judgesRef = collection(db, 'judges');
+      const q = query(judgesRef, where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      const isJudge = !querySnapshot.empty;
+      console.log('checkIfJudge:', { email, isJudge });
+      return isJudge;
+    } catch (error) {
+      console.error('Error in checkIfJudge:', error);
+      return false;
+    }
   };
   
-  const handleCategoryBasedRedirect = (category) => {
-    const sessionData = JSON.parse(localStorage.getItem('sessionData'));
-  if (sessionData?.isJudge) {
+ // Add logging to debug the values
+const handleCategoryBasedRedirect = (category) => {
+  const sessionData = JSON.parse(localStorage.getItem('sessionData'));
+  const currentCategory = category || sessionData?.category || 'default';
+  const isJudge = sessionData?.isJudge || false;
+
+  console.log('handleCategoryBasedRedirect:', {
+    currentCategory,
+    isJudge,
+    sessionData,
+  });
+
+  if (isJudge && currentCategory !== 'startup' && currentCategory !== 'incubator') {
+    console.log('Redirecting to judgedashboard');
     navigate('/judgedashboard');
-  } else if (category === 'startup') {
+  } else if (currentCategory === 'startup') {
+    console.log('Redirecting to fdashboard');
     navigate('/fdashboard');
   } else {
+    console.log('Redirecting to dashboard');
     navigate('/dashboard');
   }
-  };
-
+};
   // Modified createUserDocument function with session handling
   const createUserDocument = async (user, additionalData = {}) => {
     if (!user) return;
@@ -269,7 +286,6 @@ const validatePassword = (password) => {
       }
     }
 
-
     let userCredential;
     if (isSignIn) {
       userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -278,9 +294,12 @@ const validatePassword = (password) => {
       
       if (userSnap.exists()) {
         const userData = userSnap.data();
-        await createUserSession(userCredential.user.uid, userData.category);
         const isJudge = await checkIfJudge(email);
-        if (isJudge) {
+        console.log('SignIn userData:', { userData, isJudge });
+        await createUserSession(userCredential.user.uid, userData.category);
+        
+        if (isJudge && userData.category !== 'startup' && userData.category !== 'incubator') {
+          console.log('SignIn: Redirecting to judgedashboard');
           navigate('/judgedashboard');
         } else {
           handleCategoryBasedRedirect(userData.category);
@@ -289,7 +308,6 @@ const validatePassword = (password) => {
         throw new Error('User account not found');
       }
     } else {
-      // Validate additional fields for signup
       if (!firstName || !lastName || !category) {
         setError('All fields are required');
         setLoading(false);
@@ -302,19 +320,18 @@ const validatePassword = (password) => {
         accountType: 'email',
         category,
         companyName: companyName || '',
-        contacts: [
-          {
-            email,
-            firstName,
-            lastName,
-            mobile: phoneNumber || '',
-          },
-        ],
+        contacts: [{
+          email,
+          firstName,
+          lastName,
+          mobile: phoneNumber || '',
+        }],
       });
       
-
       const isJudge = await checkIfJudge(email);
-      if (isJudge) {
+      console.log('SignUp:', { category, isJudge });
+      if (isJudge && category !== 'startup' && category !== 'incubator') {
+        console.log('SignUp: Redirecting to judgedashboard');
         navigate('/judgedashboard');
       } else {
         handleCategoryBasedRedirect(category);
@@ -327,7 +344,6 @@ const validatePassword = (password) => {
     setLoading(false);
   }
 };
-
 useEffect(() => {
   setStep(isSignIn ? 'auth' : 'category');
 }, [isSignIn]);
@@ -346,25 +362,31 @@ useEffect(() => {
       const email = result.user.email;
       const isJudge = await checkIfJudge(email);
   
-      // Redirect judges immediately
-      if (isJudge) {
-        await createUserSession(result.user.uid, 'incubator');
-        return navigate('/judgedashboard');
-      }
-
       if (userSnap.exists()) {
         const userData = userSnap.data();
         await createUserSession(result.user.uid, userData.category);
-        handleCategoryBasedRedirect(userData.category); // Redirect based on category
+        
+        console.log('Social SignIn:', { userData, isJudge });
+        if (isJudge && userData.category !== 'startup' && userData.category !== 'incubator') {
+          console.log('Social SignIn: Redirecting to judgedashboard');
+          navigate('/judgedashboard');
+        } else {
+          handleCategoryBasedRedirect(userData.category);
+        }
       } else {
-        // Default category for new users
-       // You can customize this default category
         await createUserDocument(result.user, {
           signUpMethod: providerName,
           accountType: providerName,
-          category: category
+          category: category || 'default',
         });
-        handleCategoryBasedRedirect(category); // Redirect to startup registration form
+        
+        console.log('Social SignUp:', { category, isJudge });
+        if (isJudge && category !== 'startup' && category !== 'incubator') {
+          console.log('Social SignUp: Redirecting to judgedashboard');
+          navigate('/judgedashboard');
+        } else {
+          handleCategoryBasedRedirect(category);
+        }
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {

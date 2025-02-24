@@ -520,10 +520,10 @@ import JudgesFormResponses from './JudgesFormResponses';
       const fetchUserStatus = async () => {
         try {
           const user = auth.currentUser;
-          if (!user) {
-            navigate('/signup');
-            return;
-          }
+          // if (!user) {
+          //   navigate('/signup');
+          //   return;
+          // }
   
           const usersQuery = query(
             collection(db, 'users'),

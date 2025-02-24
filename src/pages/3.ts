@@ -31,7 +31,6 @@ import FormResponses from './FormResponses';
 import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
 import IncubatorSettingsForm from '../components/IncubatorSettings';
-import JudgesFormResponses from './JudgesFormResponses';
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
 
@@ -47,9 +46,6 @@ const FounderDashboard = () => {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [error, setError] = useState(null);
-  const [judgingProgrammes, setJudgingProgrammes] = useState([]); // New state for judging programmes
-  const [isJudge, setIsJudge] = useState(false); // Track if user is a judge
-  const [isJudgingProgramSelected, setIsJudgingProgramSelected] = useState(false);
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -67,8 +63,7 @@ const FounderDashboard = () => {
     Incentives: '',
     isPublic: true,
     calendar: 'Google Calendar',
-    customFields: [],
-    image: null,
+    customFields: []
   });
   const FormBuilderOptions = ({ onOptionSelect, onBack,programId,currentStep, setCurrentStep,setShowCreateEvent ,onFormLaunchSuccess, eventData   }) => {
     const auth = getAuth();
@@ -133,40 +128,6 @@ const fetchCompanyDetails = useCallback(async (user) => {
   }, [auth, fetchCompanyDetails]);
 
   // Function to fetch programmes
-  // Check if user is a judge and fetch judging programmes
-  const checkJudgeStatusAndFetchProgrammes = useCallback(async (user) => {
-    try {
-      const judgesQuery = query(
-        collection(db, 'judges'),
-        where('email', '==', user.email)
-      );
-      const judgesSnapshot = await getDocs(judgesQuery);
-
-      if (!judgesSnapshot.empty) {
-        setIsJudge(true);
-        const judgeData = judgesSnapshot.docs[0].data();
-        const programId = judgeData.programId;
-
-        const programmesQuery = query(
-          collection(db, 'programmes'),
-          where('id', '==', programId)
-        );
-        const programmesSnapshot = await getDocs(programmesQuery);
-
-        const fetchedJudgingProgrammes = programmesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setJudgingProgrammes(fetchedJudgingProgrammes);
-      } else {
-        setIsJudge(false);
-        setJudgingProgrammes([]);
-      }
-    } catch (error) {
-      console.error('Error checking judge status or fetching judging programmes:', error);
-      setError('Failed to check judge status or load judging programmes');
-    }
-  }, [db]);
  // Inside FounderDashboard component
 const fetchProgrammes = useCallback(async (user) => {
   try {
@@ -174,7 +135,7 @@ const fetchProgrammes = useCallback(async (user) => {
       query(
         collection(db, 'programmes'),
         where('uid', '==', user.uid),
-        where('programStatus', 'in', ['completed', 'draft', 'active']) // Fetch both completed and draft programmes
+        where('programStatus', 'in', ['completed', 'draft']) // Fetch both completed and draft programmes
       )        
     );
     
@@ -200,7 +161,6 @@ useEffect(() => {
     const user = auth.currentUser;
     if (user) {
       await fetchProgrammes(user);
-      await checkJudgeStatusAndFetchProgrammes(user);
     }
   };
   fetchData();
@@ -400,48 +360,27 @@ useEffect(() => {
     // Return null if no conditions are met
     return null;
   };
-  const handleNewProgramClick = async () => {
-    setSelectedProgram(null); // Clear any selected program
+  const handleNewProgramClick = () => {
+    setSelectedProgram(null); // Reset selected program
     setEventData({
       name: '',
       startDate: '',
       startTime: '',
       endDate: '',
       endTime: '',
-      categories: [],
-      location: '',
+      categories: [], // Array to store selected categories
+      location: '', // Field for location/venue
       description: '',
       Eligibility: '',
       Incentives: '',
       isPublic: true,
       calendar: 'Google Calendar',
-      customFields: [],
-      image: null,
+      customFields: []
     });
-    setShowCreateEvent(true);
-    setCurrentStep(1);
-    // Reset draft-related state
-    setprogramid(null); // Clear the program ID
-    setUserStatus(null); // Clear the user status
-  
-    // Optionally, update Firestore to clear the user's draft status
-    try {
-      const user = auth.currentUser;
-      if (user) {
-        const usersQuery = query(collection(db, 'users'), where('uid', '==', user.uid));
-        const userSnapshot = await getDocs(usersQuery);
-        if (!userSnapshot.empty) {
-          const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-          await updateDoc(userDocRef, {
-            programStatus: null,
-            programid: null,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error resetting user draft status:', error);
-    }
+    setShowCreateEvent(true); // Show the create event form
+    setCurrentStep(1); // Reset to the first step
   };
+
   
   // const Breadcrumb = ({ 
   //   activeTab,
@@ -568,38 +507,22 @@ const HomePage = ({ userStatus,
   fetchProgrammes,
   currentStep, 
   setCurrentStep,
-  onFormLaunchSuccess ,selectedProgram,  }) => {
+  onFormLaunchSuccess   }) => {
     const auth = getAuth();
-    const [eventData, setEventData] = useState({
-      name: '',
-      startDate: '',
-      startTime: '',
-      endDate: '',
-      endTime: '',
-      categories: [],
-      location: '',
-      description: '',
-      Eligibility: '',
-      Incentives: '',
-      isPublic: true,
-      calendar: 'Google Calendar',
-      customFields: [],
-      image: null,
-    });
   const db = getFirestore();
   //  const [showCreateEvent, setShowCreateEvent] = useState(false);
   // const [currentStep, setCurrentStep] = useState(1);
-  // const [eventData, setEventData] = useState(null);
+  const [eventData, setEventData] = useState(null);
   const [isClosing, setIsClosing] = useState(false); // Add state to track closing operation
 
   useEffect(() => {
     const fetchUserStatus = async () => {
       try {
         const user = auth.currentUser;
-        // if (!user) {
-        //   navigate('/signup');
-        //   return;
-        // }
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
 
         const usersQuery = query(
           collection(db, 'users'),
@@ -652,86 +575,82 @@ const HomePage = ({ userStatus,
   //     setIsClosing(false);
   //   }
   // };
-  const handleClose = () => {
-    setShowCreateEvent(false);
-    setCurrentStep(1);
+  const handleClose = async () => {
+    try {
+      // Check if name is not null (i.e., some data has been entered)
+      if (eventData?.name) {
+        // Only proceed with deletion if programId exists
+        if (programid) {
+          // Delete the program if it exists
+          const programmesRef = collection(db, 'programmes');
+          const q = query(programmesRef, where('id', '==', programid));
+          const querySnapshot = await getDocs(q);
+  
+          if (!querySnapshot.empty) {
+            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+            await deleteDoc(docRef);
+          }
+  
+          // Update user's program status and program ID
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const userSnapshot = await getDocs(usersQuery);
+  
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: null,
+              programid: null,
+            });
+          }
+        }
+      }
+  
+      // Close the form regardless of whether data was entered or not
+      setShowCreateEvent(false);
+      setCurrentStep(1);
+  
+      // Reload programmes
+      if (fetchProgrammes) {
+        await fetchProgrammes(auth.currentUser);
+      }
+  
+    } catch (error) {
+      console.error('Error closing form:', error);
+    }
   };
-  // const handleClose = async () => {
-  //   try {
-  //     // Check if name is not null (i.e., some data has been entered)
-  //     if (eventData?.name) {
-  //       // Only proceed with deletion if programId exists
-  //       if (programid) {
-  //         // Delete the program if it exists
-  //         const programmesRef = collection(db, 'programmes');
-  //         const q = query(programmesRef, where('id', '==', programid));
-  //         const querySnapshot = await getDocs(q);
+  useEffect(() => {
+    // Only proceed if not currently closing
+    if (isClosing) return;
   
-  //         if (!querySnapshot.empty) {
-  //           const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-  //           await deleteDoc(docRef);
-  //         }
-  
-  //         // Update user's program status and program ID
-  //         const usersQuery = query(
-  //           collection(db, 'users'),
-  //           where('uid', '==', auth.currentUser.uid)
-  //         );
-  //         const userSnapshot = await getDocs(usersQuery);
-  
-  //         if (!userSnapshot.empty) {
-  //           const userDoc = userSnapshot.docs[0];
-  //           const userDocRef = doc(db, 'users', userDoc.id);
-  //           await updateDoc(userDocRef, {
-  //             programStatus: null,
-  //             programid: null,
-  //           });
-  //         }
-  //       }
-  //     }
-  
-  //     // Close the form regardless of whether data was entered or not
-  //     setShowCreateEvent(false);
-  //     setCurrentStep(1);
-  
-  //     // Reload programmes
-  //     if (fetchProgrammes) {
-  //       await fetchProgrammes(auth.currentUser);
-  //     }
-  
-  //   } catch (error) {
-  //     console.error('Error closing form:', error);
-  //   }
-  // };
-  // useEffect(() => {
-  //   // Only proceed if not currently closing
-  //   if (isClosing) return;
-  
-  //   if (userStatus === 'active' && programid) {
-  //     // Add a delay before checking program status
-  //     const timer = setTimeout(() => {
-  //       const fetchExistingProgram = async () => {
-  //         try {
-  //           const programmesRef = collection(db, 'programmes');
-  //           const q = query(programmesRef, where('id', '==', programid));
-  //           const querySnapshot = await getDocs(q);
+    if (userStatus === 'active' && programid) {
+      // Add a delay before checking program status
+      const timer = setTimeout(() => {
+        const fetchExistingProgram = async () => {
+          try {
+            const programmesRef = collection(db, 'programmes');
+            const q = query(programmesRef, where('id', '==', programid));
+            const querySnapshot = await getDocs(q);
             
-  //           if (!querySnapshot.empty) {
-  //             const programData = querySnapshot.docs[0].data();
-  //             setEventData(programData);
-  //             setShowCreateEvent(true); // Remove this line
-  //           }
-  //         } catch (error) {
-  //           console.error('Error fetching existing program:', error);
-  //         }
-  //       };
+            if (!querySnapshot.empty) {
+              const programData = querySnapshot.docs[0].data();
+              setEventData(programData);
+              setShowCreateEvent(true); // Remove this line
+            }
+          } catch (error) {
+            console.error('Error fetching existing program:', error);
+          }
+        };
     
-  //       fetchExistingProgram();
-  //     }, 2000); // 2 second delay
+        fetchExistingProgram();
+      }, 2000); // 2 second delay
   
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [userStatus, programid, isClosing]);
+      return () => clearTimeout(timer);
+    }
+  }, [userStatus, programid, isClosing]);
   return (
     <div className="md:px-56 overflow-auto mt-8">
       {/* <div className="p-4">
@@ -769,18 +688,18 @@ const HomePage = ({ userStatus,
  
      
       {showCreateEvent ? (
-  <CreateEventForm
-  onClose={handleClose}
-  initialData={selectedProgram} // Pass selectedProgram as initialData
-  programId={programid || (selectedProgram?.id)}
-  currentStep={currentStep}
-  setCurrentStep={setCurrentStep}
-  fetchProgrammes={fetchProgrammes}
-  onFormLaunchSuccess={onFormLaunchSuccess}
-  eventData={eventData}
-  setEventData={setEventData}
-  isNewProgram={!selectedProgram || selectedProgram.programStatus !== 'draft'}
-/>
+     <CreateEventForm 
+     onClose={handleClose}
+     initialData={selectedProgram} // Pass the selected program data
+     programId={selectedProgram?.id || programid} // Pass the programId
+     currentStep={currentStep}
+     setCurrentStep={setCurrentStep}
+     isClosing={isClosing}
+     onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
+     fetchProgrammes={fetchProgrammes}
+     eventData={eventData}
+     setEventData={setEventData}
+   />
       ) : (
         // Rest of your existing HomePage content
         <div className="flex-1 flex flex-col items-center justify-center mt-28">
@@ -895,20 +814,15 @@ const CardContent = ({ children, className = '' }) => (
 );
 
 
-const handleProgramClick = (program, isJudgingProgram = false) => {
-  setSelectedProgram(program);
-  setIsJudgingProgramSelected(isJudgingProgram); // Track if it's a judging program
-
-  if (!isJudgingProgram && program.programStatus === 'draft') {
-    // Handle draft programs for founders
+const handleProgramClick = (program) => {
+  if (program.programStatus === 'draft') {
     setShowCreateEvent(true);
-    setCurrentStep(1);
-    setprogramid(program.id);
-    setUserStatus('draft');
+    setSelectedProgram(program); // Set the selected program
+    setCurrentStep(1); // Reset to the first step
   } else {
-    // Switch to program tab for both founder and judge programs
     setActiveTab('program');
-    setActiveProgramTab(isJudgingProgram ? 'formResponses' : 'summary'); // Only set to formResponses for judging programs
+    setSelectedProgram(program);
+    setActiveProgramTab('summary');
     setFormResponses([]);
   }
 };
@@ -930,254 +844,121 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
     setEventData,
     setCurrentStep,
     fetchProgrammes ,
-    isNewProgram = false,
+    isClosing,
     onFormLaunchSuccess  }) => {
     // console.log('Initial Data:', initialData); // Enhanced logging
     // const [currentStep, setCurrentStep] = useState(1);
-    const [isClosing, setIsClosing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
+
     // const [currentStep, setCurrentStep] = useState(1);
   const [eventImage, setEventImage] = useState(null);
   const [skipForm, setSkipForm] = useState(false);
   const [selectedFormOption, setSelectedFormOption] = useState(null);
   const [newFieldName, setNewFieldName] = useState('');
   // const [isClosing, setIsClosing] = useState(false);
-  useEffect(() => {
-    console.log('CreateEventForm mounted with:', { programId, isNewProgram });
-    const loadDraftFromFirestore = async () => {
-      if (programId) {
-        console.log('Loading draft for programId:', programId);
-        try {
-          const programmesRef = collection(db, 'programmes');
-          const q = query(programmesRef, where('id', '==', programId));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const programData = querySnapshot.docs[0].data();
-            console.log('Draft data loaded:', programData);
-            setEventData({
-              name: programData.name || '',
-              startDate: programData.startDate || '',
-              startTime: programData.startTime || '',
-              endDate: programData.endDate || '',
-              endTime: programData.endTime || '',
-              categories: programData.categories || [],
-              location: programData.location || '',
-              description: programData.description || '',
-              Eligibility: programData.Eligibility || '',
-              Incentives: programData.Incentives || '',
-              isPublic: programData.isPublic !== undefined ? programData.isPublic : true,
-              calendar: programData.calendar || 'Google Calendar',
-              customFields: programData.customFields || [],
-              image: programData.image || null,
-            });
-          } else {
-            console.warn(`No program found with ID: ${programId}`);
-          }
-        } catch (error) {
-          console.error('Error loading draft from Firestore:', error);
-        }
-      } else {
-        console.log('Not loading draft: isNewProgram=', isNewProgram, 'programId=', programId);
-      }
-    };
-    loadDraftFromFirestore();
-  }, [programId, setEventData, isNewProgram]);
+
   useEffect(() => {
     console.log('Current Step:', currentStep);
   }, [currentStep]);
   // Single source of truth for event data
  
   const handleSaveDraft = async () => {
-    setIsSaving(true);
     try {
-      const dataToSave = {
-        ...eventData,
-        uid: auth.currentUser.uid,
-        programStatus: 'draft',
-        updatedAt: serverTimestamp(),
-      };
-
-      let newProgramId = programId;
       if (programId) {
-        const q = query(collection(db, 'programmes'), where('id', '==', programId));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-          await updateDoc(docRef, dataToSave);
-        }
-      } else {
-        newProgramId = generatedId;
-        dataToSave.id = newProgramId;
-        dataToSave.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'programmes'), dataToSave);
-      }
-
-      const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
-      const userSnapshot = await getDocs(usersQuery);
-      if (!userSnapshot.empty) {
-        const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-        await updateDoc(userDocRef, {
-          programStatus: 'draft',
-          programid: newProgramId,
-        });
-      }
-
-      await fetchProgrammes(auth.currentUser);
-      onClose();
-      alert('Draft saved successfully!');
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      alert('Error saving draft: ' + error.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  const handleSubmit = async () => {
-    console.log('Submitting with eventData:', eventData);
-    console.log('programId:', programId);
-  
-    // Validate required fields
-    if (!eventData.name || !eventData.startDate || !eventData.endDate) {
-      throw new Error('Missing required fields: name, startDate, or endDate');
-    }
-  
-    try {
-      const programmesRef = collection(db, 'programmes');
-      let docId; // To store the document ID for later use
-  
-      if (programId) {
-        // Case 1: Updating an existing program (draft)
+        // Update existing program
+        const programmesRef = collection(db, 'programmes');
         const q = query(programmesRef, where('id', '==', programId));
         const querySnapshot = await getDocs(q);
   
         if (!querySnapshot.empty) {
-          const existingDoc = querySnapshot.docs[0];
-          docId = existingDoc.id;
-          
-          await updateDoc(doc(db, 'programmes', docId), {
+          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+          await updateDoc(docRef, {
             ...eventData,
-            image: eventImage || null,
-            programStatus: 'active',
-            updatedAt: serverTimestamp(),
-            uid: auth.currentUser.uid // Ensure UID is maintained
+            image: eventImage,
+            programStatus: 'draft', // Set status to draft
+            updatedAt: new Date(),
           });
-          console.log('Program updated successfully with ID:', docId);
-        } else {
-          throw new Error(`No program found with ID: ${programId}`);
+  
+          // Update user's program status and program ID
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const userSnapshot = await getDocs(usersQuery);
+  
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: 'draft', // Update the status to 'draft'
+              programid: programId, // Update the programId field
+            });
+          }
         }
       } else {
-        // Case 2: Creating a new program
-        const newProgramData = {
+        // Create new program
+        const docRef = await addDoc(collection(db, 'programmes'), {
           ...eventData,
-          image: eventImage || null,
+          image: eventImage,
           id: generatedId,
           uid: auth.currentUser.uid,
-          programStatus: 'active',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-        
-        const docRef = await addDoc(programmesRef, newProgramData);
-        docId = docRef.id;
-        console.log('New program created with ID:', docId);
-      }
-  
-      // Update user status in both cases
-      const usersQuery = query(
-        collection(db, 'users'),
-        where('uid', '==', auth.currentUser.uid)
-      );
-      const userSnapshot = await getDocs(usersQuery);
-  
-      if (!userSnapshot.empty) {
-        const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-        await updateDoc(userDocRef, {
-          programStatus: 'active',
-          programid: programId || generatedId,
+          programStatus: 'draft', // Set status to draft
+          createdAt: new Date(),
         });
-        console.log('User status updated successfully');
-      } else {
-        throw new Error('User document not found');
-      }
   
-      return docId; // Return the document ID if needed
+        // Update user's program status
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('uid', '==', auth.currentUser.uid)
+        );
+        const querySnapshot = await getDocs(usersQuery);
   
-    } catch (e) {
-      console.error('Error in handleSubmit:', e);
-      throw e; // Re-throw the error to be caught in handleNext
-    }
-  };
-  
- const handleNext = async () => {
-  setIsProcessing(true);
-    try {
-      if (!eventData.name || !eventData.startDate || !eventData.endDate) {
-        throw new Error('Missing required fields: name, startDate, or endDate');
-      }
-
-      const dataToSave = {
-        ...eventData,
-        uid: auth.currentUser.uid,
-        programStatus: 'draft',
-        updatedAt: serverTimestamp(),
-      };
-
-      let newProgramId = programId;
-      if (programId) {
-        const q = query(collection(db, 'programmes'), where('id', '==', programId));
-        const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-          await updateDoc(docRef, dataToSave);
+          const userDoc = querySnapshot.docs[0];
+          const userDocRef = doc(db, 'users', userDoc.id);
+          await updateDoc(userDocRef, {
+            programStatus: 'draft',
+            programid: generatedId,
+          });
         }
-      } else {
-        newProgramId = generatedId;
-        dataToSave.id = newProgramId;
-        dataToSave.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'programmes'), dataToSave);
       }
-
-      const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
-      const userSnapshot = await getDocs(usersQuery);
-      if (!userSnapshot.empty) {
-        const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-        await updateDoc(userDocRef, {
-          programStatus: 'draft',
-          programid: newProgramId,
-        });
+  
+      // Show success message
+      alert('Draft saved successfully!');
+        programId=null;
+      // Reload programmes
+      if (fetchProgrammes) {
+        await fetchProgrammes(auth.currentUser); // Fetch the updated list of programmes
       }
-
-      await fetchProgrammes(auth.currentUser);
-      setCurrentStep(2);
-    } catch (error) {
-      console.error('Error in handleNext:', error);
-      alert('Error moving to next step: ' + error.message);
-    } finally {
-      setIsProcessing(false);
+  
+      // Close the form after saving
+      setShowCreateEvent(false);
+      setCurrentStep(1); // Call the function to close the form
+    } catch (e) {
+      console.error('Error saving draft: ', e);
+      alert('Error saving draft. Please try again.');
     }
   };
   // Use useEffect to update state when initialData changes
   useEffect(() => {
     if (initialData) {
-      console.log('Initial data received:', initialData);
-      setEventData(prev => ({
-        ...prev,
+      console.log('Updating event data with initial data:', initialData);
+      setEventData(prevData => ({
+        ...prevData,
         name: initialData.name || '',
         startDate: initialData.startDate || '',
-        startTime: initialData.startTime || '',
         endDate: initialData.endDate || '',
-        endTime: initialData.endTime || '',
-        categories: initialData.categories || [],
+        categories: initialData.categories || [], // Initialize categories
+      location: initialData.location || '', // Initialize location
         location: initialData.location || '',
         description: initialData.description || '',
-        Eligibility: initialData.Eligibility || '',
-        Incentives: initialData.Incentives || '',
         isPublic: initialData.isPublic !== undefined ? initialData.isPublic : true,
         calendar: initialData.calendar || 'Google Calendar',
-        customFields: initialData.customFields || [],
+        customFields: initialData.customFields || []
       }));
-      setEventImage(initialData.image || null);
+
+      if (initialData.image) {
+        setEventImage(initialData.image);
+      }
     }
   }, [initialData]);
     const modules = {
@@ -1197,33 +978,30 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
     
     const [description, setDescription] = useState("");
 
-    const handleChange = (value) => {
-      setEventData(prev => ({
-        ...prev,
-        description: value
-      }));
-    };
-   // Handle image upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEventData((prev) => ({ ...prev, image: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
+    const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEventData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
+    const handleImageUpload = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setEventImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
   
-    // const handleNext = async () => {
-    //   try {
-    //     await handleSubmit();
-    //     fetchProgrammes(auth.currentUser); // Refresh programmes list
-    //     setCurrentStep(2);
-    //   } catch (e) {
-    //     alert('Error moving to next step: ' + e.message);
-    //   }
-    // };
+    const handleNext = () => {
+      handleSubmit(() => {
+        // fetchProgrammes(auth.currentUser); // Refresh the programmes list
+        setCurrentStep(2);
+      });
+    };
   
     const handleBack = () => {
       setCurrentStep(1);
@@ -1317,109 +1095,82 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
         handleAddCategory(inputValue);
       }
     };
-    // const handleSubmit = async (onSuccess) => {
-    //   try {
-    //     if (programId) {
-    //       // Update existing program
-    //       const programmesRef = collection(db, 'programmes');
-    //       const q = query(programmesRef, where('id', '==', programId));
-    //       const querySnapshot = await getDocs(q);
+    const handleSubmit = async (onSuccess) => {
+      try {
+        if (programId) {
+          // Update existing program
+          const programmesRef = collection(db, 'programmes');
+          const q = query(programmesRef, where('id', '==', programId));
+          const querySnapshot = await getDocs(q);
     
-    //       if (!querySnapshot.empty) {
-    //         const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-    //         await updateDoc(docRef, {
-    //           ...eventData,
-    //           image: eventImage,
-    //           programStatus: 'active', // Update status to active
-    //           updatedAt: new Date(),
-    //         });
+          if (!querySnapshot.empty) {
+            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+            await updateDoc(docRef, {
+              ...eventData,
+              image: eventImage,
+              programStatus: 'active', // Update status to active
+              updatedAt: new Date(),
+            });
     
-    //         // Update user's program status and program ID
-    //         const usersQuery = query(
-    //           collection(db, 'users'),
-    //           where('uid', '==', auth.currentUser.uid)
-    //         );
-    //         const userSnapshot = await getDocs(usersQuery);
+            // Update user's program status and program ID
+            const usersQuery = query(
+              collection(db, 'users'),
+              where('uid', '==', auth.currentUser.uid)
+            );
+            const userSnapshot = await getDocs(usersQuery);
     
-    //         if (!userSnapshot.empty) {
-    //           const userDoc = userSnapshot.docs[0];
-    //           const userDocRef = doc(db, 'users', userDoc.id);
-    //           await updateDoc(userDocRef, {
-    //             programStatus: 'active', // Update the status to 'active'
-    //             programid: programId, // Update the programId field
-    //           });
-    //         }
-    //       }
-    //     } else {
-    //       // Create new program
-    //       const docRef = await addDoc(collection(db, 'programmes'), {
-    //         ...eventData,
-    //         image: eventImage,
-    //         id: generatedId,
-    //         uid: auth.currentUser.uid,
-    //         programStatus: 'active',
-    //         createdAt: new Date(),
-    //       });
+            if (!userSnapshot.empty) {
+              const userDoc = userSnapshot.docs[0];
+              const userDocRef = doc(db, 'users', userDoc.id);
+              await updateDoc(userDocRef, {
+                programStatus: 'active', // Update the status to 'active'
+                programid: programId, // Update the programId field
+              });
+            }
+          }
+        } else {
+          // Create new program
+          const docRef = await addDoc(collection(db, 'programmes'), {
+            ...eventData,
+            image: eventImage,
+            id: generatedId,
+            uid: auth.currentUser.uid,
+            programStatus: 'active',
+            createdAt: new Date(),
+          });
     
-    //       // Update user's program status
-    //       const usersQuery = query(
-    //         collection(db, 'users'),
-    //         where('uid', '==', auth.currentUser.uid)
-    //       );
-    //       const querySnapshot = await getDocs(usersQuery);
+          // Update user's program status
+          const usersQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', auth.currentUser.uid)
+          );
+          const querySnapshot = await getDocs(usersQuery);
     
-    //       if (!querySnapshot.empty) {
-    //         const userDoc = querySnapshot.docs[0];
-    //         const userDocRef = doc(db, 'users', userDoc.id);
-    //         await updateDoc(userDocRef, {
-    //           programStatus: 'active',
-    //           programid: generatedId,
-    //         });
-    //       }
-    //     }
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userDocRef = doc(db, 'users', userDoc.id);
+            await updateDoc(userDocRef, {
+              programStatus: 'active',
+              programid: generatedId,
+            });
+          }
+        }
     
-    //     // Call the onSuccess callback to refresh the programmes list
-    //     if (onSuccess) {
-    //       onSuccess();
-    //     }
-    //   } catch (e) {
-    //     console.error('Error saving program: ', e);
-    //   }
-    // };
+        // Call the onSuccess callback to refresh the programmes list
+        if (onSuccess) {
+          onSuccess();
+        }
+      } catch (e) {
+        console.error('Error saving program: ', e);
+      }
+    };
     useEffect(() => {
       console.log('Current eventData:', eventData);
     }, [eventData]);
 
-    const handleClose = async () => {
-      if (loading) return;
-      setIsClosing(true);
-      try {
-        if (programId) {
-          const programmesRef = collection(db, 'programmes');
-          const q = query(programmesRef, where('id', '==', programId));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-            await deleteDoc(docRef);
-          }
-  
-          const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
-          const userSnapshot = await getDocs(usersQuery);
-          if (!userSnapshot.empty) {
-            const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-            await updateDoc(userDocRef, {
-              programStatus: null,
-              programid: null,
-            });
-          }
-        }
-        await fetchProgrammes(auth.currentUser);
-        onClose();
-      } catch (error) {
-        console.error('Error closing form:', error);
-      } finally {
-        setIsClosing(false);
-      }
+    const handleClose = () => {
+      if (isClosing) return;
+      onClose();
     };
 
     const handleCloseform = () => {
@@ -1453,9 +1204,9 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
                       className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
                       onClick={() => document.getElementById('imageUpload').click()}
                     >
-                      {eventData?.image ? (
+                      {eventImage ? (
                         <img
-                        src={eventData.image || eventImage}
+                          src={eventImage}
                           alt="Event"
                           className="w-full h-full object-contain" />
                       ) : (
@@ -1650,41 +1401,62 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
                 
                 {/* Buttons */}
                 <div className="flex justify-end gap-4 mt-6">
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-              disabled={isClosing}
-            >
-              {isClosing ? 'Closing...' : 'Close'}
-            </button>
-            <button
-              onClick={handleSaveDraft}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md"
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save as Draft'}
-            </button>
-            <button
-              onClick={handleNext}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md"
-              disabled={isProcessing}
-            >
-              {isProcessing ? 'Processing...' : 'Next'}
-            </button>
-          </div>
+                  
+                {programid !== null && (
+    <button 
+      onClick={handleCloseform}
+      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+      disabled={isClosing}
+    >
+      {isClosing ? 'Closing...' : 'Close'}
+    </button>
+  )}
+                <button 
+          onClick={handleClose}
+          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+          disabled={isClosing}
+        >
+          {isClosing ? 'Closing...' : 'Cancel'}
+        </button>
+
+                  {/* <button
+      onClick={() => {
+        handleSubmit();
+        setSkipForm(true);
+        setCurrentStep(3);
+      }}
+      className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+    >
+      Review and Launch
+    </button> */}
+     <button
+            onClick={handleSaveDraft}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md"
+          >
+            Save as Draft
+          </button>
+                  <button
+                    onClick={handleNext}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-md"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div></>
         ) : (
           <FormBuilderOptions
-          programId={programId || generatedId}
-          onOptionSelect={(option) => setSelectedFormOption(option)}
-          onBack={() => setCurrentStep(1)}
-          currentStep={currentStep}
-          setCurrentStep={setCurrentStep}
-          setShowCreateEvent={setShowCreateEvent}
-          onFormLaunchSuccess={onFormLaunchSuccess}
-          eventData={eventData}
-        />
+    programId={userStatus === 'active' ? programid : generatedId}
+    onOptionSelect={(option) => {
+      setSelectedFormOption(option);
+    }}
+    onBack={handleBack}
+    currentStep={currentStep}
+    setCurrentStep={setCurrentStep}
+    setShowCreateEvent={setShowCreateEvent} // Pass this prop
+    onFormLaunchSuccess={onFormLaunchSuccess}
+    eventData={eventData}
+  />
         )}
       </div>
     );
@@ -1923,26 +1695,7 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
 )}
           </div>
         </div>
-        {isJudge && (
-          <div className="mt-8">
-            <div className="text-sm text-gray-500 mb-2">Judging Programmes</div>
-            <div className="ml-2">
-              {judgingProgrammes.length > 0 ? (
-                judgingProgrammes.map((programme) => (
-                  <NavItem
-                    key={programme.id}
-                    icon={faFile}
-                    label={programme.name || 'Untitled Program'}
-                    active={selectedProgram?.id === programme.id && isJudgingProgramSelected}
-                    onClick={() => handleProgramClick(programme, true)}
-                  />
-                ))
-              ) : (
-                <div className="text-gray-400 p-2">No judging programs assigned</div>
-              )}
-            </div>
-          </div>
-        )}
+
         {/* Product section */}
         <div className="mt-8">
           <div className="text-sm text-gray-500 mb-2">Product</div>
@@ -1980,7 +1733,7 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         
-      <Header
+      <Header 
           activeTab={activeTab}
           selectedApplication={selectedApplication}
           setActiveTab={setActiveTab}
@@ -1988,20 +1741,19 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
           currentStep={currentStep}
           setCurrentStep={setCurrentStep}
           showCreateEvent={showCreateEvent}
-          setShowCreateEvent={setShowCreateEvent}
+          setShowCreateEvent={setShowCreateEvent} 
         />
         <main className="flex-1 overflow-y-auto">
-        {activeTab === 'home' && <HomePage
-          userStatus={userStatus}
-          programid={programid}
-          showCreateEvent={showCreateEvent}
-          setShowCreateEvent={setShowCreateEvent}
-          fetchProgrammes={fetchProgrammes}
-          currentStep={currentStep}
-          selectedProgram={selectedProgram}
-          setCurrentStep={setCurrentStep}
-          onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
-        />}
+        {activeTab === 'home' && <HomePage 
+              userStatus={userStatus} 
+              programid={programid}
+              showCreateEvent={showCreateEvent}
+              fetchProgrammes={fetchProgrammes}
+              setShowCreateEvent={setShowCreateEvent}
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+              onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
+            />}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full flex flex-col">
               <ProgramHeader program={selectedProgram} />
@@ -2016,17 +1768,21 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
 
 
 
-                {activeProgramTab === 'formResponses' && (
-                  <div className="h-full">
-                    <div className="md:px-56 overflow-none mt-8">
-                      {isJudgingProgramSelected ? (
-                        <JudgesFormResponses programId={selectedProgram.id} />
-                      ) : (
-                        <FormResponses programId={selectedProgram.id} />
-                      )}
-                    </div>
-                  </div>
-                )}
+{activeProgramTab === 'formResponses' && (
+    <div className="h-full">
+      <div className="md:px-56 overflow-none mt-8">
+      <div className="">
+        <div className="flex justify-between items-center mb-6">
+          {/* <h3 className="text-lg font-semibold">Form Responses</h3>
+          <div className="text-sm text-gray-500">
+          Total responses: {formResponses.length}
+        </div> */}
+        </div>
+        <FormResponses programId={selectedProgram.id} />
+      </div>
+      </div>
+    </div>
+  )}
 
 
 

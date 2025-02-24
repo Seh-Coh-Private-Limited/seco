@@ -16,7 +16,7 @@ import {
   Upload,
   X
 } from 'lucide-react';
-import { default as React, useCallback, useEffect, useState } from 'react';
+import { default as React, useCallback, useEffect, useState ,useRef} from 'react';
 import FProgramDetailPage from '../components/Reviewsection';
 import { addDoc, collection, db, doc, getDoc, getDocs, query, updateDoc, where } from '../firebase';
 import RegistrationInfo from './ri';
@@ -74,7 +74,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
           setProgramStatus(userData.programStatus);
 
           // If program is active, fetch existing questions
-          if (userData.programStatus === 'active') {
+          if (['active', 'draft'].includes(userData.programStatus)){
             const programRef = collection(db, "programmes");
             const programQuery = query(programRef, where("id", "==", programId));
             const programSnapshot = await getDocs(programQuery);
@@ -201,6 +201,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   // Modal Question Card component
   const OptionInput = ({ option, index, questionId, questionType, onUpdate, onDelete }) => {
     const [localOption, setLocalOption] = useState(option);
+    const [isFocused, setIsFocused] = useState(false);
   
     return (
       <div className="flex items-center gap-2">
@@ -211,13 +212,20 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
         )}
         <input
           type="text"
-          value={localOption}
+          value={isFocused ? localOption : localOption || `Option ${index + 1}`}
           onChange={(e) => {
             setLocalOption(e.target.value);
           }}
-          onBlur={() => onUpdate(index, localOption)}
+          onFocus={() => {
+            setIsFocused(true);
+            setLocalOption('');
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            onUpdate(index, localOption);
+          }}
           className="flex-1 border-none focus:outline-none focus:ring-0"
-          placeholder={`Option ${index + 1}`}
+          placeholder={isFocused ? '' : `Option ${index + 1}`}
         />
         <button
           onClick={() => onDelete(index)}
@@ -232,6 +240,13 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   const ModalQuestionCard = ({ question }) => {
     const isSelected = selectedModalQuestion === question.id;
     const [localTitle, setLocalTitle] = useState(question.title);
+    const questionRef = useRef(null);
+  
+    useEffect(() => {
+      if (isSelected && questionRef.current) {
+        questionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, [isSelected]);
   
     const handleTitleChange = (e) => {
       setLocalTitle(e.target.value);
@@ -271,22 +286,22 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
     };
   
     return (
-      <div className={`bg-white rounded-lg shadow mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
+      <div ref={questionRef} className={`bg-white rounded-lg shadow mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
         <div className="p-4">
           <div className="flex items-start gap-4">
             <div className="cursor-move text-gray-400">
               <GripVertical className="w-6 h-6" />
             </div>
             <div className="flex-1">
-            <input
-  type="text"
-  value={localTitle}
-  onChange={handleTitleChange}
-  onBlur={handleTitleBlur}
-  onFocus={() => setLocalTitle(prev => prev === "Question" ? "" : prev)}
-  className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
-  placeholder={localTitle ? "" : "Question"}
-/>
+              <input
+                type="text"
+                value={localTitle}
+                onChange={handleTitleChange}
+                onBlur={handleTitleBlur}
+                onFocus={() => setLocalTitle(prev => prev === "Question" ? "" : prev)}
+                className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
+                placeholder={localTitle ? "" : "Question"}
+              />
               {(question.type === 'multipleChoice' || question.type === 'checkbox') && (
                 <div className="space-y-2">
                   {question.options.map((option, index) => (
@@ -320,6 +335,15 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                   </button>
                 </div>
               )}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={question.required || false}
+                onChange={(e) => updateModalQuestion(question.id, { required: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <label className="text-sm text-gray-600">Required</label>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -595,7 +619,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
       setIsModalOpen(false);
       resetModalState();
       // alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
-      alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
+    //  alert('Form successfully ' + (existingQuestions ? 'updated!' : 'launched!'));
       // Move to next step after successful submission
       // setCurrentStep(3);
     } catch (error) {
@@ -666,7 +690,21 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   
   const QuestionCard = ({ section, question, isReview = false }) => {
     const isSelected = selectedQuestion === question.id;
+// Add local state for the title
+const [localTitle, setLocalTitle] = useState(question.title || '');
 
+// Sync local state with prop changes
+useEffect(() => {
+  setLocalTitle(question.title || '');
+}, [question.title]);
+
+const handleTitleChange = (e) => {
+  setLocalTitle(e.target.value);
+};
+
+const handleTitleBlur = () => {
+  updateQuestion(section.id, question.id, { title: localTitle });
+};
     if (isReview) {
       return (
         <Card className={`mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
@@ -678,11 +716,15 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
               <div className="flex-1">
                 <input
                   type="text"
-                  value={question.title || ''}
-                  onChange={(e) => updateQuestion(section.id, question.id, { title: e.target.value })}
+                  value={localTitle}
+                  onChange={handleTitleChange}
+                  onBlur={handleTitleBlur}
                   className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
                   placeholder="Question"
                 />
+                {question.required && (
+                  <span className="text-red-500 text-sm">*</span>
+                )}
                 {(question.type === 'multipleChoice' || question.type === 'checkbox') && (
                   <div className="space-y-2">
                     {question.options && question.options.map((option, index) => (
@@ -735,8 +777,9 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
             <div className="flex-1">
               <input
                 type="text"
-                value={question.title}
-                onChange={(e) => updateQuestion(section.id, question.id, { title: e.target.value })}
+                value={localTitle}
+                onChange={handleTitleChange}
+                onBlur={handleTitleBlur}
                 className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
                 placeholder="Question"
               />
@@ -788,6 +831,16 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                   {question.type === 'rating' && 'Rating'}
                 </div>
               )}
+              
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={question.required || false}
+                onChange={(e) => updateQuestion(section.id, question.id, { required: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <label className="text-sm text-gray-600">Required</label>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -924,6 +977,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
           </div>
         ) : (
           <div className="w-full">
+            
           <FProgramDetailPage programId={programId} eventData={eventData}/>
           </div>
         )}

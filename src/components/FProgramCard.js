@@ -12,7 +12,7 @@ const FProgramCard = ({
   category,
   location,
   orientation,
-  handleTabChange 
+   handleTabChange 
 }) => {
   const [showPopup, setShowPopup] = useState(false); // State to control popup visibility
 
