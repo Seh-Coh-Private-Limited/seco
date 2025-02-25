@@ -6,6 +6,9 @@ module.exports = {
   theme: {
     extend: {fontFamily: {
       michelle: ['"Michelle"', 'sans-serif'], // Custom font
+    },screens: {
+      'mobile': {'max': '767px'},
+      'tablet': {'min': '768px', 'max': '1023px'},
     },},
   },
   plugins: [

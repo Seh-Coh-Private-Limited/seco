@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipLoader } from 'react-spinners';
 import { ffetchProgramById } from '../components/ffetchprogram';
-import { collection, db, getDocs, query, where } from '../firebase';
+import { collection, db, getDocs, query, where,auth,doc,getDoc } from '../firebase';
 
 
 
@@ -17,7 +17,9 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
   const [activeTab, setActiveTab] = useState('details');
   const [openIndex, setOpenIndex] = useState(null);
   const [formQuestions, setFormQuestions] = useState([]);
-
+//  const [formQuestions, setFormQuestions] = useState([]);
+  const [contactInfo, setContactInfo] = useState(null);
+  const [socialLinks, setSocialLinks] = useState(null);
   const toggleAnswer = (index) => {
     setOpenIndex(openIndex === index ? null : index);
   };
@@ -68,7 +70,54 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
         navigate('/programs');
       }
     };
-
+    const fetchContactInfo = async (programId) => {
+      try {
+        // Step 1: Fetch the program document to get the associated UID
+        const programmesRef = collection(db, "programmes");
+        const programmeQuery = query(programmesRef, where("id", "==", programId));
+        const programmeSnapshot = await getDocs(programmeQuery);
+    
+        if (!programmeSnapshot.empty) {
+          const programmeDoc = programmeSnapshot.docs[0]; // Get the first matching document
+          const programmeData = programmeDoc.data();
+    
+          // Step 2: Get the UID from the program document (assuming it's stored as 'uid' or 'createdBy')
+          const programUid = programmeData.uid || programmeData.createdBy; // Adjust the field name as needed
+    
+          if (!programUid) {
+            console.error("No UID found in the program document");
+            return;
+          }
+    
+          // Step 3: Query the 'users' collection to find the document where the 'uid' field matches programUid
+          const usersRef = collection(db, "users");
+          const userQuery = query(usersRef, where("uid", "==", programUid));
+          const userSnapshot = await getDocs(userQuery);
+    
+          if (!userSnapshot.empty) {
+            const userDoc = userSnapshot.docs[0]; // Get the first matching document
+            const userData = userDoc.data();
+    
+            // Step 4: Set contact info (assuming contacts is an array)
+            if (userData.contacts && userData.contacts.length > 0) {
+              setContactInfo(userData.contacts[0]); // Use the first contact
+            }
+    
+            // Step 5: Set social links (assuming social is an object)
+            if (userData.social) {
+              setSocialLinks(userData.social);
+            }
+          } else {
+            console.error("No user document found with UID:", programUid);
+          }
+        } else {
+          console.error("No program document found for programId:", programId);
+        }
+      } catch (error) {
+        console.error("Error fetching contact information:", error);
+      }
+    };
+    fetchContactInfo(programId);
     fetchProgram();
   }, [programId, navigate]);
 
@@ -85,10 +134,10 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
     image,
     endDate,
     description,
-    sector,
+    location,
+    categories = [],
     customFields = [],
     startDate,
-    
   } = programDetails;
 
   const formattedStartDate = new Date(startDate);
@@ -272,6 +321,71 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
         return null;
     }
   };
+
+
+  const renderContactSection = () => {
+    if (!contactInfo || !socialLinks) return null;
+
+    const { designation, email, firstName, lastName, linkedin, mobile } = contactInfo;
+    const { instagram, linkedin: socialLinkedin, tiktok, twitter, website, youtube } = socialLinks;
+
+    // Check if any required field is null
+    if (!designation || !email || !firstName || !lastName || !linkedin || !mobile) return null;
+
+    return (
+      <div className='text-sm mt-2'>
+        <p className='mb-2' style={{ fontFamily: 'CFont' }}>Contact the Host</p>
+        <hr className='my-4 border-t border-gray-300' />
+
+        <div className='mb-4'>
+          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
+            Person In Charge: 
+            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+              {firstName} {lastName}
+            </a>
+          </p>
+          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
+            Designation: 
+            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+              {designation}
+            </a>
+          </p>
+          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
+            Email ID:
+            <a href={`mailto:${email}`} className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+              {email}
+            </a>
+          </p>
+          
+          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
+          LinkedIn:
+            <a href={linkedin} target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+              {linkedin}
+            </a>
+          </p>
+        </div>
+
+        <div className='flex flex-row gap-7 mb-4'>
+          <a href={twitter} target='_blank' rel='noopener noreferrer'>
+            <img src='../../twitter.png' alt='twitter' className='w-5 h-5 my-2' />
+          </a>
+          <a href={instagram} target='_blank' rel='noopener noreferrer'>
+            <img src='../../instagram.png' alt='instagram' className='w-5 h-5 my-2' />
+          </a>
+          <a href={socialLinkedin} target='_blank' rel='noopener noreferrer'>
+            <img src='../../linkedin.png' alt='linkedin' className='w-5 h-5 my-2' />
+          </a>
+          <a href={tiktok} target='_blank' rel='noopener noreferrer'>
+            <img src='../../tiktok.png' alt='tiktok' className='w-5 h-5 my-2' />
+          </a>
+          <a href={youtube} target='_blank' rel='noopener noreferrer'>
+            <img src='../../youtube.png' alt='youtube' className='w-5 h-5 my-2' />
+          </a>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="md:px-56 overflow-auto">
@@ -481,23 +595,20 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
 
    
 
-    <div id='Hosted' className='mb-6'> {/* Added bottom margin */}
-      <p style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>industry</p>
-      <hr className='my-4 border-t border-slate-300 mt-6' />
-      <div className='flex flex-wrap gap-2 mt-2'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}> {/* Allows items to wrap */}
-        
-          <div className='bg-gray-200 rounded-full px-2 py-1 text-xs'>
-            {sector}
-          </div>
-        
+<div id="Hosted" className="mb-6"> {/* Added bottom margin */}
+  <p style={{ fontFamily: "CFont" }}>industry</p>
+  <hr className="my-4 border-t border-slate-300 mt-6" />
+  <div className="flex flex-wrap gap-2 mt-2" style={{ fontFamily: "CFont" }}>
+    {/* Loop through categories array and render each item individually */}
+    {categories.map((category, index) => (
+      <div key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
+        {category}
       </div>
-    </div>
+    ))}
+  </div>
+</div>
+
+{renderContactSection()}
 
 
 {/* */}

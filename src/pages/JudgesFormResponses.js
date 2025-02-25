@@ -15,6 +15,7 @@ const JudgesFormResponses = ({ programId, loading = false }) => {
   const [columnWidths, setColumnWidths] = useState({});
   const [isResizing, setIsResizing] = useState(false);
   const [judges, setJudges] = useState([]);
+  const [saveButtonText, setSaveButtonText] = useState('Save Scores');
   const [selectedItems, setSelectedItems] = useState([]); // Added missing state
   const [programDocId, setProgramDocId] = useState(null); // Add this new state
   const [activeTab, setActiveTab] = useState('companyInfo');
@@ -182,6 +183,9 @@ const handleSaveScores = async () => {
   try {
     if (!programId || !selectedRow || !currentJudgeId) return;
 
+    // Set button text to "Saving"
+    setSaveButtonText('Saving');
+
     const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
     const programSnapshot = await getDocs(programQuery);
     if (programSnapshot.empty) return;
@@ -189,7 +193,7 @@ const handleSaveScores = async () => {
 
     const responseRef = doc(db, 'programmes', programDocId, 'formResponses', selectedRow.id);
     
-    // Update only the current judge's scores and remarks
+    // Update Firestore
     await updateDoc(responseRef, {
       [`startupData.judgeScores.${currentJudgeId}`]: scores,
       [`startupData.judgeRemarks.${currentJudgeId}`]: remarks
@@ -213,8 +217,18 @@ const handleSaveScores = async () => {
       } : response
     ));
 
+    // Set button text to "Saved" after successful save
+    setSaveButtonText('Saved');
+
+    // Reset back to "Save Scores" after 2 seconds
+    setTimeout(() => {
+      setSaveButtonText('Save Scores');
+    }, 2000);
+
   } catch (error) {
     console.error('Error saving scores:', error);
+    // Reset to "Save Scores" on error
+    setSaveButtonText('Save Scores');
   }
 };
 
@@ -1087,11 +1101,11 @@ const getIcon = (key) => {
           )}
         </div>
       ))}
-      <button 
+     <button 
         className="w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
         onClick={handleSaveScores}
       >
-        Save Scores
+        {saveButtonText}
       </button>
     </div>
   </div>
