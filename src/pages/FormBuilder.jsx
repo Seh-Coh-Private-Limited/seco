@@ -149,7 +149,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
     const newQuestion = {
       id: Date.now(),
       type,
-      title: 'Question',
+      title: 'Write text here',
       description: '',
       required: false,
       options: (type === 'multipleChoice' || type === 'checkbox') ? ['Option 1'] : [],
@@ -286,82 +286,94 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
     };
   
     return (
-      <div ref={questionRef} className={`bg-white rounded-lg shadow mb-4 ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
-        <div className="p-4">
-          <div className="flex items-start gap-4">
-            <div className="cursor-move text-gray-400">
-              <GripVertical className="w-6 h-6" />
-            </div>
-            <div className="flex-1">
-              <input
-                type="text"
-                value={localTitle}
-                onChange={handleTitleChange}
-                onBlur={handleTitleBlur}
-                onFocus={() => setLocalTitle(prev => prev === "Question" ? "" : prev)}
-                className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
-                placeholder={localTitle ? "" : "Question"}
-              />
-              {(question.type === 'multipleChoice' || question.type === 'checkbox') && (
-                <div className="space-y-2">
-                  {question.options.map((option, index) => (
-                    <OptionInput
-                      key={`${question.id}-option-${index}`}
-                      option={option}
-                      index={index}
-                      questionId={question.id}
-                      questionType={question.type}
-                      onUpdate={handleOptionUpdate}
-                      onDelete={handleOptionDelete}
-                    />
-                  ))}
-                  <button
-                    onClick={() => {
-                      setModalQuestions(prevQuestions =>
-                        prevQuestions.map(q => {
-                          if (q.id === question.id) {
-                            return {
-                              ...q,
-                              options: [...q.options, `Option ${q.options.length + 1}`]
-                            };
-                          }
-                          return q;
-                        })
-                      );
-                    }}
-                    className="text-blue-600 text-sm flex items-center gap-1 mt-2"
-                  >
-                    <Plus className="w-4 h-4" /> Add Option
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={question.required || false}
-                onChange={(e) => updateModalQuestion(question.id, { required: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <label className="text-sm text-gray-600">Required</label>
-            </div>
-            <div className="flex items-center gap-2">
+      <div
+      ref={questionRef}
+      className={`bg-white rounded-lg shadow mb-4 p-4 ${isSelected ? "ring-2 ring-blue-500" : ""}`}
+    >
+      <div className="flex items-start gap-4">
+        {/* Drag Handle */}
+        <div className="cursor-move text-gray-400 flex items-center">
+          <GripVertical className="w-6 h-6 "style={{ marginTop: "0.1rem" }} />
+        </div>
+    
+        {/* Question Input and Options */}
+        <div className="flex-1">
+          <input
+            type="text"
+            value={localTitle}
+            onChange={handleTitleChange}
+            onBlur={handleTitleBlur}
+            onFocus={() => setLocalTitle((prev) => (prev === "Write text here" ? "" : prev))}
+            className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
+            placeholder={localTitle ? "" : "Write text here"}
+          />
+    
+          {/* Options Section */}
+          {(question.type === "multipleChoice" || question.type === "checkbox") && (
+            <div className="space-y-2">
+              {question.options.map((option, index) => (
+                <OptionInput
+                  key={`${question.id}-option-${index}`}
+                  option={option}
+                  index={index}
+                  questionId={question.id}
+                  questionType={question.type}
+                  onUpdate={handleOptionUpdate}
+                  onDelete={handleOptionDelete}
+                />
+              ))}
+    
               <button
-                onClick={() => deleteModalQuestion(question.id)}
-                className="p-2 hover:bg-gray-100 rounded-md"
+                onClick={() => {
+                  setModalQuestions((prevQuestions) =>
+                    prevQuestions.map((q) => {
+                      if (q.id === question.id) {
+                        return {
+                          ...q,
+                          options: [...q.options, `Option ${q.options.length + 1}`],
+                        };
+                      }
+                      return q;
+                    })
+                  );
+                }}
+                className="text-blue-600 text-sm flex items-center gap-1 mt-2"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setSelectedModalQuestion(isSelected ? null : question.id)}
-                className="p-2 hover:bg-gray-100 rounded-md"
-              >
-                <Settings className="w-4 h-4" />
+                <Plus className="w-4 h-4" /> Add Option
               </button>
             </div>
+          )}
+        </div>
+    
+        {/* Right Section (Required Checkbox & Buttons) */}
+        <div className="flex items-center gap-4">
+          {/* Required Checkbox */}
+          <div className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={question.required || false}
+              onChange={(e) => updateModalQuestion(question.id, { required: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <label className="text-sm text-gray-600">Required</label>
+          </div>
+    
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => deleteModalQuestion(question.id)} className="p-2 hover:bg-gray-100 rounded-md">
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setSelectedModalQuestion(isSelected ? null : question.id)}
+              className="p-2 hover:bg-gray-100 rounded-md"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
+    </div>
+    
     );
   };
 
@@ -491,7 +503,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
     const newQuestion = {
       id: Date.now(),
       type,
-      title: 'Question',
+      title: 'Write text here',
       description: '',
       required: false,
       options: type === 'multipleChoice' || type === 'checkbox' ? ['Option 1'] : [],
@@ -720,7 +732,7 @@ const handleTitleBlur = () => {
                   onChange={handleTitleChange}
                   onBlur={handleTitleBlur}
                   className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
-                  placeholder="Question"
+                  placeholder="Write text here"
                 />
                 {question.required && (
                   <span className="text-red-500 text-sm">*</span>
@@ -772,7 +784,7 @@ const handleTitleBlur = () => {
         <CardContent>
           <div className="flex items-start gap-4">
             <div className="cursor-move text-gray-400">
-              <GripVertical className="w-6 h-6" />
+              <GripVertical className="w-6 h-6 " style={{ marginTop: "0.1rem" }}/>
             </div>
             <div className="flex-1">
               <input
@@ -781,7 +793,7 @@ const handleTitleBlur = () => {
                 onChange={handleTitleChange}
                 onBlur={handleTitleBlur}
                 className="w-full text-lg font-medium mb-2 border-none focus:outline-none focus:ring-0"
-                placeholder="Question"
+                placeholder="Write text here"
               />
               {question.type === 'multipleChoice' || question.type === 'checkbox' ? (
                 <div className="space-y-2">
@@ -833,7 +845,7 @@ const handleTitleBlur = () => {
               )}
               
             </div>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={question.required || false}
@@ -946,10 +958,10 @@ const handleTitleBlur = () => {
   return (
     <div className="flex flex-col h-full">
       <AddSectionModal />
-      <div className="flex-1 w-full overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {currentStep === 2 ? (
           <div className="p-6 bg-gray-50">
-            <div className="max-w-3xl mx-auto">
+            <div className="mx-auto">
               <RegistrationInfo />
               
               
@@ -976,7 +988,7 @@ const handleTitleBlur = () => {
             </div>
           </div>
         ) : (
-          <div className="w-full">
+          <div className="">
             
           <FProgramDetailPage programId={programId} eventData={eventData}/>
           </div>
@@ -985,7 +997,7 @@ const handleTitleBlur = () => {
     
           {/* Footer with navigation buttons */}
           <div className="border-t border-gray-200 p-4 bg-white">
-            <div className="max-w-3xl mx-auto flex justify-between">
+            <div className=" mx-auto flex justify-between">
               
               <div className="ml-auto">
                 {currentStep === 2 ? (

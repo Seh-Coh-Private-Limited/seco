@@ -27,7 +27,7 @@ import "react-quill/dist/quill.snow.css"; // Import Quill styles
 import './Dashboard.css';
 import FormBuilder from './FormBuilder';
 import FormResponses from './FormResponses';
-
+import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
 import IncubatorSettingsForm from '../components/IncubatorSettings';
@@ -74,7 +74,7 @@ const FounderDashboard = () => {
     const auth = getAuth();
     const user = auth.currentUser;
     return (
-      <div className="max-w-4xl mx-auto p-4">
+      <div className="mx-auto pt-4">
         {/* Directly render the FormBuilder */}
         <FormBuilder programId={programId} userId={user.uid} currentStep={currentStep}
           setCurrentStep={setCurrentStep}  setShowCreateEvent={setShowCreateEvent}    onFormLaunchSuccess={onFormLaunchSuccess} eventData={eventData} // Pass fetchProgrammes as a prop
@@ -733,7 +733,7 @@ const HomePage = ({ userStatus,
   //   }
   // }, [userStatus, programid, isClosing]);
   return (
-    <div className="md:px-56 overflow-auto mt-8">
+    <div className="md:px-36 overflow-auto mt-8">
       {/* <div className="p-4">
         <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2>
       </div> */}
@@ -788,7 +788,7 @@ const HomePage = ({ userStatus,
           <div className="mb-4">
             <Plus className="w-12 h-12 text-gray-400 mx-auto" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">Create your first form</h2>
+          <h2 className="text-xl font-semibold mb-2">Create your first Program</h2>
           <p className="text-gray-600 mb-6">
             Get started by creating an event, program, or cohort to begin collecting responses.
           </p>
@@ -922,27 +922,56 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
       console.error('Error signing out:', error);
     }
   };
-  const CreateEventForm = ({ onClose, 
-    initialData, 
-    programId,
-    currentStep,
-    eventData,
-    setEventData,
-    setCurrentStep,
-    fetchProgrammes ,
-    isNewProgram = false,
-    onFormLaunchSuccess  }) => {
-    // console.log('Initial Data:', initialData); // Enhanced logging
-    // const [currentStep, setCurrentStep] = useState(1);
-    const [isClosing, setIsClosing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    // const [currentStep, setCurrentStep] = useState(1);
+  const libraries = ['places'];
+ // Define the component
+const CreateEventForm = ({
+  onClose,
+  initialData,
+  programId,
+  currentStep,
+  eventData,
+  setEventData,
+  setCurrentStep,
+  fetchProgrammes,
+  isNewProgram = false,
+  onFormLaunchSuccess,
+  setShowCreateEvent, // Added to match your original props
+}) => {
+  const auth = getAuth();
+  const db = getFirestore();
+
+  // State declarations
+  const [isClosing, setIsClosing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [eventImage, setEventImage] = useState(null);
-  const [skipForm, setSkipForm] = useState(false);
-  const [selectedFormOption, setSelectedFormOption] = useState(null);
   const [newFieldName, setNewFieldName] = useState('');
-  // const [isClosing, setIsClosing] = useState(false);
+  const [locationInput, setLocationInput] = useState(eventData?.location || ''); // For location
+  const [categoryInput, setCategoryInput] = useState(''); // For categories // Initialize with eventData.location
+  const [selectedFormOption, setSelectedFormOption] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]); // State for location suggestions
+  const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
+// Custom debounce hook
+const useDebounce = (callback, delay) => {
+  const debounceRef = useRef(null);
+
+  const debouncedCallback = useCallback(
+    (...args) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        callback(...args);
+      }, delay);
+    },
+    [callback, delay]
+  );
+
+  return debouncedCallback;
+};
+  // Load draft from Firestore
   useEffect(() => {
     console.log('CreateEventForm mounted with:', { programId, isNewProgram });
     const loadDraftFromFirestore = async () => {
@@ -971,23 +1000,61 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
               customFields: programData.customFields || [],
               image: programData.image || null,
             });
+            setLocationInput(programData.location || ''); // Sync location input with eventData
           } else {
             console.warn(`No program found with ID: ${programId}`);
           }
         } catch (error) {
           console.error('Error loading draft from Firestore:', error);
         }
-      } else {
-        console.log('Not loading draft: isNewProgram=', isNewProgram, 'programId=', programId);
       }
     };
     loadDraftFromFirestore();
-  }, [programId, setEventData, isNewProgram]);
+  }, [programId, setEventData, isNewProgram, db]);
+
+  // Check current step
   useEffect(() => {
     console.log('Current Step:', currentStep);
   }, [currentStep]);
-  // Single source of truth for event data
- 
+
+  // Handle initial data
+  useEffect(() => {
+    if (initialData) {
+      console.log('Initial data received:', initialData);
+      setEventData((prev) => ({
+        ...prev,
+        name: initialData.name || '',
+        startDate: initialData.startDate || '',
+        startTime: initialData.startTime || '',
+        endDate: initialData.endDate || '',
+        endTime: initialData.endTime || '',
+        categories: initialData.categories || [],
+        location: initialData.location || '',
+        description: initialData.description || '',
+        Eligibility: initialData.Eligibility || '',
+        Incentives: initialData.Incentives || '',
+        isPublic: initialData.isPublic !== undefined ? initialData.isPublic : true,
+        calendar: initialData.calendar || 'Google Calendar',
+        customFields: initialData.customFields || [],
+      }));
+      setEventImage(initialData.image || null);
+      setLocationInput(initialData.location || ''); // Sync location input with initial data
+    }
+  }, [initialData, setEventData]);
+
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEventData((prev) => ({ ...prev, image: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Save as draft
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
@@ -1033,41 +1100,38 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
       setIsSaving(false);
     }
   };
+
+  // Handle form submission
   const handleSubmit = async () => {
     console.log('Submitting with eventData:', eventData);
     console.log('programId:', programId);
-  
-    // Validate required fields
+
     if (!eventData.name || !eventData.startDate || !eventData.endDate) {
       throw new Error('Missing required fields: name, startDate, or endDate');
     }
-  
+
     try {
       const programmesRef = collection(db, 'programmes');
-      let docId; // To store the document ID for later use
-  
+      let docId;
+
       if (programId) {
-        // Case 1: Updating an existing program (draft)
         const q = query(programmesRef, where('id', '==', programId));
         const querySnapshot = await getDocs(q);
-  
         if (!querySnapshot.empty) {
           const existingDoc = querySnapshot.docs[0];
           docId = existingDoc.id;
-          
           await updateDoc(doc(db, 'programmes', docId), {
             ...eventData,
             image: eventImage || null,
             programStatus: 'active',
             updatedAt: serverTimestamp(),
-            uid: auth.currentUser.uid // Ensure UID is maintained
+            uid: auth.currentUser.uid,
           });
           console.log('Program updated successfully with ID:', docId);
         } else {
           throw new Error(`No program found with ID: ${programId}`);
         }
       } else {
-        // Case 2: Creating a new program
         const newProgramData = {
           ...eventData,
           image: eventImage || null,
@@ -1077,19 +1141,13 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
-        
         const docRef = await addDoc(programmesRef, newProgramData);
         docId = docRef.id;
         console.log('New program created with ID:', docId);
       }
-  
-      // Update user status in both cases
-      const usersQuery = query(
-        collection(db, 'users'),
-        where('uid', '==', auth.currentUser.uid)
-      );
+
+      const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
       const userSnapshot = await getDocs(usersQuery);
-  
       if (!userSnapshot.empty) {
         const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
         await updateDoc(userDocRef, {
@@ -1100,17 +1158,17 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
       } else {
         throw new Error('User document not found');
       }
-  
-      return docId; // Return the document ID if needed
-  
+
+      return docId;
     } catch (e) {
       console.error('Error in handleSubmit:', e);
-      throw e; // Re-throw the error to be caught in handleNext
+      throw e;
     }
   };
-  
- const handleNext = async () => {
-  setIsProcessing(true);
+
+  // Handle next step
+  const handleNext = async () => {
+    setIsProcessing(true);
     try {
       if (!eventData.name || !eventData.startDate || !eventData.endDate) {
         throw new Error('Missing required fields: name, startDate, or endDate');
@@ -1157,456 +1215,391 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
       setIsProcessing(false);
     }
   };
-  // Use useEffect to update state when initialData changes
-  useEffect(() => {
-    if (initialData) {
-      console.log('Initial data received:', initialData);
-      setEventData(prev => ({
-        ...prev,
-        name: initialData.name || '',
-        startDate: initialData.startDate || '',
-        startTime: initialData.startTime || '',
-        endDate: initialData.endDate || '',
-        endTime: initialData.endTime || '',
-        categories: initialData.categories || [],
-        location: initialData.location || '',
-        description: initialData.description || '',
-        Eligibility: initialData.Eligibility || '',
-        Incentives: initialData.Incentives || '',
-        isPublic: initialData.isPublic !== undefined ? initialData.isPublic : true,
-        calendar: initialData.calendar || 'Google Calendar',
-        customFields: initialData.customFields || [],
-      }));
-      setEventImage(initialData.image || null);
-    }
-  }, [initialData]);
-    const modules = {
-      toolbar: [
-        [{ 'header': '1'}, { 'header': '2'}],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-       [{'link': 'text'}],
-      ],
-    };
-    
-    const formats = [
-      'header', 'bold', 'italic', 'underline', 'strike',
-      'list', 'bullet', 'link', 'image', 'check'
-    ];
-    
-    
-    const [description, setDescription] = useState("");
 
-    const handleChange = (value) => {
-      setEventData(prev => ({
-        ...prev,
-        description: value
-      }));
-    };
-   // Handle image upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEventData((prev) => ({ ...prev, image: reader.result }));
-      };
-      reader.readAsDataURL(file);
+  // Quill editor setup
+  const modules = {
+    toolbar: [
+      [{ header: '1' }, { header: '2' }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ link: 'text' }],
+    ],
+  };
+
+  const formats = ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'link'];
+
+  const handleChange = (value) => {
+    setEventData((prev) => ({
+      ...prev,
+      description: value,
+    }));
+  };
+
+  // Custom fields management
+  const addCustomField = () => {
+    if (newFieldName.trim()) {
+      setEventData({
+        ...eventData,
+        customFields: [...eventData.customFields, { id: Date.now(), name: newFieldName.trim(), date: '' }],
+      });
+      setNewFieldName('');
     }
   };
-  
-    // const handleNext = async () => {
-    //   try {
-    //     await handleSubmit();
-    //     fetchProgrammes(auth.currentUser); // Refresh programmes list
-    //     setCurrentStep(2);
-    //   } catch (e) {
-    //     alert('Error moving to next step: ' + e.message);
-    //   }
-    // };
-  
-    const handleBack = () => {
-      setCurrentStep(1);
-    };
-    const handleStepChange = (step) => {
-      setCurrentStep(step);
-    };
-  
-   
-  
-    // Add these functions for managing custom fields
-    const addCustomField = () => {
-      if (newFieldName.trim()) {
-        setEventData({
-          ...eventData,
-          customFields: [
-            ...eventData.customFields,
-            { id: Date.now(), name: newFieldName.trim(), date: '' }
-          ]
-        });
-        setNewFieldName('');
-      }
-    };
-  
-    const removeCustomField = (id) => {
-      setEventData({
-        ...eventData,
-        customFields: eventData.customFields.filter(field => field.id !== id)
-      });
-    };
-  
-    const updateCustomField = (id, date) => {
-      setEventData({
-        ...eventData,
-        customFields: eventData.customFields.map(field => 
-          field.id === id ? { ...field, date } : field
-        )
-      });
-    };
-    const [inputValue, setInputValue] = useState('');
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const inputRef = useRef(null);
-    const dropdownRef = useRef(null);
-  
-    const predefinedCategories = [
-      'Technology',
-      'Healthcare',
-      'Finance',
-      'Education',
-      'Marketing',
-      'Retail'
-    ];
-  
-    const filteredCategories = predefinedCategories.filter(category =>
-      category.toLowerCase().includes(inputValue.toLowerCase()) &&
+
+  const removeCustomField = (id) => {
+    setEventData({
+      ...eventData,
+      customFields: eventData.customFields.filter((field) => field.id !== id),
+    });
+  };
+
+  const updateCustomField = (id, date) => {
+    setEventData({
+      ...eventData,
+      customFields: eventData.customFields.map((field) => (field.id === id ? { ...field, date } : field)),
+    });
+  };
+
+  // Category management
+  const predefinedCategories = ['Technology', 'Healthcare', 'Finance', 'Education', 'Marketing', 'Retail'];
+
+  const filteredCategories = predefinedCategories.filter(
+    (category) =>
+      category.toLowerCase().includes(categoryInput.toLowerCase()) &&
       (!eventData || !eventData.categories || !eventData.categories.includes(category))
-    );
+  );
+//wUuZz8uA0OmFfVBvUZ3jJTGDwdOGDYrhn34xh7kH
+  // Location suggestions with fetch
+  const fetchLocationSuggestions = async (query) => {
+    if (!query) {
+      setLocationSuggestions([]);
+      return;
+    }
   
-    useEffect(() => {
-      const handleClickOutside = (event) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-            inputRef.current && !inputRef.current.contains(event.target)) {
-          setIsDropdownOpen(false);
-        }
-      };
+    const apiKey = 'wUuZz8uA0OmFfVBvUZ3jJTGDwdOGDYrhn34xh7kH'; // Replace with your actual Ola Maps API key
+    const baseUrl = 'https://api.olamaps.io/places/v1/autocomplete';
+    
+    // Optional: Bias results based on user location (e.g., if you have geolocation)
+    const userLocation = ''; // e.g., "12.931316595874005,77.61649243443775" (add geolocation logic if needed)
+    const radius = 5000; // 5km radius, adjust as needed
+    const url = `${baseUrl}?input=${encodeURIComponent(query)}&api_key=${apiKey}${
+      userLocation ? `&location=${userLocation}&radius=${radius}` : ''
+    }`;
   
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    const requestOptions = {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Request-Id': crypto.randomUUID(), // Generate UUID for tracking (optional)
+        'X-Correlation-Id': crypto.randomUUID(), // Generate UUID for transaction (optional)
+      },
+    };
   
-    const handleAddCategory = (category) => {
-      if (category.trim() && !eventData?.categories?.includes(category.trim())) {
-        setEventData(prev => ({
-          ...prev,
-          categories: [...(prev.categories || []), category.trim()] // Fallback to empty array if prev.categories is undefined
-        }));
-        setInputValue('');
+    try {
+      const response = await fetch(url, requestOptions);
+      const result = await response.json();
+  
+      if (result.status === 'ok' && result.predictions?.length > 0) {
+        // Extract the 'description' field from each prediction for display
+        const suggestions = result.predictions.map((prediction) => prediction.description);
+        setLocationSuggestions(suggestions);
+      } else {
+        setLocationSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching Ola Maps autocomplete suggestions:', error);
+      setLocationSuggestions([]);
+    }
+  };
+// Debounced fetch function
+const debouncedFetchSuggestions = useDebounce((query) => {
+  fetchLocationSuggestions(query);
+}, 300); // 300ms delay
+  // Handle input change with debouncing
+  const handleLocationInputChange = (e) => {
+    const value = e.target.value;
+    setLocationInput(value);
+    setEventData((prev) => ({ ...prev, location: value }));
+    debouncedFetchSuggestions(value); // Fetch suggestions debounced
+  };
+  const handleSelectLocation = (suggestion) => {
+    setLocationInput(suggestion);
+    setEventData((prev) => ({ ...prev, location: suggestion }));
+    setLocationSuggestions([]); // Clear suggestions after selection
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target)
+      ) {
         setIsDropdownOpen(false);
+        setLocationSuggestions([]); // Clear location suggestions when clicking outside
       }
     };
-  
-    const handleRemoveCategory = (indexToRemove) => {
-      setEventData(prev => ({
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleAddCategory = (category) => {
+    if (category.trim() && !eventData?.categories?.includes(category.trim())) {
+      setEventData((prev) => ({
         ...prev,
-        categories: prev.categories.filter((_, index) => index !== indexToRemove)
+        categories: [...(prev.categories || []), category.trim()],
       }));
-    };
-  
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && inputValue.trim()) {
-        handleAddCategory(inputValue);
-      }
-    };
-    // const handleSubmit = async (onSuccess) => {
-    //   try {
-    //     if (programId) {
-    //       // Update existing program
-    //       const programmesRef = collection(db, 'programmes');
-    //       const q = query(programmesRef, where('id', '==', programId));
-    //       const querySnapshot = await getDocs(q);
-    
-    //       if (!querySnapshot.empty) {
-    //         const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-    //         await updateDoc(docRef, {
-    //           ...eventData,
-    //           image: eventImage,
-    //           programStatus: 'active', // Update status to active
-    //           updatedAt: new Date(),
-    //         });
-    
-    //         // Update user's program status and program ID
-    //         const usersQuery = query(
-    //           collection(db, 'users'),
-    //           where('uid', '==', auth.currentUser.uid)
-    //         );
-    //         const userSnapshot = await getDocs(usersQuery);
-    
-    //         if (!userSnapshot.empty) {
-    //           const userDoc = userSnapshot.docs[0];
-    //           const userDocRef = doc(db, 'users', userDoc.id);
-    //           await updateDoc(userDocRef, {
-    //             programStatus: 'active', // Update the status to 'active'
-    //             programid: programId, // Update the programId field
-    //           });
-    //         }
-    //       }
-    //     } else {
-    //       // Create new program
-    //       const docRef = await addDoc(collection(db, 'programmes'), {
-    //         ...eventData,
-    //         image: eventImage,
-    //         id: generatedId,
-    //         uid: auth.currentUser.uid,
-    //         programStatus: 'active',
-    //         createdAt: new Date(),
-    //       });
-    
-    //       // Update user's program status
-    //       const usersQuery = query(
-    //         collection(db, 'users'),
-    //         where('uid', '==', auth.currentUser.uid)
-    //       );
-    //       const querySnapshot = await getDocs(usersQuery);
-    
-    //       if (!querySnapshot.empty) {
-    //         const userDoc = querySnapshot.docs[0];
-    //         const userDocRef = doc(db, 'users', userDoc.id);
-    //         await updateDoc(userDocRef, {
-    //           programStatus: 'active',
-    //           programid: generatedId,
-    //         });
-    //       }
-    //     }
-    
-    //     // Call the onSuccess callback to refresh the programmes list
-    //     if (onSuccess) {
-    //       onSuccess();
-    //     }
-    //   } catch (e) {
-    //     console.error('Error saving program: ', e);
-    //   }
-    // };
-    useEffect(() => {
-      console.log('Current eventData:', eventData);
-    }, [eventData]);
+      setCategoryInput('');
+      setIsDropdownOpen(false);
+    }
+  };
 
-    const handleClose = async () => {
-      if (loading) return;
-      setIsClosing(true);
-      try {
-        if (programId) {
-          const programmesRef = collection(db, 'programmes');
-          const q = query(programmesRef, where('id', '==', programId));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-            await deleteDoc(docRef);
-          }
-  
-          const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
-          const userSnapshot = await getDocs(usersQuery);
-          if (!userSnapshot.empty) {
-            const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-            await updateDoc(userDocRef, {
-              programStatus: null,
-              programid: null,
-            });
-          }
+  const handleRemoveCategory = (indexToRemove) => {
+    setEventData((prev) => ({
+      ...prev,
+      categories: prev.categories.filter((_, index) => index !== indexToRemove),
+    }));
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && categoryInput.trim()) {
+      handleAddCategory(categoryInput);
+    }
+  };
+
+  // Handle close
+  const handleClose = async () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    try {
+      if (programId) {
+        const programmesRef = collection(db, 'programmes');
+        const q = query(programmesRef, where('id', '==', programId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+          await deleteDoc(docRef);
         }
-        await fetchProgrammes(auth.currentUser);
-        onClose();
-      } catch (error) {
-        console.error('Error closing form:', error);
-      } finally {
-        setIsClosing(false);
-      }
-    };
 
-    const handleCloseform = () => {
-      if (isClosing) return;
+        const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
+        const userSnapshot = await getDocs(usersQuery);
+        if (!userSnapshot.empty) {
+          const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
+          await updateDoc(userDocRef, {
+            programStatus: null,
+            programid: null,
+          });
+        }
+      }
+      await fetchProgrammes(auth.currentUser);
       onClose();
-    };
-    return (
-      <div className="max-w-4xl mx-auto p-4">
-        
-  
-        <StepIndicator currentStep={currentStep} />
-        <div className="border-b border-gray-300 mt-4">
-        {/* Placeholder for additional content */}
-      </div> 
-     
-        {currentStep === 1 ? (
-           <><div className="flex items-center justify-between mb-6 mt-8">
-           <input
-  type="text"
-  placeholder="Event Name"
-  className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
-  value={eventData?.name || ''} // Use optional chaining to avoid null errors
-  onChange={(e) => setEventData(prev => ({ ...prev, name: e.target.value }))}
-/>
-          </div><div className="grid grid-cols-3 gap-6">
-              {/* Left column - Image upload */}
-              <div className="col-span-1">
-                <Card>
-                  <CardContent className="p-0">
-                    <div
-                      className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
-                      onClick={() => document.getElementById('imageUpload').click()}
-                    >
-                      {eventData?.image ? (
-                        <img
+    } catch (error) {
+      console.error('Error closing form:', error);
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  return (
+    <div className="max-w mx-auto p-4">
+      <StepIndicator currentStep={currentStep} />
+      <div className="border-b border-gray-300 mt-4"></div>
+
+      {currentStep === 1 ? (
+        <>
+          <div className="flex items-center justify-between mb-6 mt-8">
+            <input
+              type="text"
+              placeholder="Event Name"
+              className="w-full text-2xl font-light border-none focus:outline-none focus:ring-0"
+              value={eventData?.name || ''}
+              onChange={(e) => setEventData((prev) => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-6">
+            {/* Left column - Image upload */}
+            <div className="col-span-1">
+              <div className="bg-white rounded-lg shadow">
+                <div className="p-0">
+                  <div
+                    className="relative aspect-square bg-gray-100 flex items-center justify-center cursor-pointer rounded-lg overflow-hidden"
+                    onClick={() => document.getElementById('imageUpload').click()}
+                  >
+                    {eventData?.image ? (
+                      <img
                         src={eventData.image || eventImage}
-                          alt="Event"
-                          className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="text-center p-4">
-                          <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500">Click to upload event image</p>
+                        alt="Event"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center p-4">
+                        <FontAwesomeIcon icon={faCamera} className="text-3xl text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">Click to upload event image</p>
+                      </div>
+                    )}
+                    <input
+                      id="imageUpload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right column - Event details */}
+            <div className="col-span-2">
+              <div className="bg-white rounded-lg shadow">
+                <div className="p-6 space-y-6">
+                  <label className="block text-sm text-gray-500 mb-1">Description</label>
+                  <div className="w-full p-0 rounded-md">
+                    <ReactQuill
+                      theme="snow"
+                      value={eventData?.description || ''}
+                      onChange={handleChange}
+                      placeholder="Add Description"
+                      modules={modules}
+                      formats={formats}
+                      style={{ whiteSpace: 'pre-wrap' }}
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm text-gray-500 mb-1">Sectors</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {eventData?.categories?.map((category, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center bg-gray-200 rounded-full px-3 py-1 text-sm"
+                        >
+                          {category}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCategory(index)}
+                            className="ml-2 text-gray-600 hover:text-gray-800"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="relative">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={categoryInput}
+                        onChange={(e) => {
+                          setCategoryInput(e.target.value);
+                          setIsDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Search or add custom category"
+                        className="w-full p-3 border rounded-md"
+                      />
+                      {isDropdownOpen && (categoryInput || filteredCategories.length > 0) && (
+                        <div
+                          ref={dropdownRef}
+                          className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto"
+                        >
+                          {filteredCategories.map((category) => (
+                            <button
+                              key={category}
+                              onClick={() => handleAddCategory(category)}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                            >
+                              {category}
+                            </button>
+                          ))}
+                          {categoryInput && !filteredCategories.includes(categoryInput) && (
+                            <button
+                              onClick={() => handleAddCategory(categoryInput)}
+                              className="w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
+                            >
+                              Add "{categoryInput}"
+                            </button>
+                          )}
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm text-gray-500 mb-1">Location</label>
+                    <div className="relative">
                       <input
-                        id="imageUpload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right column - Event details */}
-              <div className="col-span-2">
-                <Card>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="w-full p-3 rounded-md">
-                      <ReactQuill
-                        theme="snow"
-                        value={eventData?.description}
-                        onChange={handleChange}
-                        placeholder="Add Description"
-                        modules={modules} // Use the custom toolbar
-                        formats={formats} // Supported formats
-                        style={{ whiteSpace: 'pre-wrap' }} // Preserve line breaks
+                        type="text"
+                        placeholder="Enter location or venue (e.g., 5-3/1, Santosh Nagar)"
+                        value={locationInput}
+                        onChange={handleLocationInputChange}
+                        className="w-full p-3 border rounded-md"
                       />
+                      {locationSuggestions.length > 0 && (
+                        <ul
+                          ref={dropdownRef}
+                          className="absolute z-10 w-full bg-white border rounded-md shadow-lg mt-1 max-h-60 overflow-auto"
+                        >
+                          {locationSuggestions.map((suggestion, index) => (
+                            <li
+                              key={index}
+                              onClick={() => handleSelectLocation(suggestion)}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                            >
+                              {suggestion}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                     </div>
 
-                    <div className="mb-6">
-      <label className="block text-sm text-gray-500 mb-1">Categories</label>
-      
-      <div className="flex flex-wrap gap-2 mb-2">
-  {eventData?.categories?.map((category, index) => (
-    <div key={index} className="flex items-center bg-gray-200 rounded-full px-3 py-1 text-sm">
-      {category}
-      <button
-        type="button"
-        onClick={() => handleRemoveCategory(index)}
-        className="ml-2 text-gray-600 hover:text-gray-800"
-      >
-        ×
-      </button>
-    </div>
-  ))}
-</div>
+                  <div className="space-y-4">
+                    <div className="pt-6 border-t">
+                    <label className="block text-sm text-gray-500 mb-1">Schedule</label>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="block text-xs text-gray-500 mb-1">Application Start Date *</label>
+                        <input
+                          type="date"
+                          className="w-full border rounded-md px-3 py-2"
+                          value={eventData?.startDate || ''}
+                          onChange={(e) =>
+                            setEventData((prev) => ({ ...prev, startDate: e.target.value }))
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs text-gray-500 mb-1">Application End Date *</label>
+                        <input
+                          type="date"
+                          className="w-full border rounded-md px-3 py-2"
+                          value={eventData?.endDate || ''}
+                          onChange={(e) =>
+                            setEventData((prev) => ({ ...prev, endDate: e.target.value }))
+                          }
+                          min={eventData?.startDate}
+                          required
+                        />
+                      </div>
+                    </div>
 
-      <div className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setIsDropdownOpen(true);
-          }}
-          onFocus={() => setIsDropdownOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder="Search or add custom category"
-          className="w-full p-3 border rounded-md"
-        />
-
-        {isDropdownOpen && (inputValue || filteredCategories.length > 0) && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto"
-          >
-            {filteredCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => handleAddCategory(category)}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100"
-              >
-                {category}
-              </button>
-            ))}
-            {inputValue && !filteredCategories.includes(inputValue) && (
-              <button
-                onClick={() => handleAddCategory(inputValue)}
-                className="w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
-              >
-                Add "{inputValue}"
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-<div className="mb-6">
-  <label className="block text-sm text-gray-500 mb-1">Location/Venue</label>
-  <input
-    type="text"
-    placeholder="Enter location or venue"
-    value={eventData?.location}
-    onChange={(e) => setEventData({ ...eventData, location: e.target.value })}
-    className="w-full p-3 border rounded-md"
-  />
-</div>
-
-                    {/* Required Date Fields */}
+                    <div className="pt-6 border-t">
+                    <label className="block text-sm text-gray-500 mb-1">Additional Important Dates</label>
+                      <h3 className="text-lg font-medium text-gray-700 mb-4"></h3>
+                      <p className="text-xs text-gray-500 mb-4">
+                        Add any additional program dates (e.g., Interview Rounds, Pitch Day, Demo Day)
+                      </p>
+                    </div>
                     <div className="space-y-4">
-                      <div className="pt-6 border-t">
-                        <h3 className="text-lg font-medium text-gray-700 mb-4">Schedule of the event</h3>
-
-                      </div>
-                      <div className="flex gap-4">
-    <div className="flex-1">
-        <label className="block text-sm text-gray-500 mb-1">
-            Application Start Date *
-        </label>
-        <input
-            type="date"
-            className="w-full border rounded-md px-3 py-2"
-            value={eventData?.startDate}
-            onChange={(e) => setEventData({ ...eventData, startDate: e.target.value })}
-            required />
-    </div>
-    <div className="flex-1">
-        <label className="block text-sm text-gray-500 mb-1">
-            Application End Date *
-        </label>
-        <input
-            type="date"
-            className="w-full border rounded-md px-3 py-2"
-            value={eventData?.endDate}
-            onChange={(e) => setEventData({ ...eventData, endDate: e.target.value })}
-            min={eventData?.startDate} // Add min attribute to prevent earlier dates
-            required />
-    </div>
-</div>
-
-                      {/* Custom Date Fields */}
-                      <div className="pt-6 border-t">
-                        <h3 className="text-lg font-medium text-gray-700 mb-4">Additional Important Dates</h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                          Add any additional program dates (e.g., Interview Rounds, Pitch Day, Demo Day)
-                        </p>
-                      </div>
-<div className='additional-dates-container space-y-4'>
-                      {eventData?.customFields?.map(field => (
+                      {eventData?.customFields?.map((field) => (
                         <div key={field.id}>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="block text-sm text-gray-500">
-                              {field.name}
-                            </label>
+                            <label className="block text-sm text-gray-500">{field.name}</label>
                             <button
                               onClick={() => removeCustomField(field.id)}
                               className="text-red-500 hover:text-red-700"
@@ -1620,62 +1613,62 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
                               type="date"
                               className="flex-1 border rounded-md px-3 py-2"
                               value={field.date}
-                              onChange={(e) => updateCustomField(field.id, e.target.value)} />
+                              onChange={(e) => updateCustomField(field.id, e.target.value)}
+                            />
                           </div>
                         </div>
                       ))}
-</div>
-                      {/* Add Custom Field Input */}
-                      <div className="pt-4">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Enter new date field name"
-                            className="flex-1 border rounded-md px-3 py-2"
-                            value={newFieldName}
-                            onChange={(e) => setNewFieldName(e.target.value)} />
-                          <button
-                            onClick={addCustomField}
-                            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2"
-                            disabled={!newFieldName.trim()}
-                          >
-                            <Plus className="w-4 h-4" />
-                            Add Field
-                          </button>
-                        </div>
+                    </div>
+                    <div className="pt-4">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter new date field name"
+                          className="flex-1 border rounded-md px-3 py-2"
+                          value={newFieldName}
+                          onChange={(e) => setNewFieldName(e.target.value)}
+                        />
+                        <button
+                          onClick={addCustomField}
+                          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2"
+                          disabled={!newFieldName.trim()}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Field
+                        </button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Buttons */}
-                <div className="flex justify-end gap-4 mt-6">
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-              disabled={isClosing}
-            >
-              {isClosing ? 'Closing...' : 'Close'}
-            </button>
-            <button
-              onClick={handleSaveDraft}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md"
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save as Draft'}
-            </button>
-            <button
-              onClick={handleNext}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md"
-              disabled={isProcessing}
-            >
-              {isProcessing ? 'Processing...' : 'Next'}
-            </button>
-          </div>
+                  </div>
+                </div>
               </div>
-            </div></>
-        ) : (
-          <FormBuilderOptions
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                  disabled={isClosing}
+                >
+                  {isClosing ? 'Closing...' : 'Close'}
+                </button>
+                <button
+                  onClick={handleSaveDraft}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md"
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save as Draft'}
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md"
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? 'Processing...' : 'Next'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <FormBuilderOptions
           programId={programId || generatedId}
           onOptionSelect={(option) => setSelectedFormOption(option)}
           onBack={() => setCurrentStep(1)}
@@ -1685,10 +1678,10 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
           onFormLaunchSuccess={onFormLaunchSuccess}
           eventData={eventData}
         />
-        )}
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
+};
   const CompanyLogo = ({ companyDetails }) => {
     const [logoError, setLogoError] = useState(false);
   
@@ -1723,8 +1716,8 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
   );
 
   const ProgramHeader = ({ program }) => (
-    <div className="md:px-56 overflow-none mt-8">
-    <div className="border-b border-gray-200 p-4">
+    <div className="md:px-36 overflow-none mt-8">
+    <div className="border-b border-gray-200 ">
       <h2 className="text-2xl font-bold mb-4">{program.name || 'Untitled Program'}</h2>
       <div className="flex space-x-6">
         {['summary', 'formResponses', 'editProgram', 'editForm','addJudges'].map((tab) => (
@@ -2007,7 +2000,7 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
               <ProgramHeader program={selectedProgram} />
               <div className="flex-1 overflow-y-auto">
                 {activeProgramTab === 'summary' && (
-                  <div className='md:px-56 overflow-none mt-8'>
+                  <div className='md:px-36 overflow-none mt-8'>
                     <h3 className="text-lg font-semibold mb-4">Program Summary</h3>
                     {/* Add program summary content */}
                   </div>
@@ -2018,7 +2011,7 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
 
                 {activeProgramTab === 'formResponses' && (
                   <div className="h-full">
-                    <div className="md:px-56 overflow-none mt-8">
+                    <div className="md:px-36 overflow-none mt-8">
                       {isJudgingProgramSelected ? (
                         <JudgesFormResponses programId={selectedProgram.id} />
                       ) : (
@@ -2032,19 +2025,19 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
 
 
                 {activeProgramTab === 'editProgram' && (
-                  <div className="md:px-56 overflow-none mt-8">
+                  <div className="md:px-36 overflow-none mt-8">
                     <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
                     {/* Add edit program form */}
                   </div>
                 )}
                 {activeProgramTab === 'editForm' && (
-                  <div className="md:px-56 overflow-none mt-8">
+                  <div className="md:px-36 overflow-none mt-8">
                     <h3 className="text-lg font-semibold mb-4">Edit Form</h3>
                     {/* Add edit form content */}
                   </div>
                 )}
                 {activeProgramTab === 'addJudges' && (
-  <div className="md:px-56 overflow-none mt-8">
+  <div className="md:px-36 overflow-none mt-8">
   <h3 className="text-lg font-semibold mb-4">Add Judges</h3>
   <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
     <div>

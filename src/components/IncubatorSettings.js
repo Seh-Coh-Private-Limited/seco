@@ -59,7 +59,27 @@ const IncubatorSettingsForm = ({ onProfileUpdate }) => {
 
     const [imagePreview, setImagePreview] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(false);
+  const bioTextareaRef = useRef(null);
   
+      // Enhanced useEffect to handle initial sizing and content changes
+      useEffect(() => {
+        const textarea = bioTextareaRef.current;
+        if (textarea) {
+          // Reset height to auto to get the correct scrollHeight
+          textarea.style.height = 'auto';
+          // Set height to match content, including padding
+          textarea.style.height = `${textarea.scrollHeight + 2}px`; // Adding 2px for padding (adjust as needed)
+          
+          // Add an event listener for manual resizing to maintain content visibility
+          const handleResize = () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight + 2}px`;
+          };
+    
+          textarea.addEventListener('input', handleResize);
+          return () => textarea.removeEventListener('input', handleResize); // Cleanup
+        }
+      }, [formData.bio]); // Run when bio content changes
     useEffect(() => {
       const fetchUserData = async () => {
         const user = auth.currentUser;
@@ -185,7 +205,73 @@ const IncubatorSettingsForm = ({ onProfileUpdate }) => {
     const handleCancelDelete = () => {
       setIsConfirming(false);
     };
-  
+    const handleContactImageUpload = useCallback(async (index, file) => {
+        if (!file) return;
+    
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+          setError('Please upload a valid image file (JPEG, PNG, or GIF)');
+          return;
+        }
+    
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          setError('Image size should be less than 5MB');
+          return;
+        }
+    
+        try {
+          setUploadProgress(true);
+          const user = auth.currentUser;
+          const storageRef = ref(storage, `contacts/${user.uid}/${index}/${file.name}`);
+          await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(storageRef);
+    
+          const newFormData = {
+            ...formData,
+            contacts: formData.contacts.map((contact, i) =>
+              i === index ? { ...contact, imageUrl: downloadURL } : contact
+            ),
+          };
+    
+          if (formData.contacts[index].imageUrl) {
+            const oldImageRef = ref(storage, formData.contacts[index].imageUrl);
+            await deleteObject(oldImageRef).catch((err) => console.error('Error deleting old contact image:', err));
+          }
+    
+          setFormData(newFormData);
+          setSaveStatus('Saving...');
+          debouncedSave(newFormData);
+          setError('');
+        } catch (error) {
+          console.error('Error uploading contact image:', error);
+          setError('Failed to upload contact image.');
+        } finally {
+          setUploadProgress(false);
+        }
+      }, [auth, formData, storage, debouncedSave]);
+    
+      const handleRemoveContactImage = async (index) => {
+        const contact = formData.contacts[index];
+        if (!contact.imageUrl) return;
+    
+        try {
+          const imageRef = ref(storage, contact.imageUrl);
+          await deleteObject(imageRef);
+          const newFormData = {
+            ...formData,
+            contacts: formData.contacts.map((c, i) =>
+              i === index ? { ...c, imageUrl: '' } : c
+            ),
+          };
+          setFormData(newFormData);
+          setSaveStatus('Saving...');
+          debouncedSave(newFormData);
+        } catch (error) {
+          console.error('Error removing contact image:', error);
+          setError('Failed to remove contact image.');
+        }
+      };
     // Modified input change handler with auto-save
     const handleInputChange = (section, field, value) => {
       const newFormData = {
@@ -201,6 +287,13 @@ const IncubatorSettingsForm = ({ onProfileUpdate }) => {
       setFormData(newFormData);
       setSaveStatus('Saving...');
       debouncedSave(newFormData);
+  
+      // Resize textarea if it's the bio field
+      if (!section && field === 'bio' && bioTextareaRef.current) {
+        const textarea = bioTextareaRef.current;
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight + 2}px`; // Adding padding adjustment
+      }
     };
     const handleAddContact = () => {
       const newFormData = {
@@ -624,11 +717,14 @@ const IncubatorSettingsForm = ({ onProfileUpdate }) => {
 
         <div>
           <label className="block text-black font-medium mb-1">Bio</label>
-          <textarea
-            className="w-full max-w-lg border border-gray-300 px-3 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md"
-            value={formData.bio}
-            onChange={(e) => handleInputChange(null, 'bio', e.target.value)}
-          />
+         <textarea
+                  ref={bioTextareaRef}
+                  className="w-full max-w-lg border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-md resize-y overflow-auto"
+                  value={formData.bio}
+                  onChange={(e) => handleInputChange(null, 'bio', e.target.value)}
+                  placeholder="Tell us about your company..."
+                   // Optional: set min and max heights
+                />
         </div>
         {/* <div>
           <label className="block text-black font-medium mb-1">Domain</label>
@@ -759,13 +855,15 @@ const IncubatorSettingsForm = ({ onProfileUpdate }) => {
   </div>
 
   {formData.contacts.map((contact, index) => (
-  <ContactRow 
-    key={index}
-    contact={contact}
-    index={index}
-    onChange={(field, value) => handleContactChange(index, field, value)}
-    onRemove={formData.contacts.length > 1 ? () => handleRemoveContact(index) : null}
-  />
+  <ContactRow
+  key={index}
+  contact={contact}
+  index={index}
+  onChange={(field, value) => handleContactChange(index, field, value)}
+  onRemove={formData.contacts.length > 1 ? () => handleRemoveContact(index) : null}
+  onImageUpload={handleContactImageUpload}
+  onRemoveImage={() => handleRemoveContactImage(index)}
+ />
 ))}
 </div>
         </div>
