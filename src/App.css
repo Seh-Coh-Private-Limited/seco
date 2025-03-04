@@ -28,4 +28,11 @@
     font-weight: normal;
     font-style: normal;
   }
-  
+  /* Apply styles to all Toastify toasts */
+.Toastify__toast {
+  min-width: 600px !important; /* Ensure a minimum width */
+  /* max-width: 500px !important; Prevent excessive width */
+  text-align: center;
+  padding: 12px !important;
+  border-radius: 8px !important;
+}

@@ -388,7 +388,7 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
 
   return (
     <div>
-      <div className="md:px-56 overflow-auto">
+      <div className="overflow-auto">
        <div className="text-left mb-8">
        <p className='text-4xl font-bold my-4' style={{fontFamily: 'CFont'}}>
                 {name}

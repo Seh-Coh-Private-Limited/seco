@@ -445,7 +445,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
   
     if (error) {
       return (
-        <div className="px-4 md:px-56">
+        <div className="px-0 md:px-36">
           <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-4">
             {error}
           </div>
@@ -655,35 +655,35 @@ const SettingsForm = ({ onProfileUpdate }) => {
     };
   // Rest of the component remains the same
   return (
-    <div className="px-4 md:px-56 overflow-auto">
+    <div className="px-4 md:px-36 overflow-auto">
      
-     <div className="text-left mb-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold font-sans-serif">Settings</h1>
-        {saveStatus && (
-          <div className="flex items-center space-x-2">
-            <svg 
-              className={`w-4 h-4 text-gray-500 ${saveStatus === 'Saving...' ? 'animate-spin' : ''}`} 
-              viewBox="0 0 24 24"
-            >
-              <path
-                fill="currentColor"
-                d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z"
-              />
-            </svg>
-            <span className="text-sm text-gray-500">
-              {saveStatus}
-            </span>
+     <div className="fixed top-[62px] left-64 right-0 z-10 bg-white pt-10 px-4 md:px-36 border-gray-200">
+        <div className="text-left mb-8">
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold font-sans-serif">Settings</h1>
+            {saveStatus && (
+              <div className="flex items-center space-x-2">
+                <svg 
+                  className={`w-4 h-4 text-gray-500 ${saveStatus === 'Saving...' ? 'animate-spin' : ''}`} 
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z"
+                  />
+                </svg>
+                <span className="text-sm text-gray-500">{saveStatus}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div className="flex border-b border-gray-300 justify-left mt-4">
-        <div className="py-2 text-black border-b-2 border-black cursor-pointer">
-          My account
+          <div className="flex border-b border-gray-300 justify-left mt-4">
+            <div className="py-2 text-black border-b-2 border-black cursor-pointer">
+              My account
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-
+      <div className="pt-[135px]">
       <form onSubmit={handleSubmit} className="space-y-4 text-left">
       <div className="mb-6">
   <label className="block text-black font-medium mb-1">Logo</label>
@@ -933,6 +933,7 @@ const SettingsForm = ({ onProfileUpdate }) => {
       )}
     </div>
       </form>
+    </div>
     </div>
   );
 };

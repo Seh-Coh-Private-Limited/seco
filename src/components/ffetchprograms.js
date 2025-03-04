@@ -1,11 +1,10 @@
-// fetchPrograms.js
-import { collection, getDocs } from 'firebase/firestore';
-import { db ,query,where} from '../firebase'; // Adjust path based on your project structure
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../firebase'; // Adjust path based on your project structure
 
 export const fetchPrograms = async () => {
   try {
     const programsCollection = collection(db, 'programmes');
-    const programsQuery = query(programsCollection, where('programStatus', '!=', 'draft'));
+    const programsQuery = query(programsCollection, where('programStatus', 'not-in', ['draft', 'ddraft']));
     const programsSnapshot = await getDocs(programsQuery);
     const programsList = programsSnapshot.docs.map((doc) => ({
       id: doc.id,
@@ -17,3 +16,4 @@ export const fetchPrograms = async () => {
     return []; // Return an empty array if the fetch fails
   }
 };
+

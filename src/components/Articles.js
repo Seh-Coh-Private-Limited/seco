@@ -80,7 +80,7 @@ function Articles({ handleTabChange }) {
 
   return (
     
-    <div className="md:px-56 overflow-auto">
+    <div className="md:px-36 overflow-auto">
        <div className="text-left mb-8">
         <h1 className="text-4xl font-bold font-sans-serif mb-8">Discover</h1>
         <div className="flex border-b border-gray-300 justify-left mt-4">

@@ -642,7 +642,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
 
   const handleFormLaunch = async () => {
     try {
-      // Validate form fields
+      // Validate inputs
       if (!programId) {
         alert('Invalid program ID. Please check and try again.');
         return;
@@ -651,51 +651,53 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
         alert('Invalid user ID. Please check and try again.');
         return;
       }
-
-      if (programId) {
-        // Update existing program
-        const programmesRef = collection(db, 'programmes');
-        const q = query(programmesRef, where('id', '==', programId));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-          await updateDoc(docRef, {
-            programStatus: 'completed',
-            updatedAt: new Date(),
-          });
-        }
+  
+      console.log('Launching form with:', { userId, programId });
+  
+      // Update program status
+      const programmesRef = collection(db, 'programmes');
+      const programQuery = query(programmesRef, where('id', '==', programId));
+      const programSnapshot = await getDocs(programQuery);
+  
+      if (!programSnapshot.empty) {
+        const docRef = doc(db, 'programmes', programSnapshot.docs[0].id);
+        await updateDoc(docRef, {
+          programStatus: 'completed',
+          updatedAt: new Date(),
+        });
+        console.log('Program updated successfully');
+      } else {
+        console.warn('No program found for ID:', programId);
       }
-
-      // Reference to the "users" collection and query by the `uid` field
+  
+      // Update user status
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('uid', '==', userId));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
+      const userQuery = query(usersRef, where('uid', '==', userId));
+      const userSnapshot = await getDocs(userQuery);
+  
+      if (userSnapshot.empty) {
+        console.error('No user found for userId:', userId);
         alert('No user found with the given user ID.');
         return;
       }
-
-      // Since userId is unique, get the first matching document
-      const userDocRef = querySnapshot.docs[0].ref;
-
-      // Update `programStatus` and set `programId` to null for the matched user
+  
+      const userDocRef = userSnapshot.docs[0].ref;
       await updateDoc(userDocRef, {
         programStatus: 'completed',
         programid: null,
       });
-
+      console.log('User updated successfully');
+  
+      // Update UI state
       setCurrentStep(1);
-      setShowCreateEvent(false); // Close the form creation view
+      setShowCreateEvent(false);
       alert('Form successfully launched!');
-
-      // Trigger the callback to notify the parent component
+  
       if (onFormLaunchSuccess) {
         onFormLaunchSuccess();
       }
     } catch (error) {
-      console.error('Error updating user:', error.message || error);
+      console.error('Error in handleFormLaunch:', error.code, error.message, error.stack);
       alert('Failed to update user. Please try again.');
     }
   };

@@ -582,7 +582,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eve
     setSelectedProgramId(programId);
   };
   const ApplicationHeader = ({ application }) => (
-    <div className=" border-b border-gray-200 p-4">
+    <div className=" border-b border-gray-200 p-0">
       {/* <h2 className="text-2xl font-bold mb-4">{application.title || 'Untitled Application'}</h2> */}
       <div className="flex space-x-6">
         {['summary', 'formresponses'].map((tab) => (
@@ -620,12 +620,12 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eve
             active={activeTab === 'home'} 
             onClick={() => setActiveTab('home')} 
           />
-          <NavItem 
+          {/* <NavItem 
             icon={faSearch}
             label="Discover" 
             active={activeTab === 'discover'} 
             onClick={() => setActiveTab('discover')} 
-          />
+          /> */}
         </nav>
 
         <div className="mt-8">
@@ -692,9 +692,9 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eve
 />
         <main className="h-full">
           {activeTab === 'home' && (
-            <div className="p-4">
-              {/* <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2> */}
-            </div>
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+            <Articles handleTabChange={handleTabChange} />
+          </div>
           )}
           
           {activeTab === 'discover' && (
@@ -703,7 +703,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eve
         </div>
       )}
       {activeTab === 'programdetailpage' && (
-        <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+        <div className="h-[calc(100vh/1.16)] md:px-36 overflow-auto scrollbar-hide mt-8 mb-8">
           {/* Your Events component */}
           <FProgramDetailPage 
       programId={selectedProgramId} 
@@ -730,9 +730,9 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings,eve
       )}
           
           {activeTab === 'application' && selectedApplication && (
-            <div className="md:px-56 overflow-none mt-8 h-full">
+            <div className="md:px-36 overflow-none mt-8 h-full">
               <ApplicationHeader application={selectedApplication} />
-              <div className="p-4">
+              <div className="py-4">
                 {activeApplicationTab === 'summary' && (
                   <div className="h-full">
                   <h3 className="text-lg font-semibold mb-4">Summary</h3>

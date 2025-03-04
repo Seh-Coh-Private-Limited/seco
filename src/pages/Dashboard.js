@@ -1,3 +1,4 @@
+
 import {
   faBook,
   faBuilding,
@@ -18,6 +19,8 @@ import {
   faTrashAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import ProgramInsights from '../components/ProgramInsights';
 import { getAuth, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where,deleteDoc,setDoc,serverTimestamp } from 'firebase/firestore';
 import { Plus, Trash2 } from 'lucide-react';
@@ -32,6 +35,10 @@ import { useNavigate } from 'react-router-dom';
 import SettingsForm from '../components/SettingsForm';
 import IncubatorSettingsForm from '../components/IncubatorSettings';
 import JudgesFormResponses from './JudgesFormResponses';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import emailjs from '@emailjs/browser';
+
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
 
@@ -43,7 +50,7 @@ const FounderDashboard = () => {
   const [formResponses, setFormResponses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
-  const [activeProgramTab, setActiveProgramTab] = useState('summary');
+  const [activeProgramTab, setActiveProgramTab] = useState('insights');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [error, setError] = useState(null);
@@ -98,7 +105,7 @@ const FounderDashboard = () => {
  
   
   
- 
+  ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
  
   
   // Modified loadAllData function
@@ -131,7 +138,56 @@ const fetchCompanyDetails = useCallback(async (user) => {
       await fetchCompanyDetails(user);
     }
   }, [auth, fetchCompanyDetails]);
-
+  const handleStatusChange = async (programId, newStatus) => {
+    try {
+      setLoading(true);
+      const db = getFirestore();
+  
+      // Find the program document
+      const programsQuery = query(
+        collection(db, 'programmes'),
+        where('id', '==', programId)
+      );
+      const querySnapshot = await getDocs(programsQuery);
+  
+      if (!querySnapshot.empty) {
+        const programDoc = querySnapshot.docs[0];
+        await updateDoc(doc(db, 'programmes', programDoc.id), {
+          programStatus: newStatus,
+          updatedAt: serverTimestamp(),
+        });
+  
+        // Update local state
+        setProgrammes((prevProgrammes) =>
+          prevProgrammes.map((program) =>
+            program.id === programId
+              ? { ...program, programStatus: newStatus }
+              : program
+          )
+        );
+  
+        if (selectedProgram?.id === programId) {
+          setSelectedProgram((prev) => ({
+            ...prev,
+            programStatus: newStatus,
+          }));
+        }
+  
+        // Show different toast messages based on the status
+        if (newStatus === 'ddraft') {
+          toast.success('Program is now inactive');
+        } else {
+          toast.success('Program is live now');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating program status:', error);
+      toast.error('Failed to update program status');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Function to fetch programmes
   // Check if user is a judge and fetch judging programmes
   const checkJudgeStatusAndFetchProgrammes = useCallback(async (user) => {
@@ -174,7 +230,7 @@ const fetchProgrammes = useCallback(async (user) => {
       query(
         collection(db, 'programmes'),
         where('uid', '==', user.uid),
-        where('programStatus', 'in', ['completed', 'draft', 'active']) // Fetch both completed and draft programmes
+        where('programStatus', 'in', ['completed', 'draft', 'ddraft', 'active']) // Fetch both completed and draft programmes
       )        
     );
     
@@ -776,6 +832,7 @@ const HomePage = ({ userStatus,
   currentStep={currentStep}
   setCurrentStep={setCurrentStep}
   fetchProgrammes={fetchProgrammes}
+  setShowCreateEvent={setShowCreateEvent}
   onFormLaunchSuccess={onFormLaunchSuccess}
   eventData={eventData}
   setEventData={setEventData}
@@ -908,7 +965,7 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
   } else {
     // Switch to program tab for both founder and judge programs
     setActiveTab('program');
-    setActiveProgramTab(isJudgingProgram ? 'formResponses' : 'summary'); // Only set to formResponses for judging programs
+    setActiveProgramTab(isJudgingProgram ? 'formResponses' : 'insights'); // Only set to formResponses for judging programs
     setFormResponses([]);
   }
 };
@@ -1167,55 +1224,161 @@ const useDebounce = (callback, delay) => {
   };
 
   // Handle next step
-  const handleNext = async () => {
-    setIsProcessing(true);
-    try {
-      if (!eventData.name || !eventData.startDate || !eventData.endDate) {
-        throw new Error('Missing required fields: name, startDate, or endDate');
-      }
+ // Define the ToastWithAction component within the same file or import it
+// Simple Toast implementation
+const createToast = ({ title, description, actionText, actionCallback }) => {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff; /* Black background */
+    padding: 16px 24px;
+    border-radius: 20px; /* Adjusted to match the pill-shaped button in the image */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 400px; /* Wider to match the image */
+    color: #000000; /* White text */
+    display: flex; /* Use flexbox for layout */
+    flex-direction: row; /* Horizontal layout */
+    align-items: center; /* Center items vertically in the row */
+    gap: 16px; /* Space between elements */
+    justify-content: space-between; /* Space out content and button */
+  `;
 
-      const dataToSave = {
-        ...eventData,
-        uid: auth.currentUser.uid,
-        programStatus: 'draft',
-        updatedAt: serverTimestamp(),
-      };
+  // Container for text (title + description) to keep them stacked vertically
+  const textContainer = document.createElement('div');
+  textContainer.style.display = 'flex';
+  textContainer.style.flexDirection = 'column';
+  textContainer.style.gap = '4px'; /* Space between title and description */
 
-      let newProgramId = programId;
-      if (programId) {
-        const q = query(collection(db, 'programmes'), where('id', '==', programId));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
-          await updateDoc(docRef, dataToSave);
-        }
-      } else {
-        newProgramId = generatedId;
-        dataToSave.id = newProgramId;
-        dataToSave.createdAt = serverTimestamp();
-        await addDoc(collection(db, 'programmes'), dataToSave);
-      }
+  const titleEl = document.createElement('div');
+  titleEl.textContent = title;
+  titleEl.style.fontWeight = 'bold';
+  titleEl.style.fontSize = '16px'; /* Slightly larger for emphasis */
 
-      const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
-      const userSnapshot = await getDocs(usersQuery);
-      if (!userSnapshot.empty) {
-        const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
-        await updateDoc(userDocRef, {
-          programStatus: 'draft',
-          programid: newProgramId,
-        });
-      }
+  const descEl = document.createElement('div');
+  descEl.textContent = description;
+  descEl.style.fontSize = '14px'; /* Smaller font for description */
 
-      await fetchProgrammes(auth.currentUser);
-      setCurrentStep(2);
-    } catch (error) {
-      console.error('Error in handleNext:', error);
-      alert('Error moving to next step: ' + error.message);
-    } finally {
-      setIsProcessing(false);
+  // Append title and description to the text container
+  textContainer.appendChild(titleEl);
+  textContainer.appendChild(descEl);
+
+  const actionBtn = document.createElement('button');
+  actionBtn.textContent = actionText || "OK"; // Default to "OK" if no actionText provided
+  actionBtn.style.cssText = `
+    color: #ffffff; /* White button background */
+    background: #000000; /* Black text for contrast */
+    border: none;
+    padding: 8px 16px;
+    border-radius: 30%; /* Rounded button */
+    cursor: pointer;
+    font-weight: bold;
+    width: fit-content; /* Fit button to text */
+  `;
+  actionBtn.addEventListener('click', () => {
+    document.body.removeChild(toast); // Simply close the toast when clicked
+  });
+
+  // Append text container and button to toast
+  toast.appendChild(textContainer);
+  toast.appendChild(actionBtn);
+
+  document.body.appendChild(toast);
+  return toast;
+};
+
+// Example usage (you can keep or modify ToastWithAction as needed):
+
+
+// You can keep the ToastWithAction and handleNext functions as they were, just updating how you call createToast:
+
+
+// Modified ToastWithAction component
+const ToastWithAction = ({ message }) => {
+  return createToast({
+    title: "Uh oh! Something went wrong.",
+    description: message,
+    actionText: "Ok",
+    actionCallback: () => {
+      // Add retry logic here if needed
+      console.log("Try again clicked");
     }
-  };
+  });
+};
 
+// Modified handleNext function
+const handleNext = async () => {
+  setIsProcessing(true);
+  try {
+    const missingFields = [];
+    if (!eventData.name) missingFields.push('Event Name');
+    if (!eventData.startDate) missingFields.push('Start Date');
+    if (!eventData.endDate) missingFields.push('End Date');
+    if (!eventData.image) missingFields.push('Image');
+    if (!eventData.description) missingFields.push('Description');
+    if (!eventData.location) missingFields.push('Location');
+    // Modified category check to validate if array exists and has items
+    if (!eventData.categories || eventData.categories.length === 0) {
+      missingFields.push('Sector');
+    }
+
+    if (missingFields.length > 0) {
+      throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+    }
+
+    // Rest of your existing code...
+    const dataToSave = {
+      ...eventData,
+      uid: auth.currentUser.uid,
+      programStatus: 'draft',
+      updatedAt: serverTimestamp(),
+    };
+
+    let newProgramId = programId;
+    if (programId) {
+      const q = query(collection(db, 'programmes'), where('id', '==', programId));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
+        await updateDoc(docRef, dataToSave);
+      }
+    } else {
+      newProgramId = generatedId;
+      dataToSave.id = newProgramId;
+      dataToSave.createdAt = serverTimestamp();
+      await addDoc(collection(db, 'programmes'), dataToSave);
+    }
+
+    const usersQuery = query(collection(db, 'users'), where('uid', '==', auth.currentUser.uid));
+    const userSnapshot = await getDocs(usersQuery);
+    if (!userSnapshot.empty) {
+      const userDocRef = doc(db, 'users', userSnapshot.docs[0].id);
+      await updateDoc(userDocRef, {
+        programStatus: 'draft',
+        programid: newProgramId,
+      });
+    }
+
+    await fetchProgrammes(auth.currentUser);
+    setCurrentStep(2);
+  } catch (error) {
+    console.error('Error in handleNext:', error);
+    createToast({
+      title: "Uh oh! Something went wrong.",
+      description: error.message,
+      actionText: "Ok",
+      actionCallback: () => {
+        console.log("Try again clicked");
+      }
+    });
+  } finally {
+    setIsProcessing(false);
+  }
+};
   // Quill editor setup
   const modules = {
     toolbar: [
@@ -1567,6 +1730,7 @@ const debouncedFetchSuggestions = useDebounce((query) => {
                           type="date"
                           className="w-full border rounded-md px-3 py-2"
                           value={eventData?.startDate || ''}
+                         
                           onChange={(e) =>
                             setEventData((prev) => ({ ...prev, startDate: e.target.value }))
                           }
@@ -1715,29 +1879,54 @@ const debouncedFetchSuggestions = useDebounce((query) => {
     </button>
   );
 
-  const ProgramHeader = ({ program }) => (
-    <div className="md:px-36 overflow-none mt-8">
-    <div className="border-b border-gray-200 ">
-      <h2 className="text-2xl font-bold mb-4">{program.name || 'Untitled Program'}</h2>
-      <div className="flex space-x-6">
-        {['summary', 'formResponses', 'editProgram', 'editForm','addJudges'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveProgramTab(tab)}
-            className={`text-sm font-medium pb-2 ${
-              activeProgramTab === tab
-                ? 'border-b-2 border-blue-500 text-blue-500'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
-          </button>
-        ))}
-      </div>
-    </div>
-    </div>
-  );
+  const ProgramHeader = ({ 
+    program, 
+    onStatusChange 
+}) => {
+    const handleToggle = () => {
+      const newStatus = program.programStatus === 'completed' ? 'ddraft' : 'completed';
+      onStatusChange(program.id, newStatus);
+    };
   
+    return (
+        <div className="md:px-36 overflow-none mt-8">
+            <div className="border-b border-gray-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-4xl font-bold">{program.name || 'Untitled Program'}</h2>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">
+                            {program.programStatus === 'completed' ? 'Active' : 'Inactive'}
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={program.programStatus === 'completed'}
+                                onChange={handleToggle}
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                    </div>
+                </div>
+                <div className="flex space-x-6">
+                    {['insights', 'formResponses', 'editProgram', 'editForm','addJudges'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveProgramTab(tab)}
+                            className={`text-sm font-medium pb-2 ${
+                                activeProgramTab === tab
+                                ? 'border-b-2 border-blue-500 text-blue-500'
+                                : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
   const [judges, setJudges] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -1871,6 +2060,51 @@ const debouncedFetchSuggestions = useDebounce((query) => {
       }
     }
   };
+
+ // In FounderDashboard.js
+
+const generateJudgeDashboardLink = (judgeId) => {
+  return `discover.getseco.com/judge/${judgeId}`; // Use the React Router route
+};
+
+const handleTriggerEmails = async () => {
+  setLoading(true);
+  
+  try {
+    emailjs.init('zdMI9GNYRKzA-jLsN'); // Replace with your EmailJS public key
+
+    const emailPromises = judges.map(judge => {
+      const judgingLink = generateJudgeDashboardLink(judge.id);
+
+      const templateParams = {
+        to_name: judge.name,
+        to_email: judge.email,
+        from_name: 'SECO',
+        program_name: selectedProgram.name || 'Your Program Name',
+        organizer: companyDetails?.name || 'Your Organizer Name',
+        judging_link: judgingLink, // Now uses the React Router route
+        // your_name: 'Your Name',
+        your_organization: 'SECO',
+        your_contact: 'contact@seco.com',
+        message: '',
+      };
+
+      return emailjs.send(
+        'service_2ebtwjp', // Replace with your EmailJS service ID
+        'template_w26dqy4', // Replace with your EmailJS template ID
+        templateParams
+      );
+    });
+
+    await Promise.all(emailPromises);
+    alert('Emails sent successfully to all judges!');
+  } catch (error) {
+    console.error('Failed to send emails:', error);
+    alert('Failed to send emails. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
@@ -1997,16 +2231,20 @@ const debouncedFetchSuggestions = useDebounce((query) => {
         />}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full flex flex-col">
-              <ProgramHeader program={selectedProgram} />
-              <div className="flex-1 overflow-y-auto">
-                {activeProgramTab === 'summary' && (
-                  <div className='md:px-36 overflow-none mt-8'>
-                    <h3 className="text-lg font-semibold mb-4">Program Summary</h3>
-                    {/* Add program summary content */}
-                  </div>
-                )}
+             <ProgramHeader 
+                program={selectedProgram}
                 
-
+                onStatusChange={handleStatusChange}
+              />
+              <div className="flex-1 overflow-y-auto">
+                {/* {activeProgramTab === 'insights' && (
+                  <div className='md:px-36 overflow-none mt-8'>
+                    <h3 className="text-lg font-semibold mb-4">Program Insights</h3>
+                    
+                  </div>
+                )} */}
+                
+                {activeProgramTab === 'insights' && <ProgramInsights program={selectedProgram} />}
 
 
                 {activeProgramTab === 'formResponses' && (
@@ -2073,7 +2311,17 @@ const debouncedFetchSuggestions = useDebounce((query) => {
   </form>
 
   <div className="mt-8">
-    <h4 className="text-lg font-semibold mb-4">Judges List</h4>
+  <div className="flex justify-between items-center mb-4">
+            <h4 className="text-lg font-semibold">Judges List</h4>
+            <button
+              type="button"
+              onClick={handleTriggerEmails}
+              disabled={loading || judges.length === 0}
+              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:bg-green-300"
+            >
+              {loading ? 'Sending...' : 'Trigger Emails'}
+            </button>
+          </div>
     <ul className="space-y-4">
       {judges.map((judge) => (
         <li key={judge.id} className="flex justify-between items-center p-4 border rounded-lg">

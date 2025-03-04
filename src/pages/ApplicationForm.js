@@ -884,14 +884,14 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
 
   if (isInitializing) {
     return (
-      <div className="md:px-56 h-screen flex flex-col items-center justify-center">
+      <div className="md:px-36 h-screen flex flex-col items-center justify-center">
         <LoadingDots />
       </div>
     );
   }
 
   return (
-    <div className="md:px-56 h-screen flex flex-col">
+    <div className="md:px-36 h-screen flex flex-col">
       <div className="text-left mb-8">
         <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
         <div className="flex border-b border-gray-300 justify-left mt-4" />
