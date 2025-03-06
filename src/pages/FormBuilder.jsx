@@ -395,14 +395,15 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-semibold">Questions</h2>
                         <button
-                            onClick={() => {
-                                setIsModalOpen(false);
-                                resetModalState();
-                            }}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+    onClick={() => {
+        setIsModalOpen(false);
+        resetModalState();
+    }}
+    className="text-gray-500 hover:text-gray-700 hover:bg-transparent focus:outline"
+>
+    <X className="w-5 h-5" />
+</button>
+
                     </div>
                 </div>
 
@@ -581,6 +582,7 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
       }
 
       if (!programId) {
+       
         alert('Invalid program ID. Please check and try again.');
         return;
       }
@@ -639,16 +641,92 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
       alert('Failed to save form. Please try again.');
     }
   };
-
+  const createToast = ({ title, description, actionText, actionCallback }) => {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333; /* Dark background */
+      color: #fff; /* White text */
+      padding: 16px 24px;
+      border-radius: 12px; /* Smooth rounded edges */
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
+      min-width: 320px; /* Adjusted width */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-family: Arial, sans-serif;
+    `;
+  
+    // Text container
+    const textContainer = document.createElement('div');
+    textContainer.style.display = 'flex';
+    textContainer.style.flexDirection = 'column';
+  
+    const titleEl = document.createElement('div');
+    titleEl.textContent = title;
+    titleEl.style.fontWeight = 'bold';
+    titleEl.style.fontSize = '16px';
+  
+    const descEl = document.createElement('div');
+    descEl.textContent = description;
+    descEl.style.fontSize = '14px';
+  
+    textContainer.appendChild(titleEl);
+    textContainer.appendChild(descEl);
+  
+    // Action button
+    const actionBtn = document.createElement('button');
+    actionBtn.textContent = actionText || "OK";
+    actionBtn.style.cssText = `
+      background: #fff; /* White button */
+      color: #333; /* Dark text */
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    `;
+    actionBtn.addEventListener('click', () => {
+      document.body.removeChild(toast);
+      if (actionCallback) actionCallback();
+    });
+  
+    // Append elements
+    toast.appendChild(textContainer);
+    toast.appendChild(actionBtn);
+    document.body.appendChild(toast);
+  
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        document.body.removeChild(toast);
+      }
+    }, 4000);
+  };
+  
   const handleFormLaunch = async () => {
     try {
       // Validate inputs
       if (!programId) {
-        alert('Invalid program ID. Please check and try again.');
+        createToast({
+          title: "Error",
+          description: "Invalid program ID. Please check and try again.",
+          actionText: "OK"
+        });
         return;
       }
       if (!userId) {
-        alert('Invalid user ID. Please check and try again.');
+        createToast({
+          title: "Error",
+          description: "Invalid user ID. Please check and try again.",
+          actionText: "OK"
+        });
         return;
       }
   
@@ -677,7 +755,11 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
   
       if (userSnapshot.empty) {
         console.error('No user found for userId:', userId);
-        alert('No user found with the given user ID.');
+        createToast({
+          title: "Error",
+          description: "No user found with the given user ID.",
+          actionText: "OK"
+        });
         return;
       }
   
@@ -691,16 +773,26 @@ const FormBuilder = ({ programId,userId,currentStep, setCurrentStep,setShowCreat
       // Update UI state
       setCurrentStep(1);
       setShowCreateEvent(false);
-      alert('Form successfully launched!');
+  
+      createToast({
+        title: "Success",
+        description: "Form successfully launched!",
+        actionText: "OK"
+      });
   
       if (onFormLaunchSuccess) {
         onFormLaunchSuccess();
       }
     } catch (error) {
       console.error('Error in handleFormLaunch:', error.code, error.message, error.stack);
-      alert('Failed to update user. Please try again.');
+      createToast({
+        title: "Error",
+        description: "Failed to update user. Please try again.",
+        actionText: "OK"
+      });
     }
   };
+  
   
   const QuestionCard = ({ section, question, isReview = false }) => {
     const isSelected = selectedQuestion === question.id;

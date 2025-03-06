@@ -16,7 +16,9 @@ import {
   faQuestionCircle,
   faRocket,
   faSignOutAlt,
-  faTrashAlt
+  faTrashAlt,
+  faGripVertical,
+  faShareAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
@@ -38,6 +40,8 @@ import JudgesFormResponses from './JudgesFormResponses';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import emailjs from '@emailjs/browser';
+import FProgramDetailPage from '../components/Reviewsection';
+import FProgramEditPage from '../components/EditProgram';
 
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
@@ -49,6 +53,8 @@ const FounderDashboard = () => {
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [formResponses, setFormResponses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [activeProgramTab, setActiveProgramTab] = useState('insights');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -175,14 +181,23 @@ const fetchCompanyDetails = useCallback(async (user) => {
   
         // Show different toast messages based on the status
         if (newStatus === 'ddraft') {
-          toast.success('Program is now inactive');
+          createToast({
+            title: "Success",
+            description: "Program is now inactive"
+          });
         } else {
-          toast.success('Program is live now');
+          createToast({
+            title: "Success",
+            description: "Program is live now"
+          });
         }
       }
     } catch (error) {
       console.error('Error updating program status:', error);
-      toast.error('Failed to update program status');
+      createToast({
+        title: "Error",
+        description: "Failed to update program status"
+      });
     } finally {
       setLoading(false);
     }
@@ -224,28 +239,61 @@ const fetchCompanyDetails = useCallback(async (user) => {
     }
   }, [db]);
  // Inside FounderDashboard component
-const fetchProgrammes = useCallback(async (user) => {
+ const fetchProgrammes = useCallback(async (user) => {
   try {
+    setLoading(true);
+    console.log('Fetching programmes for user:', user.uid);
+
     const programmesQuery = await getDocs(
       query(
         collection(db, 'programmes'),
         where('uid', '==', user.uid),
-        where('programStatus', 'in', ['completed', 'draft', 'ddraft', 'active']) // Fetch both completed and draft programmes
-      )        
+        where('programStatus', 'in', ['completed', 'draft', 'ddraft', 'active'])
+      )
     );
-    
-    const fetchedProgrammes = programmesQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    setProgrammes(fetchedProgrammes);
+
+    console.log('Programmes query snapshot:', programmesQuery);
+
+    const fetchedProgrammes = programmesQuery.docs.length > 0
+      ? programmesQuery.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: data.id || doc.id,
+            docId: doc.id,
+            name: data.name,
+            programStatus: data.programStatus,
+            endDate: data.endDate, // Add endDate here
+          };
+        })
+      : [];
+
+    console.log('Fetched programmes:', fetchedProgrammes);
+
+    const statsPromises = fetchedProgrammes.map(async (program) => {
+      console.log('Fetching responses for program with docId:', program.docId);
+      const responsesQuery = await getDocs(
+        collection(db, 'programmes', program.docId, 'formResponses')
+      );
+      console.log('Responses query size for', program.docId, ':', responsesQuery.size);
+      return {
+        id: program.id,
+        name: program.name || 'Untitled Program',
+        programStatus: program.programStatus,
+        applicationCount: responsesQuery.size,
+        endDate: program.endDate, // Include endDate in the returned stats
+      };
+    });
+
+    const programStats = await Promise.all(statsPromises);
+    console.log('Program stats:', programStats);
+    setProgrammes(programStats);
   } catch (error) {
     console.error('Error fetching programmes:', error);
-    setError('Failed to load programmes');
     setProgrammes([]);
+  } finally {
+    setLoading(false);
   }
-}, [db]); // Add dependency array
+}, [db]);
   
   // Add reload function to handle manual reloads
 
@@ -624,7 +672,7 @@ const HomePage = ({ userStatus,
   fetchProgrammes,
   currentStep, 
   setCurrentStep,
-  onFormLaunchSuccess ,selectedProgram,  }) => {
+  onFormLaunchSuccess ,selectedProgram,programStats,  }) => {
     const auth = getAuth();
     const [eventData, setEventData] = useState({
       name: '',
@@ -788,87 +836,334 @@ const HomePage = ({ userStatus,
   //     return () => clearTimeout(timer);
   //   }
   // }, [userStatus, programid, isClosing]);
+  const [columnWidths, setColumnWidths] = useState({
+    programName: 500,
+    status: 100,
+    deadline: 130,
+    applicationCount: 100
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  
+  const resizingRef = useRef(null);
+  const startXRef = useRef(null);
+  const columnRef = useRef(null);
+  const initialWidthRef = useRef(null);
+  const tableRef = useRef(null);
+
+  const handleResizeStart = (e, column) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    columnRef.current = column;
+    initialWidthRef.current = columnWidths[column];
+    
+    document.body.classList.add('cursor-col-resize', 'select-none');
+  };
+
+  const handleResizeMove = (e) => {
+    if (!isResizing || !columnRef.current) return;
+
+    requestAnimationFrame(() => {
+      const diffX = e.clientX - startXRef.current;
+      const newWidth = Math.max(100, initialWidthRef.current + diffX);
+      
+      const maxWidth = 800;
+      
+      setColumnWidths(prev => ({
+        ...prev,
+        [columnRef.current]: Math.min(newWidth, maxWidth)
+      }));
+    });
+  };
+
+  const handleResizeEnd = () => {
+    setIsResizing(false);
+    columnRef.current = null;
+    startXRef.current = null;
+    initialWidthRef.current = null;
+    
+    document.body.classList.remove('cursor-col-resize', 'select-none');
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isResizing) {
+        handleResizeMove(e);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        handleResizeEnd();
+      }
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('selectstart', (e) => e.preventDefault());
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('selectstart', (e) => e.preventDefault());
+    };
+  }, [isResizing]);
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .resize-handle {
+        position: absolute;
+        right: -5px;
+        top: 0;
+        bottom: 0;
+        width: 10px;
+        cursor: col-resize;
+        user-select: none;
+        z-index: 1;
+      }
+      .resize-handle:hover,
+      .resize-handle.active {
+        background: rgba(0, 0, 0, 0.1);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
+  const formatStatus = (programStatus) => {
+    switch (programStatus) {
+      case 'completed':
+        return 'Active';
+      case 'draft':
+        return 'Draft';
+      case 'ddraft':
+        return 'Inactive';
+      default:
+        return 'Active';
+    }
+  };
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    try {
+      console.log('Hi');
+      // Handle "YYYY-MM-DD" string format explicitly
+      if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const [year, month, day] = date.split('-');
+        const dateObj = new Date(year, month - 1, day); // month is 0-indexed
+        if (isNaN(dateObj.getTime())) return 'Invalid Date';
+        return dateObj.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long', // Displays full month name (e.g., "March")
+          day: 'numeric', // Displays day as a number (e.g., "4")
+        }); // e.g., "March 4, 2025"
+      }
+      // Fallback for other formats
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'Invalid Date';
+      return dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }); // e.g., "March 4, 2025"
+    } catch (error) {
+      console.error('Error formatting date:', date, error);
+      return 'N/A';
+    }
+  };
+  // const formatDeadline = (deadline) => {
+  //   if (!deadline) return 'N/A';
+  //   // Assuming deadline is a timestamp or date string
+  //   return new Date(deadline).toLocaleDateString();
+  // };
   return (
     <div className="md:px-36 overflow-auto mt-8">
-      {/* <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">Welcome to your dashboard</h2>
-      </div> */}
       {!showCreateEvent && (
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold font-sans-serif">Home</h1>
           <div className="flex gap-2">
             <button
-             onClick={handleNewProgramClick}
-            
+              onClick={handleNewProgramClick}
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md flex items-center gap-2"
             >
-             <FontAwesomeIcon icon={faPlus} size="sm" />
+              <FontAwesomeIcon icon={faPlus} size="sm" />
             </button>
             <button
               onClick={handleNewProgramClick}
-              
-              className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-2"
             >
-              
               New Program
             </button>
           </div>
         </div>
       )}
-{!showCreateEvent && (<div className="border-b border-gray-300 mt-4">
-        {/* Placeholder for additional content */}
-      </div> )}
-      
-      
+      {!showCreateEvent && <div className="border-b border-gray-300 mt-4"></div>}
 
-     
- 
-     
       {showCreateEvent ? (
-  <CreateEventForm
-  onClose={handleClose}
-  initialData={selectedProgram} // Pass selectedProgram as initialData
-  programId={programid || (selectedProgram?.id)}
-  currentStep={currentStep}
-  setCurrentStep={setCurrentStep}
-  fetchProgrammes={fetchProgrammes}
-  setShowCreateEvent={setShowCreateEvent}
-  onFormLaunchSuccess={onFormLaunchSuccess}
-  eventData={eventData}
-  setEventData={setEventData}
-  isNewProgram={!selectedProgram || selectedProgram.programStatus !== 'draft'}
-/>
-      ) : (
-        // Rest of your existing HomePage content
+        <CreateEventForm
+          onClose={handleClose}
+          initialData={selectedProgram}
+          programId={programid || selectedProgram?.id}
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
+          fetchProgrammes={fetchProgrammes}
+          setShowCreateEvent={setShowCreateEvent}
+          onFormLaunchSuccess={onFormLaunchSuccess}
+          eventData={eventData} // Pass eventData from FounderDashboard
+          setEventData={setEventData} // Pass setEventData from FounderDashboard
+          isNewProgram={!selectedProgram || selectedProgram.programStatus !== 'draft'}
+        />
+      ) : programStats.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center mt-28">
-        <div className="bg-gray-50 rounded-lg p-8 max-w-lg w-full text-center">  
-          <div className="mb-4">
-            <Plus className="w-12 h-12 text-gray-400 mx-auto" />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Create your first Program</h2>
-          <p className="text-gray-600 mb-6">
-            Get started by creating an event, program, or cohort to begin collecting responses.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={handleNewProgramClick}
-              
-              className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
-            >
-              <Plus size={16} />
-             
-            </button>
-            <button
-             onClick={handleNewProgramClick}
-            
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-            >
-             
-              New Program
-            </button>
+          <div className="bg-gray-50 rounded-lg p-8 max-w-lg w-full text-center">
+            <div className="mb-4">
+              <Plus className="w-12 h-12 text-gray-400 mx-auto" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Create your first Program</h2>
+            <p className="text-gray-600 mb-6">
+              Get started by creating an event, program, or cohort to begin collecting responses.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={handleNewProgramClick}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-md hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Plus size={16} />
+              </button>
+              <button
+                onClick={handleNewProgramClick}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                New Program
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-8 mb-10">
+          {/* <h2 className="text-2xl font-semibold mb-4">Program Statistics</h2> */}
+          <div className='p-4'></div>
+          <div className="overflow-x-auto rounded-xl border-l-4 border-[#F99F31]">
+            <div ref={tableRef}>
+              <table className="w-full border border-gray-300 rounded-lg">
+                <thead>
+                  <tr>
+                    <th 
+                      className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg relative group"
+                      style={{ width: columnWidths['programName'] }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="truncate pr-6">Active Programs</span>
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 group-hover:opacity-100"
+                          onMouseDown={(e) => handleResizeStart(e, 'programName')}
+                        >
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 -translate-x-1/2">
+                            <FontAwesomeIcon icon={faGripVertical} className="text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                    <th 
+                      className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg relative group"
+                      style={{ width: columnWidths['status'] }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Status</span>
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 group-hover:opacity-100"
+                          onMouseDown={(e) => handleResizeStart(e, 'status')}
+                        >
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 -translate-x-1/2">
+                            <FontAwesomeIcon icon={faGripVertical} className="text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                    <th 
+                      className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg relative group"
+                      style={{ width: columnWidths['deadline'] }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Deadline</span>
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 group-hover:opacity-100"
+                          onMouseDown={(e) => handleResizeStart(e, 'deadline')}
+                        >
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 -translate-x-1/2">
+                            <FontAwesomeIcon icon={faGripVertical} className="text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                    <th 
+                      className="sticky top-0 bg-white px-4 py-2 text-left border border-gray-300 rounded-lg relative group"
+                      style={{ width: columnWidths['applicationCount'] }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Number of Applications</span>
+                        <div
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 group-hover:opacity-100"
+                          onMouseDown={(e) => handleResizeStart(e, 'applicationCount')}
+                        >
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 -translate-x-1/2">
+                            <FontAwesomeIcon icon={faGripVertical} className="text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {programStats.map((program) => (
+                    <tr key={program.id} className="hover:bg-gray-50">
+                      <td 
+                        className="px-4 py-2 border border-gray-300 rounded-lg overflow-hidden text-ellipsis"
+                        style={{
+                          width: columnWidths['programName'],
+                          maxWidth: columnWidths['programName'],
+                        }}
+                      >
+                        {program.name}
+                      </td>
+                      <td 
+                        className="px-4 py-2 border border-gray-300 rounded-lg"
+                        style={{
+                          width: columnWidths['status'],
+                          maxWidth: columnWidths['status'],
+                        }}
+                      >
+                        {formatStatus(program.programStatus)}
+                      </td>
+                      <td 
+                        className="px-4 py-2 border border-gray-300 rounded-lg"
+                        style={{
+                          width: columnWidths['deadline'],
+                          maxWidth: columnWidths['deadline'],
+                        }}
+                      >
+                        {formatDate(program.endDate)}
+                      </td>
+                      <td 
+                        className="px-4 py-2 border border-gray-300 rounded-lg"
+                        style={{
+                          width: columnWidths['applicationCount'],
+                          maxWidth: columnWidths['applicationCount'],
+                        }}
+                      >
+                        {program.applicationCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -969,7 +1264,98 @@ const handleProgramClick = (program, isJudgingProgram = false) => {
     setFormResponses([]);
   }
 };
+const createToast = ({ title, description, actionText = "OK", actionCallback = () => {} }) => {
+  // Remove any existing toasts
+  const existingToasts = document.querySelectorAll('.custom-toast');
+  existingToasts.forEach(toast => toast.remove());
 
+  const toast = document.createElement('div');
+  toast.className = 'custom-toast';
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    padding: 16px 24px;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 400px;
+    color: #000000;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  `;
+
+  const textContainer = document.createElement('div');
+  textContainer.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  `;
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = title;
+  titleEl.style.cssText = `
+    font-weight: bold;
+    font-size: 16px;
+  `;
+
+  const descEl = document.createElement('div');
+  descEl.textContent = description;
+  descEl.style.cssText = `
+    font-size: 14px;
+  `;
+
+  textContainer.appendChild(titleEl);
+  textContainer.appendChild(descEl);
+
+  const actionBtn = document.createElement('button');
+  actionBtn.textContent = actionText;
+  actionBtn.style.cssText = `
+    color: #ffffff;
+    background: #000000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    cursor: pointer;
+    font-weight: bold;
+    width: fit-content;
+  `;
+
+  const closeToast = () => {
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        document.body.removeChild(toast);
+      }
+    }, 300);
+  };
+
+  actionBtn.addEventListener('click', () => {
+    actionCallback();
+    closeToast();
+  });
+
+  toast.appendChild(textContainer);
+  toast.appendChild(actionBtn);
+  document.body.appendChild(toast);
+
+  // Fade in animation
+  setTimeout(() => {
+    toast.style.opacity = '1';
+  }, 10);
+
+  // Auto-close after 5 seconds
+  setTimeout(closeToast, 5000);
+
+  return toast;
+};
   const handleLogout = async () => {
     try {
       localStorage.removeItem('sessionData'); // Clear session data
@@ -1149,11 +1535,21 @@ const useDebounce = (callback, delay) => {
 
       await fetchProgrammes(auth.currentUser);
       onClose();
-      alert('Draft saved successfully!');
+      // alert('');
+
+      createToast({
+        title: "Success",
+        description: "Draft saved successfully!"
+      });
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Error saving draft: ' + error.message);
-    } finally {
+      // alert(' ' + error.message);
+      createToast({
+        title: "Error saving draft:",
+        description: error.message // Remove the `+` before error.message
+      });
+    }
+     finally {
       setIsSaving(false);
     }
   };
@@ -1882,51 +2278,83 @@ const debouncedFetchSuggestions = useDebounce((query) => {
   const ProgramHeader = ({ 
     program, 
     onStatusChange 
-}) => {
+  }) => {
     const handleToggle = () => {
       const newStatus = program.programStatus === 'completed' ? 'ddraft' : 'completed';
       onStatusChange(program.id, newStatus);
     };
   
+    // Function to copy shareable link to clipboard
+    const handleShare = () => {
+      const shareableLink = `discover.getseco.com/program/${program.id}`;
+      navigator.clipboard.writeText(shareableLink)
+        .then(() => {
+          createToast({
+            title: "Link Copied!",
+            description: "The program link has been copied to your clipboard.",
+            actionText: "OK",
+            actionCallback: () => {}
+          });
+        })
+        .catch((error) => {
+          console.error('Failed to copy link:', error);
+          createToast({
+            title: "Error",
+            description: "Failed to copy the link. Please try again.",
+            actionText: "OK",
+            actionCallback: () => {}
+          });
+        });
+    };
+  
     return (
-        <div className="md:px-36 overflow-none mt-8">
-            <div className="border-b border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-4xl font-bold">{program.name || 'Untitled Program'}</h2>
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">
-                            {program.programStatus === 'completed' ? 'Active' : 'Inactive'}
-                        </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="sr-only peer"
-                                checked={program.programStatus === 'completed'}
-                                onChange={handleToggle}
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                    </div>
-                </div>
-                <div className="flex space-x-6">
-                    {['insights', 'formResponses', 'editProgram', 'editForm','addJudges'].map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveProgramTab(tab)}
-                            className={`text-sm font-medium pb-2 ${
-                                activeProgramTab === tab
-                                ? 'border-b-2 border-blue-500 text-blue-500'
-                                : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                        >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
-                        </button>
-                    ))}
-                </div>
+      <div className="md:px-36 overflow-none mt-8">
+        <div className="border-b border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-4xl font-bold">{program.name || 'Untitled Program'}</h2>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">
+                  {program.programStatus === 'completed' ? 'Active' : 'Inactive'}
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={program.programStatus === 'completed'}
+                    onChange={handleToggle}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+              </div>
+              <button
+                onClick={handleShare}
+                className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2 text-sm"
+              >
+                <FontAwesomeIcon icon={faShareAlt} /> {/* Add faShareAlt to your imports */}
+                Share
+              </button>
             </div>
+          </div>
+          <div className="flex space-x-6">
+            {['insights', 'formResponses', 'editProgram', 'addJudges'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveProgramTab(tab)}
+                className={`text-sm font-medium pb-2 transition-colors duration-200 ${
+                  activeProgramTab === tab
+                    ? 'border-b-2 border-blue-500 text-blue-500 hover:bg-transparent hover:text-blue-500'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
     );
-}
+  };
   const [judges, setJudges] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -1992,7 +2420,11 @@ const debouncedFetchSuggestions = useDebounce((query) => {
   
   const handleAddJudge = async () => {
     if (!formData.name || !formData.email) {
-      alert('Please fill in both name and email');
+     
+      createToast({
+        title: "Error Adding:",
+        description: "Please fill in both name and email"
+      });
       return;
     }
   
@@ -2029,7 +2461,12 @@ const debouncedFetchSuggestions = useDebounce((query) => {
       fetchJudges();
     } catch (error) {
       console.error('Error adding judge:', error);
-      alert('Error adding judge. Please try again.');
+
+      // alert(' Please try again.');
+      createToast({
+        title: "Error adding judge:",
+        description: "Please try again" // Remove the `+` before error.message
+      });
     } finally {
       setLoading(false);
     }
@@ -2054,7 +2491,11 @@ const debouncedFetchSuggestions = useDebounce((query) => {
         fetchJudges();
       } catch (error) {
         console.error('Error removing judge:', error);
-        alert('Error removing judge. Please try again.');
+        createToast({
+          title: "Error removing judge:",
+          description: "Please try again" // Remove the `+` before error.message
+        });
+        // alert('. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -2068,7 +2509,7 @@ const generateJudgeDashboardLink = (judgeId) => {
 };
 
 const handleTriggerEmails = async () => {
-  setLoading(true);
+  setIsSendingEmails(true); // Using isSendingEmails instead of setLoading based on previous context
   
   try {
     emailjs.init('zdMI9GNYRKzA-jLsN'); // Replace with your EmailJS public key
@@ -2082,8 +2523,7 @@ const handleTriggerEmails = async () => {
         from_name: 'SECO',
         program_name: selectedProgram.name || 'Your Program Name',
         organizer: companyDetails?.name || 'Your Organizer Name',
-        judging_link: judgingLink, // Now uses the React Router route
-        // your_name: 'Your Name',
+        judging_link: judgingLink,
         your_organization: 'SECO',
         your_contact: 'contact@seco.com',
         message: '',
@@ -2097,12 +2537,18 @@ const handleTriggerEmails = async () => {
     });
 
     await Promise.all(emailPromises);
-    alert('Emails sent successfully to all judges!');
+    createToast({
+      title: "Success",
+      description: "Emails sent successfully to all judges!"
+    });
   } catch (error) {
     console.error('Failed to send emails:', error);
-    alert('Failed to send emails. Please try again.');
+    createToast({
+      title: "Error",
+      description: "Failed to send emails. Please try again."
+    });
   } finally {
-    setLoading(false);
+    setIsSendingEmails(false);
   }
 };
   return (
@@ -2218,17 +2664,20 @@ const handleTriggerEmails = async () => {
           setShowCreateEvent={setShowCreateEvent}
         />
         <main className="flex-1 overflow-y-auto">
-        {activeTab === 'home' && <HomePage
-          userStatus={userStatus}
-          programid={programid}
-          showCreateEvent={showCreateEvent}
-          setShowCreateEvent={setShowCreateEvent}
-          fetchProgrammes={fetchProgrammes}
-          currentStep={currentStep}
-          selectedProgram={selectedProgram}
-          setCurrentStep={setCurrentStep}
-          onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
-        />}
+        {activeTab === 'home' && (
+  <HomePage
+    userStatus={userStatus}
+    programid={programid}
+    showCreateEvent={showCreateEvent}
+    setShowCreateEvent={setShowCreateEvent}
+    fetchProgrammes={fetchProgrammes}
+    currentStep={currentStep}
+    setCurrentStep={setCurrentStep}
+    onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
+    selectedProgram={selectedProgram}
+    programStats={programmes} // Pass the enriched programmes data
+  />
+)}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full flex flex-col">
              <ProgramHeader 
@@ -2262,18 +2711,13 @@ const handleTriggerEmails = async () => {
 
 
 
-                {activeProgramTab === 'editProgram' && (
-                  <div className="md:px-36 overflow-none mt-8">
-                    <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
-                    {/* Add edit program form */}
-                  </div>
-                )}
-                {activeProgramTab === 'editForm' && (
-                  <div className="md:px-36 overflow-none mt-8">
-                    <h3 className="text-lg font-semibold mb-4">Edit Form</h3>
-                    {/* Add edit form content */}
-                  </div>
-                )}
+                {activeProgramTab === 'editProgram' &&  <FProgramEditPage programId={selectedProgram.id}/>
+                  // <div className="md:px-36 overflow-none mt-8">
+                  //   <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
+                  //   {/* Add edit program form */}
+                  // </div>
+                }
+                
                 {activeProgramTab === 'addJudges' && (
   <div className="md:px-36 overflow-none mt-8">
   <h3 className="text-lg font-semibold mb-4">Add Judges</h3>
@@ -2306,7 +2750,7 @@ const handleTriggerEmails = async () => {
       disabled={loading}
       className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300"
     >
-      {loading ? 'Adding...' : 'Add Judge'}
+      {isAdding ? 'Adding...' : 'Add Judge'}
     </button>
   </form>
 
@@ -2317,9 +2761,9 @@ const handleTriggerEmails = async () => {
               type="button"
               onClick={handleTriggerEmails}
               disabled={loading || judges.length === 0}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:bg-green-300"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-green-300"
             >
-              {loading ? 'Sending...' : 'Trigger Emails'}
+              {isSendingEmails ? 'Sending...' : 'Trigger Emails'}
             </button>
           </div>
     <ul className="space-y-4">

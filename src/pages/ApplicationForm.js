@@ -577,34 +577,39 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
     }
   }, []);
 
-  // Define submitFormResponses after getUserStartupData
   const submitFormResponses = useCallback(async () => {
     if (!auth.currentUser) {
       console.error('No authenticated user');
       return;
     }
-
+  
     setIsLoading(true);
     try {
       const userId = auth.currentUser.uid;
       const userStartupData = await getUserStartupData(userId);
       if (!userStartupData) throw new Error('User startup data not found');
-
+  
       const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
       const programSnapshot = await getDocs(programQuery);
       const programData = programSnapshot.docs[0].data();
-
+  
       const questionMap = questions.reduce((acc, q) => {
         acc[q.id] = q.question;
         return acc;
       }, {});
-
+  
+      console.log('Question Map:', questionMap); // Log to verify IDs
+      console.log('Answers:', answers); // Log to verify answers
+  
       const formResponses = Object.entries(answers).map(([questionId, answer]) => ({
-        question: questionId === 'startupName' ? 'What is your startup name?' : questionMap[questionId],
+        questionId, // Store the ID for reference
+        question: questionMap[questionId] || 'Unknown Question', // Fallback if ID not found
         answer: uploadedFiles[questionId] || answer,
         timestamp: new Date().toISOString()
       }));
-
+  
+      console.log('Form Responses:', formResponses); // Log form responses
+  
       const formData = {
         userId,
         startupName: answers.startupName,
@@ -612,14 +617,16 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         startupData: { ...userStartupData },
         submittedAt: new Date().toISOString()
       };
-
+  
+      console.log('Form Data:', formData); // Log form data
+  
       await setDoc(doc(db, 'programmes', programSnapshot.docs[0].id, 'formResponses', userId), formData);
-
+  
       const sessionEmail = auth.currentUser.email;
       const usersCollection = collection(db, 'users');
       const userQuery = query(usersCollection, where('email', '==', sessionEmail));
       const userSnapshot = await getDocs(userQuery);
-
+  
       if (!userSnapshot.empty) {
         const userDocId = userSnapshot.docs[0].id;
         const programIdStr = String(programId);
@@ -631,7 +638,7 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         });
         await setDoc(doc(db, 'users', userDocId, 'formResponses', programIdStr), formData);
       }
-
+  
       addMessage('Your application has been successfully submitted! We will review it and get back to you soon.', 'bot');
       setHasSubmitted(true);
       if (onFormSubmitSuccess) onFormSubmitSuccess();
@@ -642,8 +649,6 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       setIsLoading(false);
     }
   }, [auth, programId, answers, questions, uploadedFiles, getUserStartupData, onFormSubmitSuccess, addMessage]);
-
-  // Define moveToNextQuestion after submitFormResponses
   const moveToNextQuestion = useCallback(() => {
     if (currentQuestion < questions.length - 1) {
       const nextIndex = currentQuestion + 1;
@@ -658,7 +663,6 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
   // Define handleOptionSelect after moveToNextQuestion
   const handleOptionSelect = useCallback((answer) => {
     const currentQuestionType = getCurrentQuestionType();
-    const directSubmitTypes = ['multipleChoice', 'checkbox', 'date', 'time', 'fileUpload', 'rating'];
     const isRequired = currentQuestion >= 0 && questions[currentQuestion]?.required;
   
     if (answer === null) {  // Skip was selected
@@ -666,10 +670,8 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         addMessage("This question is required and cannot be skipped.", 'bot');
         return;
       }
-      // For non-required questions, simulate a skip response
       setIsLoading(true);
       addMessage("Skipped", 'user');
-      
       setTimeout(() => {
         if (currentQuestion >= 0 && currentQuestion < questions.length) {
           moveToNextQuestion();
@@ -679,26 +681,23 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       return;
     }
   
-    // Handle non-skip answers
-    if (directSubmitTypes.includes(currentQuestionType)) {
-      setIsLoading(true);
-      const processedAnswer = Array.isArray(answer) ? answer.join(', ') : answer;
-      addMessage(processedAnswer, 'user');
+    // Process the answer for all question types
+    setIsLoading(true);
+    const processedAnswer = Array.isArray(answer) ? answer.join(', ') : answer;
+    addMessage(processedAnswer, 'user');
   
-      setTimeout(() => {
-        if (currentQuestion >= 0 && currentQuestion < questions.length) {
-          const currentQuestionData = questions[currentQuestion];
-          setAnswers(prev => ({ ...prev, [currentQuestionData.id]: processedAnswer }));
-          moveToNextQuestion();
-        }
-        setIsLoading(false);
-      }, 1000);
-    } else {
-      setInputValue(Array.isArray(answer) ? answer.join(', ') : (answer?.toString() || ''));
-    }
+    setTimeout(() => {
+      if (currentQuestion >= 0 && currentQuestion < questions.length) {
+        const currentQuestionData = questions[currentQuestion];
+        setAnswers(prev => ({ ...prev, [currentQuestionData.id]: processedAnswer }));
+        moveToNextQuestion();
+      }
+      setIsLoading(false);
+    }, 1000);
+  
+    // Clear inputValue after processing
+    setInputValue('');
   }, [getCurrentQuestionType, currentQuestion, questions, moveToNextQuestion, addMessage]);
-
-  // Define uploadFileToStorage before handleFileUpload
   const uploadFileToStorage = useCallback(async (file, questionId) => {
     const storage = getStorage();
     const fileRef = ref(storage, `form-uploads/${auth.currentUser.uid}/${Date.now()}_${file.name}`);
@@ -706,13 +705,12 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
     return await getDownloadURL(snapshot.ref);
   }, [auth]);
 
-  // Define handleFileUpload after handleOptionSelect
   const handleFileUpload = useCallback(async (event) => {
     if (getCurrentQuestionType() !== 'fileUpload') return;
-
+  
     const file = event.target.files[0];
     if (!file) return;
-
+  
     setIsLoading(true);
     try {
       const currentQuestionData = questions[currentQuestion];
@@ -726,7 +724,6 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       setIsLoading(false);
     }
   }, [getCurrentQuestionType, questions, currentQuestion, uploadFileToStorage, handleOptionSelect, addMessage]);
-
   // Define handleSubmit after moveToNextQuestion
   const handleSubmit = useCallback((e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -739,15 +736,7 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
     setInputValue('');
   
     setTimeout(() => {
-      if (isStartupNameQuestion) {
-        setAnswers(prev => ({ ...prev, startupName: userResponse }));
-        setIsStartupNameQuestion(false);
-        if (questions.length > 0) {
-          setCurrentQuestion(0);
-          const firstQuestion = questions[0];
-          addMessage(firstQuestion.question, 'bot', firstQuestion);
-        }
-      } else if (currentQuestion >= 0 && currentQuestion < questions.length) {
+      if (currentQuestion >= 0 && currentQuestion < questions.length) {
         const currentQuestionData = questions[currentQuestion];
         if (userResponse.toLowerCase() === 'skip' && currentQuestionData.required) {
           addMessage("This question is required and cannot be skipped.", 'bot');
@@ -760,8 +749,7 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       }
       setIsLoading(false);
     }, 1000);
-  }, [hasSubmitted, inputValue, isLoading, isInitializing, hasSeenTypewriter, isStartupNameQuestion, questions, currentQuestion, addMessage, moveToNextQuestion]);
-
+  }, [hasSubmitted, inputValue, isLoading, isInitializing, hasSeenTypewriter, currentQuestion, questions, addMessage, moveToNextQuestion]);
   // Define remaining callbacks
   const handleVoiceRecord = useCallback(() => {
     if (!recognition) {
@@ -827,20 +815,20 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
         const programSnapshot = await getDocs(programQuery);
         if (programSnapshot.empty) throw new Error('Program not found');
-
+  
         const programDoc = programSnapshot.docs[0];
         setProgramTitle(programDoc.data().name);
-
+  
         const userId = auth.currentUser?.uid;
         if (userId) {
           const submissionQuery = query(collection(db, 'programmes', programDoc.id, 'formResponses'), where('userId', '==', userId));
           const submissionSnapshot = await getDocs(submissionQuery);
-
+  
           if (!submissionSnapshot.empty) {
             setHasSubmitted(true);
             const submissionData = submissionSnapshot.docs[0].data();
             setAnswers(submissionData.responses.reduce((acc, response) => {
-              acc[response.question] = response.answer;
+              acc[response.question] = response.answer; // This assumes question IDs are stored in responses
               return acc;
             }, {}));
             addMessage('Your application has been successfully submitted! You can view your application status in your dashboard.', 'bot');
@@ -849,9 +837,20 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
             return;
           }
         }
-
+  
+        // Add startupName as the first question
+        const fetchedQuestions = [
+          {
+            id: 'startupName',
+            question: 'What is your startup name?',
+            type: 'shortText',
+            required: true,
+            options: [],
+            description: 'Please provide the name of your startup.'
+          }
+        ];
+  
         const questionsSnapshot = await getDocs(collection(db, 'programmes', programDoc.id, 'form'));
-        const fetchedQuestions = [];
         questionsSnapshot.forEach((doc) => {
           const questionData = doc.data();
           if (Array.isArray(questionData.questions)) {
@@ -868,15 +867,17 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
             });
           }
         });
-
+  
+        console.log('Fetched Questions:', fetchedQuestions); // Log to verify IDs
         setQuestions(fetchedQuestions);
+        setCurrentQuestion(0); // Start with the first question (startupName)
       } catch (error) {
         console.error('Error fetching program data:', error);
       } finally {
         setIsInitializing(false);
       }
     };
-
+  
     fetchProgramData();
   }, [programId, auth.currentUser, addMessage]);
 
@@ -884,14 +885,14 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
 
   if (isInitializing) {
     return (
-      <div className="md:px-36 h-screen flex flex-col items-center justify-center">
+      <div className="md:px-56 h-screen flex flex-col items-center justify-center">
         <LoadingDots />
       </div>
     );
   }
 
   return (
-    <div className="md:px-36 h-screen flex flex-col">
+    <div className="md:px-56 h-screen flex flex-col">
       <div className="text-left mb-8">
         <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
         <div className="flex border-b border-gray-300 justify-left mt-4" />

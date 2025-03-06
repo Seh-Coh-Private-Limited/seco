@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClose, faGripVertical ,faPenToSquare,faTimes} from '@fortawesome/free-solid-svg-icons';
+import { faClose, faGripVertical ,faPenToSquare,faTimes,faExpand, faCompress} from '@fortawesome/free-solid-svg-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db,doc,updateDoc ,getDoc } from '../firebase';
 import { Building2, Info, MapPin, Mail, Image, User, Phone, Share2,Link,MessageCircle } from 'lucide-react';
@@ -19,6 +19,7 @@ const FormResponses = ({ programId, loading = false }) => {
   const [programDocId, setProgramDocId] = useState(null); // Add this new state
   const [activeTab, setActiveTab] = useState('companyInfo');
   const [remarks, setRemarks] = useState({});
+  const [isFullScreen, setIsFullScreen] = useState(false);
     const [scores, setScores] = useState({
     'Team':0,
     'Market Potential': 0,
@@ -1009,30 +1010,52 @@ const getIcon = (key) => {
       </div>
 
       {showModal && selectedRow && (
-  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-    <div className="w-full max-w-6xl bg-white rounded-lg shadow-lg p-8 relative flex overflow-hidden max-h-[90vh]">
-      {/* Close Button */}
-      <button
-        onClick={() => {
-          setShowModal(false);
-          setSelectedRow(null);
-        }}
-        className="absolute top-4 right-4 text-black px-4 py-2 rounded-full"
-      >
-        <FontAwesomeIcon icon={faClose} />
-      </button>
+  <div 
+    className={`fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 
+      ${isFullScreen ? 'p-0' : 'p-4'} transition-all duration-300`}
+  >
+    <div 
+      className={`bg-white rounded-lg shadow-lg relative flex overflow-hidden 
+        ${isFullScreen 
+          ? 'w-full h-full m-0' 
+          : 'w-full max-w-6xl max-h-[90vh] p-8'} 
+        transition-all duration-300`}
+    >
+      {/* Control Buttons */}
+      <div className="absolute top-4 right-4 flex space-x-2">
+        {/* Minimize/Maximize Toggle Button */}
+        <button
+          // onClick={() => setIsFullScreen(prev => !prev)}
+          className="text-black px-4 py-2 rounded-full hover:bg-gray-100"
+          title={isFullScreen ? 'Minimize' : 'Maximize'}
+        >
+          <FontAwesomeIcon 
+            icon={isFullScreen ? faCompress : faExpand} 
+          />
+        </button>
+        
+        {/* Close Button */}
+        <button
+          onClick={() => {
+            setShowModal(false);
+            setSelectedRow(null);
+            setIsFullScreen(false);
+          }}
+          className="text-black px-4 py-2 rounded-full hover:bg-gray-100"
+          title="Close"
+        >
+          <FontAwesomeIcon icon={faClose} />
+        </button>
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Buttons */}
-       
-
         {/* Content Area */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Content with Tabs */}
           <div className="w-2/3 flex flex-col overflow-auto">
             {/* Tabs */}
-            <div className="flex max-w-4xl border-b   rounded-3xl">
+            <div className="flex max-w-4xl border-b rounded-3xl">
               <button
                 className={`px-4 py-2 text-sm font-medium ${
                   activeTab === 'companyInfo' 
@@ -1061,146 +1084,220 @@ const getIcon = (key) => {
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">Company Information</h3>
                   <>
-  {/* Main startup data */}
-  {Object.entries({
-    companyName: selectedRow.startupData?.companyName || 'Not Available',
-    bio: selectedRow.startupData?.bio || 'Not Available',
-    cityState: selectedRow.startupData?.cityState || 'Not Available',
-    email: selectedRow.startupData?.email || 'Not Available',
-    logoUrl: selectedRow.startupData?.logoUrl || null
-  }).map(([key, value]) => (
-    <div key={key} className="flex items-start space-x-3 mb-4">
-      <div className="bg-blue-500 p-2 rounded">
-        {getIcon(key)}
-      </div>
-      <div className="flex-1">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
-          {key === 'logoUrl' ? (
-            value ? (
-              <img src={value} alt="Logo" className="h-24 w-24 object-contain mt-2" />
-            ) : (
-              <div className="text-gray-400 mt-2">No logo available</div>
-            )
-          ) : (
-            <div className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {value}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  ))}
+                    {/* Main startup data */}
+                    {Object.entries({
+                      companyName: selectedRow.startupData?.companyName || 'Not Available',
+                      bio: selectedRow.startupData?.bio || 'Not Available',
+                      cityState: selectedRow.startupData?.cityState || 'Not Available',
+                      email: selectedRow.startupData?.email || 'Not Available',
+                      logoUrl: selectedRow.startupData?.logoUrl || null
+                    }).map(([key, value]) => (
+                      <div key={key} className="flex items-start space-x-3 mb-4">
+                        <div className="bg-blue-500 p-2 rounded">
+                          {getIcon(key)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="font-medium text-gray-800">{getDisplayName(key)}</div>
+                            {key === 'logoUrl' ? (
+                              value ? (
+                                <img src={value} alt="Logo" className="h-24 w-24 object-contain mt-2" />
+                              ) : (
+                                <div className="text-gray-400 mt-2">No logo available</div>
+                              )
+                            ) : (
+                              <div className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {value}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
 
-  {/* Contacts section */}
-  <div className="flex items-start space-x-3 mb-4">
-    <div className="bg-blue-500 p-2 rounded">
-      {getIcon('contacts')}
-    </div>
-    <div className="flex-1">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="font-medium text-gray-800">Contact Details</div>
-        <div className="space-y-2 mt-2">
-          {Object.entries({
-            designation: selectedRow.startupData?.contacts?.[0]?.designation || 'Not Available',
-            email: selectedRow.startupData?.contacts?.[0]?.email || 'Not Available',
-            firstName: selectedRow.startupData?.contacts?.[0]?.firstName || 'Not Available',
-            lastName: selectedRow.startupData?.contacts?.[0]?.lastName || 'Not Available',
-            mobile: selectedRow.startupData?.contacts?.[0]?.mobile || 'Not Available'
-          }).map(([key, value]) => (
-            <div key={key} className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
-              <span className="font-medium">{getDisplayName(key)}: </span>
-              {value}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
+                    {/* Contacts section */}
+                    <div className="flex items-start space-x-3 mb-4">
+                      <div className="bg-blue-500 p-2 rounded">
+                        {getIcon('contacts')}
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="font-medium text-gray-800">Contact Details</div>
+                          <div className="space-y-2 mt-2">
+                            {Object.entries({
+                              designation: selectedRow.startupData?.contacts?.[0]?.designation || 'Not Available',
+                              email: selectedRow.startupData?.contacts?.[0]?.email || 'Not Available',
+                              firstName: selectedRow.startupData?.contacts?.[0]?.firstName || 'Not Available',
+                              lastName: selectedRow.startupData?.contacts?.[0]?.lastName || 'Not Available',
+                              mobile: selectedRow.startupData?.contacts?.[0]?.mobile || 'Not Available'
+                            }).map(([key, value]) => (
+                              <div key={key} className={`${value === 'Not Available' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <span className="font-medium">{getDisplayName(key)}: </span>
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-  {/* Social media section */}
-  <div className="flex items-start space-x-3 mb-4">
-    <div className="bg-blue-500 p-2 rounded">
-      {getIcon('social')}
-    </div>
-    <div className="flex-1">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="font-medium text-gray-800">Social Media</div>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          {Object.entries({
-            instagram: selectedRow.startupData?.social?.instagram || null,
-            linkedin: selectedRow.startupData?.social?.linkedin || null,
-            tiktok: selectedRow.startupData?.social?.tiktok || null,
-            twitter: selectedRow.startupData?.social?.twitter || null,
-            website: selectedRow.startupData?.social?.website || null,
-            youtube: selectedRow.startupData?.social?.youtube || null
-          }).map(([key, value]) => (
-            <div key={key}>
-              {value ? (
-                <a 
-                  href={
-                    key === 'website' 
-                      ? value 
-                      : `https://${key}.com/${key === 'tiktok' ? '@' : ''}${value}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  {getDisplayName(key)}
-                </a>
-              ) : (
-                <span className="text-gray-400">{getDisplayName(key)}: Not Available</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-</>
+                    {/* Social media section */}
+                    <div className="flex items-start space-x-3 mb-4">
+                      <div className="bg-blue-500 p-2 rounded">
+                        {getIcon('social')}
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="font-medium text-gray-800">Social Media</div>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            {Object.entries({
+                              instagram: selectedRow.startupData?.social?.instagram || null,
+                              linkedin: selectedRow.startupData?.social?.linkedin || null,
+                              tiktok: selectedRow.startupData?.social?.tiktok || null,
+                              twitter: selectedRow.startupData?.social?.twitter || null,
+                              website: selectedRow.startupData?.social?.website || null,
+                              youtube: selectedRow.startupData?.social?.youtube || null
+                            }).map(([key, value]) => (
+                              <div key={key}>
+                                {value ? (
+                                  <a 
+                                    href={
+                                      key === 'website' 
+                                        ? value 
+                                        : `https://${key}.com/${key === 'tiktok' ? '@' : ''}${value}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    {getDisplayName(key)}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400">{getDisplayName(key)}: Not Available</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 </div>
               ) : (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">Form Responses</h3>
                   {selectedRow.responses?.slice(1).map((response, index) => (
-  <div key={index} className="flex items-start space-x-3 mb-4">
-    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
-      {response.answer.includes('https://') ? (
-        <Link className="w-5 h-5 text-white" />
-      ) : (
-        <MessageCircle className="w-5 h-5 text-white" />
-      )}
-    </div>
-    <div className="flex-1">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <div className="font-medium text-gray-800">{response.question}</div>
-        <div className="text-gray-600">
-          {response.answer.includes('https://') ? (
-            <div className="mt-2">
-              <div 
-                className="border rounded p-4 cursor-resize-v"
-                style={{ 
-                  height: '300px',
-                  overflow: 'auto',
-                  resize: 'vertical'
-                }}
-              >
-                <iframe 
-                  src={response.answer}
-                  className="w-full h-full border-0"
-                  title="URL Preview"
-                />
-              </div>
-            </div>
-          ) : (
-            response.answer
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-))}
+                    <div key={index} className="flex items-start space-x-3 mb-4">
+                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
+                        {response.answer.includes('https://') ? (
+                          <Link className="w-5 h-5 text-white" />
+                        ) : (
+                          <MessageCircle className="w-5 h-5 text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="font-medium text-gray-800">{response.question}</div>
+                          <div className="text-gray-600">
+                            {response.answer.includes('https://') ? (
+                              <div className="mt-2">
+                                {(() => {
+                                  const getContentType = (url) => {
+                                    const pathMatch = url.match(/o\/(.+?)\?/);
+                                    if (!pathMatch) return "unknown";
+                                    const decodedPath = decodeURIComponent(pathMatch[1]);
+                                    const extensionMatch = decodedPath.match(/\.([^.]+)$/);
+                                    const extension = extensionMatch ? extensionMatch[1].toLowerCase() : "";
+                                    
+                                    const videoExtensions = ["mp4", "mov", "webm", "avi"];
+                                    const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp"];
+                                    const documentExtensions = ["pdf", "docx", "txt"];
+                                    
+                                    if (videoExtensions.includes(extension)) return "video";
+                                    if (imageExtensions.includes(extension)) return "image";
+                                    if (documentExtensions.includes(extension)) return "document";
+                                    return "unknown";
+                                  };
+
+                                  const contentType = getContentType(response.answer);
+
+                                  return (
+                                    <div
+                                      className="border rounded p-4 cursor-resize-v"
+                                      style={{ 
+                                        height: '300px',
+                                        overflow: 'auto',
+                                        resize: 'vertical',
+                                        position: 'relative'
+                                      }}
+                                    >
+                                      {contentType === "video" ? (
+                                        <>
+                                          <video
+                                            src={response.answer}
+                                            controls
+                                            className="w-full h-full border-0"
+                                            title="Video Preview"
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const video = document.querySelector("video");
+                                              if (video.requestFullscreen) video.requestFullscreen();
+                                            }}
+                                            className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded"
+                                          >
+                                            Maximize
+                                          </button>
+                                        </>
+                                      ) : contentType === "image" ? (
+                                        <>
+                                          <img
+                                            src={response.answer}
+                                            alt="Image Preview"
+                                            className="w-full h-full object-contain border-0"
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const img = document.querySelector("img");
+                                              if (img.requestFullscreen) img.requestFullscreen();
+                                            }}
+                                            className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded"
+                                          >
+                                            Maximize
+                                          </button>
+                                        </>
+                                      ) : contentType === "document" ? (
+                                        <>
+                                          <iframe
+                                            src={response.answer}
+                                            className="w-full h-full border-0"
+                                            title="Document Preview"
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              const iframe = document.querySelector("iframe");
+                                              if (iframe.requestFullscreen) iframe.requestFullscreen();
+                                            }}
+                                            className="absolute top-2 right-2 bg-gray-800 text-white px-2 py-1 rounded"
+                                          >
+                                            Maximize
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <p>Unsupported format</p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              response.answer
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1208,111 +1305,108 @@ const getIcon = (key) => {
 
           {/* Right Panel - Fixed Scoring */}
           <div className="w-1/3 border-l p-4 flex flex-col">
-  <div className="space-y-6 sticky top-0 overflow-auto">
-    {/* Judge Dropdown and Average Tab */}
-    <div className="flex space-x-2 overflow-x-auto">
-      {/* Judge Dropdown */}
-      <select
-  value={selectedJudgeTab || ""}
-  onChange={(e) => setSelectedJudgeTab(e.target.value)}
-  className={`px-3 py-1 rounded-full text-sm ${
-    selectedJudgeTab && selectedJudgeTab !== "average"
-      ? "bg-blue-600 text-white"
-      : "bg-gray-200 text-gray-700"
-  }`}
->
-  <option value="" >
-    Select Judge
-  </option>
-  {selectedRow.startupData?.assignedJudges?.map((judgeId) => {
-    const judge = judges.find((j) => j.id === judgeId);
-    return (
-      <option key={judgeId} value={judgeId}>
-        {judge?.name || "Judge"}
-      </option>
-    );
-  })}
-</select>
-
-
-      {/* Average Tab */}
-      <button
-        onClick={() => setSelectedJudgeTab('average')}
-        className={`px-3 py-1 rounded-full text-sm ${
-          selectedJudgeTab === 'average'
-            ? 'bg-green-600 text-white'
-            : 'bg-gray-200 text-gray-700'
-        }`}
-      >
-        Average
-      </button>
-    </div>
-
-    {/* Content based on selected tab */}
-    {selectedJudgeTab === 'average' ? (
-      // Average Scores Section
-      <div className="space-y-4">
-        {Object.entries(calculateAverages()).map(([category, average]) => (
-          <div key={category} className="space-y-1">
-            <div className="text-sm font-medium">{category}</div>
-            <div className="text-lg font-semibold text-blue-600">
-              {average.toFixed(1)}
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      // Judge Scoring Section
-      <div className="space-y-4">
-        {Object.keys(scores).map((category) => (
-          <div key={category} className="space-y-1">
-            <div className="flex justify-between items-center">
-              <div className="text-sm font-medium">{category}</div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-500">Rationale</span>
-                <button
-                  onClick={() => toggleRemarkVisibility(category)}
-                  className="text-blue-600 hover:text-blue-800 text-sm px-2 rounded-full hover:bg-gray-100 w-6 h-6 flex items-center justify-center"
-                >
-                  <FontAwesomeIcon icon={faPenToSquare} />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              {[1, 2, 3, 4, 5].map((point) => (
-                <button
-                  key={point}
-                  className={`w-8 h-8 rounded ${
-                    judgeScores[selectedJudgeTab]?.[category] >= point
-                      ? 'bg-yellow-400 text-white'
-                      : 'bg-gray-100 text-gray-400'
+            <div className="space-y-6 sticky top-0 overflow-auto">
+              {/* Judge Dropdown and Average Tab */}
+              <div className="flex space-x-2 overflow-x-auto">
+                {/* Judge Dropdown */}
+                <select
+                  value={selectedJudgeTab || ""}
+                  onChange={(e) => setSelectedJudgeTab(e.target.value)}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    selectedJudgeTab && selectedJudgeTab !== "average"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700"
                   }`}
                 >
-                  {point}
+                  <option value="">
+                    Select Judge
+                  </option>
+                  {selectedRow.startupData?.assignedJudges?.map((judgeId) => {
+                    const judge = judges.find((j) => j.id === judgeId);
+                    return (
+                      <option key={judgeId} value={judgeId}>
+                        {judge?.name || "Judge"}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                {/* Average Tab */}
+                <button
+                  onClick={() => setSelectedJudgeTab('average')}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    selectedJudgeTab === 'average'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Average
                 </button>
-              ))}
-            </div>
-            {visibleRemarks[category] && (
-              <div className="mt-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Remarks for {category}
-                </label>
-                <div className="w-full p-2 border rounded-md text-sm bg-gray-50">
-                  {judgeRemarks[selectedJudgeTab]?.[category] || "No remarks available"}
-                </div>
               </div>
-            )}
+
+              {/* Content based on selected tab */}
+              {selectedJudgeTab === 'average' ? (
+                <div className="space-y-4">
+                  {Object.entries(calculateAverages()).map(([category, average]) => (
+                    <div key={category} className="space-y-1">
+                      <div className="text-sm font-medium">{category}</div>
+                      <div className="text-lg font-semibold text-blue-600">
+                        {average.toFixed(1)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.keys(scores).map((category) => (
+                    <div key={category} className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm font-medium">{category}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">Rationale</span>
+                          <button
+                            onClick={() => toggleRemarkVisibility(category)}
+                            className="text-blue-600 hover:text-blue-800 text-sm px-2 rounded-full hover:bg-gray-100 w-6 h-6 flex items-center justify-center"
+                          >
+                            <FontAwesomeIcon icon={faPenToSquare} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {[1, 2, 3, 4, 5].map((point) => (
+                          <button
+                            key={point}
+                            className={`w-8 h-8 rounded ${
+                              judgeScores[selectedJudgeTab]?.[category] >= point
+                                ? 'bg-yellow-400 text-white'
+                                : 'bg-gray-100 text-gray-400'
+                            }`}
+                          >
+                            {point}
+                          </button>
+                        ))}
+                      </div>
+                      {visibleRemarks[category] && (
+                        <div className="mt-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Remarks for {category}
+                          </label>
+                          <div className="w-full p-2 border rounded-md text-sm bg-gray-50">
+                            {judgeRemarks[selectedJudgeTab]?.[category] || "No remarks available"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
-    )}
-  </div>
-</div>
         </div>
       </div>
     </div>
   </div>
-)}
+)}  
     </div>
   );
 };

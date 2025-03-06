@@ -580,27 +580,25 @@ const FProgramDetailPage = ({ programId }) => {
           }
           return null;
         })}
-    <div id='location' className='flex  flex-row gap-2 mb-6'> 
-    <div className="w-10 border-2 border-slate-300 rounded-md h-10 flex items-center justify-center"> 
-  <img
-    src="../../location.png"
-    alt="location"
-    className="w-6 h-6"
-  />
+   <div id='location' className='flex flex-row gap-2 mb-6 items-start'> 
+  <div className="w-10 h-10 border-2 border-slate-300 rounded-md flex items-center justify-center flex-shrink-0 p-2"> 
+    <img
+      src="../../location.png"
+      alt="location"
+      className="w-full h-full object-contain"
+    />
+  </div>
+
+  <div>
+    <p className='font-medium' style={{ fontFamily: 'CFont' }}>
+      {location}
+    </p>
+    <p className='text-sm text-gray-500' style={{ fontFamily: 'CFont' }}>
+      location
+    </p>
+  </div>
 </div>
 
-      <div>
-      <p className='font-medium'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>{location}</p>
-        <p className='text-sm text-gray-500'style={{
-                    fontFamily: 'CFont',
-                    
-                    }}>location</p>
-       
-      </div>
-    </div>
 
    
 
