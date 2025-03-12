@@ -11,7 +11,7 @@ import { collection, db, getDocs, query, where,auth,doc,getDoc } from '../fireba
 
 
 
-const FProgramDetailPage = ({ programId,handleTabChange}) => {
+const FProgramDetailPages = ({ programId,handleTabChange}) => {
   const navigate = useNavigate();
   const [programDetails, setProgramDetails] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
@@ -326,46 +326,54 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
   const renderContactSection = () => {
     if (!contactInfo || !socialLinks) return null;
 
-    const { designation, email, firstName, lastName, linkedin, mobile } = contactInfo;
+    const { designation, email, firstName, lastName, linkedin, mobile, imageUrl } = contactInfo;
     const { instagram, linkedin: socialLinkedin, tiktok, twitter, website, youtube } = socialLinks;
-
-    // Check if any required field is null
-    if (!designation || !email || !firstName || !lastName || !linkedin || !mobile) return null;
+    if (!designation || !email || !firstName || !lastName || !linkedin || !mobile || !imageUrl) return null;
 
     return (
-      <div className='text-sm mt-2'>
-        <p className='mb-2' style={{ fontFamily: 'CFont' }}>Contact the Host</p>
+
+
+<div className='text-sm mt-2'>
+        <p className='mb-2' style={{ fontFamily: 'CFont' }}>contact the host</p>
         <hr className='my-4 border-t border-gray-300' />
 
-        <div className='mb-4'>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Person In Charge: 
-            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+        <div className="flex items-center space-x-4 pt-4 rounded-lg">
+        
+        {/* Profile Image */}
+        <img
+          src={imageUrl}
+          alt="profile"
+          className="w-12 h-12 rounded-full border border-gray-300"
+        />
+        
+        {/* Name & Details */}
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="flex items-center space-x-2">
+            <p className="text-lg font-semibold">
               {firstName} {lastName}
-            </a>
-          </p>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Designation: 
-            <a className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {designation}
-            </a>
-          </p>
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-            Email ID:
-            <a href={`mailto:${email}`} className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
+            </p>
+            <span className="text-xs text-gray-500">{designation}</span>
+          </div>
+        
+          {/* Email & LinkedIn */}
+          <div className="flex items-center text-gray-500 text-sm space-x-2 mt-1">
+            <a href={`mailto:${email}`} className="hover:underline">
               {email}
             </a>
-          </p>
-          
-          <p className='font-medium mb-4' style={{ fontFamily: 'CFont' }}>
-          LinkedIn:
-            <a href={linkedin} target='_blank' rel='noopener noreferrer' className='text-sm text-gray-500 ml-2' style={{ fontFamily: 'CFont' }}>
-              {linkedin}
+            <span className="text-gray-400">|</span>
+            <a
+              href={linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              LinkedIn
             </a>
-          </p>
+          </div>
         </div>
+      </div>
 
-        <div className='flex flex-row gap-7 mb-4'>
+        <div className='flex flex-row gap-7 mt-8 mb-4'>
           <a href={twitter} target='_blank' rel='noopener noreferrer'>
             <img src='../../twitter.png' alt='twitter' className='w-5 h-5 my-2' />
           </a>
@@ -383,8 +391,14 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
           </a>
         </div>
       </div>
+
+
+
+      
+     
     );
-  };
+};
+
 
   return (
     <div>
@@ -543,7 +557,7 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
       </div>
       
     </div>
-    {customFields && customFields.map((field, index) => {
+    {/* {customFields && customFields.map((field, index) => {
           if (field.date) {
             const formattedDate = formatCustomFieldDate(field.date);
             return (
@@ -570,7 +584,44 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
             );
           }
           return null;
-        })}
+        })} */}
+
+<div id='location' className='flex flex-row gap-2 mb-6 items-start'> 
+  <div className="w-10 h-10 border-2 border-slate-300 rounded-md flex items-center justify-center flex-shrink-0 p-2"> 
+    <img
+      src="../../location.png"
+      alt="location"
+      className="w-full h-full object-contain"
+    />
+  </div>
+
+  <div>
+    <p className='font-medium' style={{ fontFamily: 'CFont' }}>
+      {location}
+    </p>
+    <p className='text-sm text-gray-500' style={{ fontFamily: 'CFont' }}>
+      location
+    </p>
+  </div>
+</div>
+
+
+   
+
+    <div id="Hosted" className="mb-6"> {/* Added bottom margin */}
+  <p style={{ fontFamily: "CFont" }}>sectors</p>
+  <hr className="my-4 border-t border-slate-300 mt-6" />
+  <div className="flex flex-wrap gap-2 mt-2" style={{ fontFamily: "CFont" }}>
+    {/* Loop through categories array and render each item individually */}
+    {categories.map((category, index) => (
+      <div key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
+        {category}
+      </div>
+    ))}
+  </div>
+</div>
+
+{renderContactSection()}
     {/* <div id='location' className='flex  flex-row gap-2 mb-6'> 
     <div className="w-10 border-2 border-slate-300 rounded-md h-10 flex items-center justify-center"> 
   <img
@@ -595,20 +646,7 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
 
    
 
-<div id="Hosted" className="mb-6"> {/* Added bottom margin */}
-  <p style={{ fontFamily: "CFont" }}>industry</p>
-  <hr className="my-4 border-t border-slate-300 mt-6" />
-  <div className="flex flex-wrap gap-2 mt-2" style={{ fontFamily: "CFont" }}>
-    {/* Loop through categories array and render each item individually */}
-    {categories.map((category, index) => (
-      <div key={index} className="bg-gray-200 rounded-full px-2 py-1 text-xs">
-        {category}
-      </div>
-    ))}
-  </div>
-</div>
-
-{renderContactSection()}
+{/*  */}
 
 
 {/* */}
@@ -625,4 +663,4 @@ const FProgramDetailPage = ({ programId,handleTabChange}) => {
   );
 };
 
-export default FProgramDetailPage;
+export default FProgramDetailPages;

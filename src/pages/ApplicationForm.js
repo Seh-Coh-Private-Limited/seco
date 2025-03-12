@@ -152,24 +152,25 @@ const QuestionOptions = memo(({ type, options, onSelect, disabled }) => {
 
 const SuggestionsCache = new Map();
 
-const AISuggestions = memo(({ questionType, currentQuestion, nextQuestion, onSuggestionClick }) => {
+const AISuggestions = memo(({ inputValue, onSuggestionAccept, onReset, questionType, currentQuestion }) => {
   const [suggestions, setSuggestions] = useState([]);
+  const [originalInput, setOriginalInput] = useState('');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  const generatePrompt = useCallback((type, question) => {
-    if (!question) return null;
-    return `Question Type: ${type}\nQuestion: "${question}"\n\nPlease generate 3 relevant, contextual suggestions that:\n1. Match the question type and format\n2. Are specific and actionable\n3. Use natural, conversational language\nFormat each suggestion on a new line.`;
+  const generatePrompt = useCallback((type, input) => {
+    if (!input || typeof input !== 'string') return null;
+    return `Question Type: ${type}\nInput: "${input}"\n\nPlease rephrase the following input into 3 different, natural, and conversational suggestions that:\n1. Match the question type\n2. Are specific and actionable\n3. Use natural, conversational language\nFormat each suggestion on a new line.`;
   }, []);
 
-  const fetchSuggestions = useCallback(async () => {
+  const fetchSuggestions = useCallback(async (input) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const prompt = generatePrompt(questionType, currentQuestion?.question);
-      if (!prompt) throw new Error('Invalid question data');
+      const prompt = generatePrompt(questionType, input);
+      if (!prompt) throw new Error('No valid input provided');
 
       const response = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyC4XSyDhbh7P-9oyibbHR0Zp8_z5fWgD6A',
@@ -187,6 +188,7 @@ const AISuggestions = memo(({ questionType, currentQuestion, nextQuestion, onSug
       const text = data.candidates[0].content.parts[0].text;
       const suggestions = text.split('\n').map(line => line.trim()).filter(line => line).slice(0, 3);
       setSuggestions(suggestions);
+      setOriginalInput(input);
       setIsVisible(true);
     } catch (err) {
       console.error('Error fetching suggestions:', err);
@@ -194,40 +196,84 @@ const AISuggestions = memo(({ questionType, currentQuestion, nextQuestion, onSug
     } finally {
       setIsLoading(false);
     }
-  }, [questionType, currentQuestion]);
+  }, [questionType]);
 
-  if (!currentQuestion?.question) return null;
+  const handleRefine = () => {
+    if (inputValue && typeof inputValue === 'string' && inputValue.trim()) {
+      fetchSuggestions(inputValue);
+    }
+  };
+
+  const handleRephrase = () => {
+    if (inputValue && typeof inputValue === 'string' && inputValue.trim()) {
+      fetchSuggestions(inputValue);
+    }
+  };
+
+  const handleReset = () => {
+    onReset(originalInput);
+    setIsVisible(false);
+    setSuggestions([]);
+  };
+
+  const handleOkay = (suggestion) => {
+    onSuggestionAccept(suggestion);
+    setIsVisible(false);
+  };
+
+  // Safeguard against undefined or non-string inputValue
+  if (!inputValue || typeof inputValue !== 'string' || !inputValue.trim() || 
+      questionType === 'fileUpload' || !['shortText', 'longText'].includes(questionType)) {
+    return null;
+  }
 
   return (
     <div className="mt-2">
       {!isVisible ? (
         <button
-          onClick={fetchSuggestions}
+          onClick={handleRefine}
           disabled={isLoading}
           className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
         >
           <Lightbulb size={16} />
-          {isLoading ? "Loading suggestions..." : "Get AI suggestions"}
+          {isLoading ? "Refining..." : "Refine my response"}
         </button>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Lightbulb size={16} />
-            <span>AI suggestions:</span>
+            <span>Refined suggestions:</span>
           </div>
           {error ? (
             <div className="text-sm text-red-500 p-2 bg-red-50 rounded">{error}</div>
           ) : (
             <div className="space-y-2">
               {suggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => onSuggestionClick(suggestion)}
-                  className="block w-full text-left p-3 text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200 border border-gray-200"
-                >
-                  {suggestion}
-                </button>
+                <div key={index} className="flex items-center justify-between p-3 text-sm text-gray-700 bg-gray-50 rounded-lg border border-gray-200">
+                  <span>{suggestion}</span>
+                  <button
+                    onClick={() => handleOkay(suggestion)}
+                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                  >
+                    Okay
+                  </button>
+                </div>
               ))}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRephrase}
+                  disabled={isLoading}
+                  className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                >
+                  {isLoading ? "Rephrasing..." : "Rephrase"}
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="text-sm text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -456,13 +502,23 @@ const ChatInput = memo(({
   getCurrentQuestionType, 
   recognition, 
   hasSubmitted,
-  isRecording // Add this prop
+  isRecording,
+  currentQuestion,
+  questions
 }) => {
   const handleKeyPress = useCallback((e) => {
     if (!isLoading && inputValue.trim() && hasSeenTypewriter && !hasSubmitted) {
       handleSubmit(e);
     }
   }, [isLoading, inputValue, hasSeenTypewriter, hasSubmitted, handleSubmit]);
+
+  const handleSuggestionAccept = (suggestion) => {
+    setInputValue(suggestion);
+  };
+
+  const handleReset = (original) => {
+    setInputValue(original);
+  };
 
   console.log('ChatInput rendered');
 
@@ -478,6 +534,13 @@ const ChatInput = memo(({
             disabled={isLoading || !hasSeenTypewriter || hasSubmitted}
           />
         </div>
+        <AISuggestions
+          inputValue={inputValue}
+          onSuggestionAccept={handleSuggestionAccept}
+          onReset={handleReset}
+          questionType={getCurrentQuestionType()}
+          currentQuestion={currentQuestion >= 0 && questions[currentQuestion] ? questions[currentQuestion] : null}
+        />
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
             <button
@@ -525,10 +588,53 @@ const ChatInput = memo(({
     prevProps.hasSubmitted === nextProps.hasSubmitted &&
     prevProps.recognition === nextProps.recognition &&
     prevProps.isRecording === nextProps.isRecording &&
-    prevProps.getCurrentQuestionType() === nextProps.getCurrentQuestionType()
+    prevProps.getCurrentQuestionType() === nextProps.getCurrentQuestionType() &&
+    prevProps.currentQuestion === nextProps.currentQuestion &&
+    prevProps.questions === nextProps.questions
   );
 });
-
+const QuestionTypeIcons = {
+  shortText: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 5h18v2H3V5zm0 6h12v2H3v-2zm0 6h18v2H3v-2z" />
+    </svg>
+  ),
+  longText: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 5h18v2H3V5zm0 4h18v2H3V9zm0 4h18v2H3v-2zm0 4h18v2H3v-2z" />
+    </svg>
+  ),
+  multipleChoice: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7 7a2 2 0 11-4 0 2 2 0 014 0zm-2 6a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4zm4-12h12v2H9V7zm0 6h12v2H9v-2zm0 6h12v2H9v-2z" />
+    </svg>
+  ),
+  checkbox: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 7h2v2H5V7zm4 0h12v2H9V7zm-4 6h2v2H5v-2zm4 0h12v2H9v-2zm-4 6h2v2H5v-2zm4 0h12v2H9v-2z" />
+    </svg>
+  ),
+  date: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
+    </svg>
+  ),
+  time: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm1-13h-2v6l5.2 3.2 1-1.7-4.2-2.5V7z" />
+    </svg>
+  ),
+  rating: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6L12 2z" />
+    </svg>
+  ),
+  fileUpload: () => (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z" />
+    </svg>
+  )
+};
 const Application = ({ programId, onFormSubmitSuccess }) => {
   const [inputValue, setInputValue] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState(-1);
@@ -576,7 +682,44 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       throw error;
     }
   }, []);
-
+  const QuestionSidebar = () => (
+    <div className="w-80 border-l bg-gray-50 p-4 overflow-y-auto">
+      <h3 className="text-lg font-semibold mb-4">Application Questions</h3>
+      <div className="space-y-3">
+        {questions.map((q, index) => {
+          const Icon = QuestionTypeIcons[q.type] || QuestionTypeIcons.shortText;
+          const isCurrent = index === currentQuestion;
+          const isAnswered = answers[q.id] !== undefined;
+          
+          return (
+            <div
+              key={q.id}
+              className={`p-3 rounded-lg transition-colors ${
+                isCurrent 
+                  ? 'bg-blue-100 border-blue-500' 
+                  : isAnswered 
+                    ? 'bg-green-50 border-green-500' 
+                    : 'bg-white border-gray-200'
+              } border`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{q.question}</p>
+                  <p className="text-xs text-gray-500 capitalize">{q.type.replace(/([A-Z])/g, ' $1').trim()}</p>
+                </div>
+                {isAnswered && (
+                  <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
   const submitFormResponses = useCallback(async () => {
     if (!auth.currentUser) {
       console.error('No authenticated user');
@@ -885,14 +1028,14 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
 
   if (isInitializing) {
     return (
-      <div className="md:px-56 h-screen flex flex-col items-center justify-center">
+      <div className="md:px-36 h-screen flex flex-col items-center justify-center">
         <LoadingDots />
       </div>
     );
   }
 
   return (
-    <div className="md:px-56 h-screen flex flex-col">
+    <div className="md:px-36 h-screen flex flex-col">
       <div className="text-left mb-8">
         <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
         <div className="flex border-b border-gray-300 justify-left mt-4" />
@@ -906,56 +1049,61 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
           </div>
         )}
       </div>
-      <div className="h-[650px] border rounded-lg shadow-lg flex flex-col bg-white scrollbar-hide">
-        <div className="flex-1 overflow-y-auto p-4">
-          {!hasSeenTypewriter ? (
-            <div className="flex justify-start">
-              <div className="flex items-start gap-2 max-w-[80%]">
-                <BotAvatar />
-                <div className="bg-gray-100 rounded-lg">
-                  <LoadingDots />
+      <div className="flex-1 flex gap-4">
+        <div className="flex-1 h-[650px] border rounded-lg shadow-lg flex flex-col bg-white scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-4">
+            {!hasSeenTypewriter ? (
+              <div className="flex justify-start">
+                <div className="flex items-start gap-2 max-w-[80%]">
+                  <BotAvatar />
+                  <div className="bg-gray-100 rounded-lg">
+                    <LoadingDots />
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <Message
-                key={index}
-                message={message}
-                onOptionSelect={handleOptionSelect}
-                isLoading={isLoading}
-                hasSubmitted={hasSubmitted}
-                questions={questions}
-                currentQuestion={currentQuestion}
-              />
-            ))
-          )}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-start gap-2 max-w-[80%]">
-                <BotAvatar />
-                <div className="bg-gray-100 rounded-lg">
-                  <LoadingDots />
+            ) : (
+              messages.map((message, index) => (
+                <Message
+                  key={index}
+                  message={message}
+                  onOptionSelect={handleOptionSelect}
+                  isLoading={isLoading}
+                  hasSubmitted={hasSubmitted}
+                  questions={questions}
+                  currentQuestion={currentQuestion}
+                />
+              ))
+            )}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-start gap-2 max-w-[80%]">
+                  <BotAvatar />
+                  <div className="bg-gray-100 rounded-lg">
+                    <LoadingDots />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          <div className="border-t p-0 bg-white rounded-b-lg">
+            <ChatInput
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              handleSubmit={handleSubmit}
+              isLoading={isLoading}
+              hasSeenTypewriter={hasSeenTypewriter}
+              handleVoiceRecord={handleVoiceRecord}
+              handleFileUpload={handleFileUpload}
+              getCurrentQuestionType={getCurrentQuestionType}
+              recognition={recognition}
+              hasSubmitted={hasSubmitted}
+              isRecording={isRecording}
+              currentQuestion={currentQuestion}
+              questions={questions}
+            />
+          </div>
         </div>
-        <div className="border-t p-0 bg-white rounded-b-lg">
-          <ChatInput
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            handleSubmit={handleSubmit}
-            isLoading={isLoading}
-            hasSeenTypewriter={hasSeenTypewriter}
-            handleVoiceRecord={handleVoiceRecord}
-            handleFileUpload={handleFileUpload}
-            getCurrentQuestionType={getCurrentQuestionType}
-            recognition={recognition}
-            hasSubmitted={hasSubmitted}
-            isRecording={isRecording}
-          />
-        </div>
+        <QuestionSidebar />
       </div>
     </div>
   );

@@ -19,6 +19,9 @@ import {
   faTrashAlt,
   faGripVertical,
   faShareAlt,
+  faFolder,
+  faSearch,
+  faServer
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
@@ -42,7 +45,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import emailjs from '@emailjs/browser';
 import FProgramDetailPage from '../components/Reviewsection';
 import FProgramEditPage from '../components/EditProgram';
-
+import Articles from '../components/Articles';
+import Application from './ApplicationForm';
+import FProgramDetailPages from './FProgramDetailPage';
 const generatedId = Math.floor(Math.random() * 1_000_000_000);
 
 
@@ -50,12 +55,13 @@ const FounderDashboard = () => {
   const [companyDetails, setCompanyDetails] = useState(null);
   const [logoError, setLogoError] = useState(false);
   const [programmes, setProgrammes] = useState([]);
+  const [eventDetails, setEventDetails] = useState(null);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [formResponses, setFormResponses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 const [isSendingEmails, setIsSendingEmails] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('landing');
   const [activeProgramTab, setActiveProgramTab] = useState('insights');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -65,7 +71,13 @@ const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [isJudgingProgramSelected, setIsJudgingProgramSelected] = useState(false);
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
+
   const [currentStep, setCurrentStep] = useState(1);
+    const [selectedProgramId, setSelectedProgramId] = useState(null);
+    const [activeApplicationTab, setActiveApplicationTab] = useState('application');
+    const [applications, setApplications] = useState([]);
+   
+  
   const [newCategory, setNewCategory] = useState('');
   const [eventData, setEventData] = useState({
     name: '',
@@ -120,7 +132,52 @@ const [isSendingEmails, setIsSendingEmails] = useState(false);
 const renderSettingsForm = () => (
   <IncubatorSettingsForm onProfileUpdate={reloadCompanyDetails} />
 );
-
+const fetchFormResponses = async (programId) => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
+  
+      // Query the 'programmes' collection where the 'id' field matches programId
+      const programsRef = collection(db, 'programmes');
+      const programQuery = query(programsRef, where('id', '==', programId));
+      const programSnapshot = await getDocs(programQuery);
+  
+      if (!programSnapshot.empty) {
+        // Get the first matching program document
+        const programDocRef = programSnapshot.docs[0].ref;
+  
+        // Query the 'formResponses' subcollection where 'uid' matches the user's UID
+        const responsesCollection = collection(programDocRef, 'formResponses');
+        console.log(user.uid);
+        const responsesQuery = query(responsesCollection, where('userId', '==', user.uid));
+        const responsesSnapshot = await getDocs(responsesQuery);
+  
+        // Process the responses to extract only question and response fields
+        const fetchedResponses = responsesSnapshot.docs.map(doc => {
+          const data = doc.data();
+          // Check if 'responses' exists and is an array
+          if (data.responses && Array.isArray(data.responses)) {
+            return data.responses.map(responseItem => ({
+              question: responseItem.question || 'No question provided',
+              response: responseItem.response || 'No response provided'
+            }));
+          }
+          return []; // Return empty array if no valid responses array
+        }).flat(); // Flatten the array of arrays into a single array
+  
+        setFormResponses(fetchedResponses);
+      } else {
+        console.log(`No program found with id: ${programId}`);
+        setFormResponses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching form responses:', error);
+      setFormResponses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 const fetchCompanyDetails = useCallback(async (user) => {
   try {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -408,102 +465,256 @@ useEffect(() => {
       try {
         const user = auth.currentUser;
         if (!user) return;
-
+  
         const programmesQuery = await getDocs(
           query(collection(db, 'programmes'), where('uid', '==', user.uid))
         );
-        
         const fetchedProgrammes = programmesQuery.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
         setProgrammes(fetchedProgrammes);
       } catch (error) {
         console.error('Error fetching programmes:', error);
         setProgrammes([]);
       }
     };
-
+  
+    const fetchApplications = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+  
+      const usersRef = collection(db, 'users');
+      const userQuery = query(usersRef, where('uid', '==', user.uid));
+      const userSnapshot = await getDocs(userQuery);
+  
+      if (!userSnapshot.empty) {
+        const userDocRef = userSnapshot.docs[0].ref;
+        const applicationsCollection = collection(userDocRef, 'applications');
+        const applicationsSnapshot = await getDocs(applicationsCollection);
+  
+        const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          title: doc.data().programTitle
+        }));
+        setApplications(fetchedApplications);
+      }
+    };
+  
     fetchProgrammes();
+    fetchApplications();
+  
+    // Optional cleanup (if needed)
+    return () => {
+      // Add cleanup logic here if necessary, e.g., cancel subscriptions or timers
+    };
   }, [auth, db]);
  
   const openSettings = () => {
     setActiveTab('settings'); // Switch to settings view
   };
   // Update the Breadcrumb component
-  const Breadcrumb = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
-    // Handle Settings view
-    if (activeTab === 'settings') {
-      return (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <FontAwesomeIcon
-            icon={faChevronRight}
-            className="text-gray-400 w-3 h-3"
-          />
-          <span className="text-gray-900 font-medium">Settings</span>
-        </div>
-      );
-    }
+  // const Breadcrumb = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
+  //   // Handle Settings view
+  //   if (activeTab === 'settings') {
+  //     return (
+  //       <div className="flex items-center gap-2 text-sm text-gray-600">
+  //         <FontAwesomeIcon
+  //           icon={faChevronRight}
+  //           className="text-gray-400 w-3 h-3"
+  //         />
+  //         <span className="text-gray-900 font-medium">Settings</span>
+  //       </div>
+  //     );
+  //   }
   
-    // Handle Program Creation steps
-    if (showCreateEvent) {
-      return (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <FontAwesomeIcon
-            icon={faChevronRight}
-            className="text-gray-400 w-3 h-3"
-          />
-          {currentStep === 1 && (
-            <span className="text-gray-900 font-medium">Basic Details</span>
-          )}
-          {currentStep === 2 && (
-            <>
-              <span 
-                className="text-gray-600 hover:text-gray-900 cursor-pointer" 
-                onClick={() => setCurrentStep(1)}
-              >
-                Basic Details
-              </span>
-              <FontAwesomeIcon
-                icon={faChevronRight}
-                className="text-gray-400 w-3 h-3"
-              />
-              <span className="text-gray-900 font-medium">Form Builder</span>
-            </>
-          )}
-          {currentStep === 3 && (
-            <>
-              <span 
-                className="text-gray-600 hover:text-gray-900 cursor-pointer" 
-                onClick={() => setCurrentStep(1)}
-              >
-                Basic Details
-              </span>
-              <FontAwesomeIcon
-                icon={faChevronRight}
-                className="text-gray-400 w-3 h-3"
-              />
-              <span 
-                className="text-gray-600 hover:text-gray-900 cursor-pointer"
-                onClick={() => setCurrentStep(2)}
-              >
-                Form Builder
-              </span>
-              <FontAwesomeIcon
-                icon={faChevronRight}
-                className="text-gray-400 w-3 h-3"
-              />
-              <span className="text-gray-900 font-medium">Review Section</span>
-            </>
-          )}
-        </div>
-      );
-    }
+  //   // Handle Program Creation steps
+  //   if (showCreateEvent) {
+  //     return (
+  //       <div className="flex items-center gap-2 text-sm text-gray-600">
+  //         <FontAwesomeIcon
+  //           icon={faChevronRight}
+  //           className="text-gray-400 w-3 h-3"
+  //         />
+  //         {currentStep === 1 && (
+  //           <span className="text-gray-900 font-medium">Basic Details</span>
+  //         )}
+  //         {currentStep === 2 && (
+  //           <>
+  //             <span 
+  //               className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+  //               onClick={() => setCurrentStep(1)}
+  //             >
+  //               Basic Details
+  //             </span>
+  //             <FontAwesomeIcon
+  //               icon={faChevronRight}
+  //               className="text-gray-400 w-3 h-3"
+  //             />
+  //             <span className="text-gray-900 font-medium">Form Builder</span>
+  //           </>
+  //         )}
+  //         {currentStep === 3 && (
+  //           <>
+  //             <span 
+  //               className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+  //               onClick={() => setCurrentStep(1)}
+  //             >
+  //               Basic Details
+  //             </span>
+  //             <FontAwesomeIcon
+  //               icon={faChevronRight}
+  //               className="text-gray-400 w-3 h-3"
+  //             />
+  //             <span 
+  //               className="text-gray-600 hover:text-gray-900 cursor-pointer"
+  //               onClick={() => setCurrentStep(2)}
+  //             >
+  //               Form Builder
+  //             </span>
+  //             <FontAwesomeIcon
+  //               icon={faChevronRight}
+  //               className="text-gray-400 w-3 h-3"
+  //             />
+  //             <span className="text-gray-900 font-medium">Review Section</span>
+  //           </>
+  //         )}
+  //       </div>
+  //     );
+  //   }
   
-    // Return null if no conditions are met
-    return null;
+  //   // Return null if no conditions are met
+  //   return null;
+  // };
+  // Breadcrumb for navigation (original from second code block)
+const BreadcrumbNavigation = ({ activeTab, selectedApplication, selectedProgram, eventDetails, setActiveTab }) => {
+  const getBreadcrumbItems = () => {
+    const items = [];
+    switch (activeTab) {
+      case 'discover':
+        items.push({ label: 'Discover', onClick: () => setActiveTab('discover') });
+        break;
+      case 'programdetailpage':
+        items.push(
+          { label: 'Discover', onClick: () => setActiveTab('discover') },
+          { label: eventDetails?.name || 'Event', onClick: () => setActiveTab('programdetailpage') }
+        );
+        break;
+      case 'applicationform':
+        items.push(
+          { label: 'Discover', onClick: () => setActiveTab('discover') },
+          { label: eventDetails?.name || 'Event', onClick: () => { setActiveTab('programdetailpage'); setSelectedProgramId(eventDetails?.id); } },
+          { label: 'Application Form' }
+        );
+        break;
+      case 'application':
+        if (selectedApplication) {
+          items.push({ label: selectedApplication.title || 'Untitled Application', onClick: () => setActiveTab('application') });
+        }
+        break;
+      case 'settings':
+        items.push({ label: 'Settings' });
+        break;
+      default:
+        break;
+    }
+    return items;
   };
+
+  const breadcrumbItems = getBreadcrumbItems();
+  return (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      {breadcrumbItems.length > 0 && (
+        <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+      )}
+      {breadcrumbItems.map((item, index) => (
+        <React.Fragment key={item.label}>
+          {index > 0 && (
+            <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+          )}
+          {item.onClick ? (
+            <a onClick={item.onClick} className="text-gray-900 hover:underline focus:outline-none">
+              {item.label}
+            </a>
+          ) : (
+            <span className="text-gray-900">{item.label}</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+// Breadcrumb for program creation (from first code block)
+const BreadcrumbProgramCreation = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
+  if (activeTab === 'settings') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className="text-gray-400 w-3 h-3"
+        />
+        <span className="text-gray-900 font-medium">Settings</span>
+      </div>
+    );
+  }
+
+  if (showCreateEvent) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className="text-gray-400 w-3 h-3"
+        />
+        {currentStep === 1 && (
+          <span className="text-gray-900 font-medium">Basic Details</span>
+        )}
+        {currentStep === 2 && (
+          <>
+            <span 
+              className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+              onClick={() => setCurrentStep(1)}
+            >
+              Basic Details
+            </span>
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className="text-gray-400 w-3 h-3"
+            />
+            <span className="text-gray-900 font-medium">Form Builder</span>
+          </>
+        )}
+        {currentStep === 3 && (
+          <>
+            <span 
+              className="text-gray-600 hover:text-gray-900 cursor-pointer" 
+              onClick={() => setCurrentStep(1)}
+            >
+              Basic Details
+            </span>
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className="text-gray-400 w-3 h-3"
+            />
+            <span 
+              className="text-gray-600 hover:text-gray-900 cursor-pointer"
+              onClick={() => setCurrentStep(2)}
+            >
+              Form Builder
+            </span>
+            <FontAwesomeIcon
+              icon={faChevronRight}
+              className="text-gray-400 w-3 h-3"
+            />
+            <span className="text-gray-900 font-medium">Review Section</span>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+};
   const handleNewProgramClick = async () => {
     setSelectedProgram(null); // Clear any selected program
     setEventData({
@@ -984,7 +1195,7 @@ const HomePage = ({ userStatus,
     <div className="md:px-36 overflow-auto mt-8">
       {!showCreateEvent && (
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold font-sans-serif">Home</h1>
+          <h1 className="text-4xl font-bold font-sans-serif">Host</h1>
           <div className="flex gap-2">
             <button
               onClick={handleNewProgramClick}
@@ -1168,70 +1379,38 @@ const HomePage = ({ userStatus,
     </div>
   );
 };
-const Header = ({ 
-  activeTab, 
-  selectedApplication, 
-  setActiveTab, 
-  openSettings,
-  currentStep,
-  selectedProgram,
-  setCurrentStep,
-  showCreateEvent,
-  setShowCreateEvent 
-}) => {
-  const handleLogoClick = () => {
-    // Reset all necessary states to return to home
-    setActiveTab('home');
-    setShowCreateEvent(false);
-    setCurrentStep(1);
-  };
+const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, eventDetails }) => {
   return (
-    <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200 z-10">
+    <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200">
       <div className="flex items-center gap-4">
-      <button
-  onClick={() => setActiveTab('home')}
-  className="focus:outline-none hover:bg-gray-100 rounded-lg"
->
-  <h6
-    className="text-black font-bold hover:opacity-80 transition-opacity px-2"
-    style={{
-      fontFamily: 'CustomFont',
-      fontSize: '30px',
-      
-    }}
-  >
-    seco
-  </h6>
-</button>
-        {console.log("currentStep",currentStep)}  
-        <Breadcrumb 
-          currentStep={currentStep} 
-          showCreateEvent={showCreateEvent}
-          setCurrentStep={setCurrentStep}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}  // Pass the prop here
-        />
-        {/* <Breadcrumb 
-          activeTab={activeTab}
-          selectedApplication={selectedApplication}
-          selectedProgram={selectedProgram}
-          setActiveTab={setActiveTab}
-          currentStep={currentStep}
-          setCurrentStep={setCurrentStep}
-          showCreateEvent={showCreateEvent}
-        /> */}
+        <button onClick={() => setActiveTab('home')} className="focus:outline-none hover:bg-gray-100 rounded-lg">
+          <h6 className="text-black font-bold hover:opacity-80 transition-opacity px-2" style={{ fontFamily: 'CustomFont', fontSize: '30px' }}>
+            seco
+          </h6>
+        </button>
+        {showCreateEvent ? (
+          <BreadcrumbProgramCreation 
+            currentStep={currentStep} 
+            showCreateEvent={showCreateEvent} 
+            activeTab={activeTab} 
+            setCurrentStep={setCurrentStep} 
+          />
+        ) : (
+          <BreadcrumbNavigation 
+            activeTab={activeTab} 
+            selectedApplication={selectedApplication} 
+            selectedProgram={selectedProgram} 
+            eventDetails={eventDetails} 
+            setActiveTab={setActiveTab} 
+          />
+        )}
       </div>
-      
-      <a
-        className="p-2 text-black hover:text-gray-300 focus:outline-none"
-        onClick={openSettings}
-      >
+      <a className="p-2 text-black hover:text-gray-300 focus:outline-none" onClick={openSettings}>
         <FontAwesomeIcon icon={faCog} size="lg" />
       </a>
     </div>
   );
 };
-
 
 // Card Components
 const Card = ({ children, className = '' }) => (
@@ -2551,6 +2730,56 @@ const handleTriggerEmails = async () => {
     setIsSendingEmails(false);
   }
 };
+const handleTabChange = (tab, programId) => {
+  setActiveTab(tab);
+  setSelectedProgramId(programId);
+};
+const handleApplicationClick = (application) => {
+  setActiveTab('application');
+  setSelectedApplication(application);
+  setActiveApplicationTab('application');
+  fetchFormResponses(application.id);
+};
+const ApplicationHeader = ({ application }) => (
+  <div className="border-b border-gray-200 p-0">
+    <div className="flex space-x-6">
+      {['application'].map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveApplicationTab(tab)}
+          className={`text-sm font-medium pb-2 ${activeApplicationTab === tab ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600 hover:text-gray-900'}`}
+        >
+          {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+  const reloadApplications = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const usersRef = collection(db, 'users');
+      const userQuery = query(usersRef, where('uid', '==', user.uid));
+      const userSnapshot = await getDocs(userQuery);
+
+      if (!userSnapshot.empty) {
+        const userDocRef = userSnapshot.docs[0].ref;
+        const applicationsCollection = collection(userDocRef, 'applications');
+        const applicationsSnapshot = await getDocs(applicationsCollection);
+
+        const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          title: doc.data().programTitle
+        }));
+
+        setApplications(fetchedApplications);
+      }
+    } catch (error) {
+      console.error('Error reloading applications:', error);
+    }
+  };
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
@@ -2566,12 +2795,24 @@ const handleTriggerEmails = async () => {
           <NavItem 
             icon={faHome}
             label="Home" 
+            active={activeTab === 'landing'} 
+            onClick={() => setActiveTab('landing')} 
+          />
+          <NavItem 
+            icon={faSearch}
+            label="Apply" 
+            active={activeTab === 'discover'} 
+            onClick={() => setActiveTab('discover')} 
+          />
+           <NavItem 
+            icon={faServer}
+            label="Host" 
             active={activeTab === 'home'} 
             onClick={() => setActiveTab('home')} 
           />
         </nav>
 
-        <div className="mt-8">
+        <div className="mt-8 border-t pt-4">
           <div className="text-sm text-gray-500 mb-2">Programs</div>
           <div className="ml-2">
           {programmes.length > 0 ? (
@@ -2596,8 +2837,26 @@ const handleTriggerEmails = async () => {
 )}
           </div>
         </div>
+          <div className="mt-8 border-t pt-4">
+                  <div className="text-sm text-gray-500 mb-2">Applications</div>
+                  <div className="ml-2">
+                    {applications.length > 0 ? (
+                      applications.map((application) => (
+                        <NavItem
+                          key={application.id}
+                          icon={faFolder}
+                          label={application.title || 'Untitled Application'}
+                          active={selectedApplication?.id === application.id}
+                          onClick={() => handleApplicationClick(application)}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-gray-400 p-2">No applications available</div>
+                    )}
+                  </div>
+                </div>
         {isJudge && (
-          <div className="mt-8">
+          <div className="mt-8 border-t pt-4">
             <div className="text-sm text-gray-500 mb-2">Judging Programmes</div>
             <div className="ml-2">
               {judgingProgrammes.length > 0 ? (
@@ -2617,7 +2876,7 @@ const handleTriggerEmails = async () => {
           </div>
         )}
         {/* Product section */}
-        <div className="mt-8">
+        <div className="mt-8 border-t pt-4">
           <div className="text-sm text-gray-500 mb-2">Product</div>
           <nav className="space-y-1">
             <NavItem icon={faFile} label="Templates" />
@@ -2629,7 +2888,7 @@ const handleTriggerEmails = async () => {
         </div>
 
         {/* Help section */}
-        <div className="mt-8">
+        <div className="mt-8 border-t pt-4">
           <div className="text-sm text-gray-500 mb-2">Help</div>
           <nav className="space-y-1">
             <NavItem icon={faRocket} label="Get started" />
@@ -2791,7 +3050,165 @@ const handleTriggerEmails = async () => {
               </div>
             </div>
           )}
+ {/* {activeTab === 'home' && (
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+              <Articles handleTabChange={handleTabChange} />
+            </div>
+          )} */}
+{activeTab === 'landing' && (
+  <div className="md:px-36 overflow-none mt-8">
+    {/* Hero Section */}
+    <section className="bg-gradient-to-r from-[#F99F31] to-[#FFFFFF] text-white py-12 rounded-lg shadow-lg">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Empower Your Investor Relations with Seco</h1>
+        <p className="text-lg mb-6">Streamline applications, create programs, and manage judges—all in one intelligent platform.</p>
+        <div className="flex justify-center gap-4">
+          <button className="bg-white text-[#F99F31] px-6 py-2 rounded-full font-semibold hover:bg-[#FFF3E6] transition">
+            Get Started
+          </button>
+          <button className="border border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-[#F99F31] transition">
+            Explore Dashboard
+          </button>
+        </div>
+        <div className="mt-6 text-sm opacity-75">
+          <p>Applications Processed Today: 47 | Active Programs: 12</p>
+        </div>
+      </div>
+    </section>
 
+    {/* Feature Highlights */}
+    <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+        <div className="text-[#F99F31] text-3xl mb-4">📋</div> {/* Placeholder icon */}
+        <h3 className="text-lg font-semibold mb-2">Application Management</h3>
+        <p className="text-sm text-[#4B5563]">Track and manage investor applications effortlessly.</p>
+      </div>
+      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+        <div className="text-[#F99F31] text-3xl mb-4">💡</div> {/* Placeholder icon */}
+        <h3 className="text-lg font-semibold mb-2">Program Creation</h3>
+        <p className="text-sm text-[#4B5563]">Launch investor programs in minutes.</p>
+      </div>
+      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+        <div className="text-[#F99F31] text-3xl mb-4">⚖️</div> {/* Placeholder icon */}
+        <h3 className="text-lg font-semibold mb-2">Judge Management</h3>
+        <p className="text-sm text-[#4B5563]">Organize and empower your judging panel.</p>
+      </div>
+    </section>
+
+    {/* Dashboard Preview */}
+    <section className="mt-12 bg-[#FFF3E6] p-8 rounded-lg shadow-inner">
+      <h2 className="text-2xl font-semibold mb-6 text-center">See Seco in Action</h2>
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Sidebar */}
+        <div className="w-full md:w-1/4 bg-white p-4 rounded-lg shadow">
+          <ul className="space-y-2">
+            <li className="p-2 bg-[#F99F31] text-white rounded">Applications</li>
+            <li className="p-2 hover:bg-[#FFF3E6] rounded">Programs</li>
+            <li className="p-2 hover:bg-[#FFF3E6] rounded">Judges</li>
+            <li className="p-2 hover:bg-[#FFF3E6] rounded">Analytics</li>
+          </ul>
+        </div>
+        {/* Main Panel */}
+        <div className="w-full md:w-2/4 bg-white p-4 rounded-lg shadow">
+          <h4 className="text-lg font-semibold mb-4">Application Overview</h4>
+          <div className="h-32 bg-gray-200 rounded mb-4 flex items-center justify-center">
+            <span className="text-[#4B5563]">[Chart Placeholder]</span>
+          </div>
+          <ul className="text-sm space-y-2">
+            <li className="flex justify-between">
+              <span>Review Judge Feedback</span>
+              <span className="text-[#F99F31]">Pending</span>
+            </li>
+            <li className="flex justify-between">
+              <span>Approve Application #42</span>
+              <span className="text-[#F99F31]">In Progress</span>
+            </li>
+          </ul>
+        </div>
+        {/* Right Panel */}
+        <div className="w-full md:w-1/4 bg-white p-4 rounded-lg shadow">
+          <h4 className="text-lg font-semibold mb-4">Investor Snapshot</h4>
+          <p className="text-sm"><strong>Investor:</strong> Acme Corp</p>
+          <p className="text-sm"><strong>Status:</strong> Active</p>
+          <p className="text-sm"><strong>Last Update:</strong> Mar 10, 2025</p>
+        </div>
+      </div>
+      <div className="text-center mt-6">
+        <button className="bg-[#F99F31] text-white px-6 py-2 rounded-full font-semibold hover:bg-[#E68E2C] transition">
+          Take a Tour
+        </button>
+      </div>
+    </section>
+
+    {/* Footer CTA */}
+    <section className="mt-12 bg-gradient-to-r from-[#F99F31] to-[#FFFFFF] text-white py-8 rounded-lg text-center">
+      <h3 className="text-2xl font-semibold mb-4">Ready to Transform Your Investor Relations?</h3>
+      <div className="flex justify-center gap-4">
+        <button className="bg-white text-[#F99F31] px-6 py-2 rounded-full font-semibold hover:bg-[#FFF3E6] transition">
+          Sign Up Free
+        </button>
+        <button className="border border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-[#F99F31] transition">
+          Request a Demo
+        </button>
+      </div>
+    </section>
+  </div>
+)}
+{activeTab === 'discover' && (
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+              <Articles handleTabChange={handleTabChange} />
+            </div>
+          )}
+
+          {activeTab === 'programdetailpage' && (
+            <div className="h-[calc(100vh/1.16)] md:px-36 overflow-auto scrollbar-hide mt-8 mb-8">
+              <FProgramDetailPages programId={selectedProgramId} handleTabChange={handleTabChange} />
+            </div>
+          )}
+
+          {activeTab === 'applicationform' && (
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+              <Application programId={selectedProgramId} onFormSubmitSuccess={reloadApplications} />
+            </div>
+          )}
+
+          {activeTab === 'application' && selectedApplication && (
+            <div className="md:px-36 overflow-none mt-8 h-full">
+              <ApplicationHeader application={selectedApplication} />
+              <div className="py-4">
+                {activeApplicationTab === 'application' && (
+                  <div className="h-full">
+                    {loading ? (
+                      <p>Loading responses...</p>
+                    ) : formResponses.length > 0 ? (
+                      <div className="space-y-4">
+                        {formResponses.map((response, index) => (
+                          <div key={response.id || index} className="border p-4 rounded-lg">
+                            {Object.entries(response).map(([key, value]) => (
+                              key !== 'id' && (
+                                <div key={key} className="mb-2">
+                                  <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}: </span>
+                                  <span>{typeof value === 'object' ? JSON.stringify(value) : value}</span>
+                                </div>
+                              )
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No responses submitted yet for this application.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
+              <SettingsForm onProfileUpdate={reloadCompanyDetails} />
+            </div>
+          )}
 {/*  */}
 {/* <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
 {activeTab === 'settings' && renderSettingsForm()}
@@ -2804,7 +3221,12 @@ const handleTriggerEmails = async () => {
     )}
         </main>
       </div>
-
+      {/* <div className="flex-1 overflow-hidden scrollbar-hide">
+        <Header activeTab={activeTab} selectedApplication={selectedApplication} eventDetails={eventDetails} setActiveTab={setActiveTab} openSettings={openSettings} />
+        <main className="h-full">
+         
+        </main>
+      </div> */}
       <button 
         className="fixed bottom-4 right-4 w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-gray-700"
         aria-label="Help"
