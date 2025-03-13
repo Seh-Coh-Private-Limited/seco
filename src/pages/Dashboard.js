@@ -21,7 +21,8 @@ import {
   faShareAlt,
   faFolder,
   faSearch,
-  faServer
+  faServer,
+  faChevronDown,faGavel,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
@@ -1383,7 +1384,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, ev
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200">
       <div className="flex items-center gap-4">
-        <button onClick={() => setActiveTab('home')} className="focus:outline-none hover:bg-gray-100 rounded-lg">
+        <button onClick={() => setActiveTab('landing')} className="focus:outline-none hover:bg-gray-100 rounded-lg">
           <h6 className="text-black font-bold hover:opacity-80 transition-opacity px-2" style={{ fontFamily: 'CustomFont', fontSize: '30px' }}>
             seco
           </h6>
@@ -2780,12 +2781,50 @@ const ApplicationHeader = ({ application }) => (
       console.error('Error reloading applications:', error);
     }
   };
+  const [collapsedSections, setCollapsedSections] = useState({
+    apply: true, // Initially collapsed
+    host: true,  // Initially collapsed
+    judge: true, // Initially collapsed
+  });
+
+  // Toggle collapse state for a section
+  const toggleSection = (section) => {
+    setCollapsedSections((prev) => {
+      const isExpanding = prev[section]; // If currently collapsed, we’re expanding
+      const newState = { ...prev, [section]: !prev[section] };
+
+      // Load content in main section when expanding
+      if (isExpanding) {
+        switch (section) {
+          case 'apply':
+            setActiveTab('discover'); // Load discover page as a general "Applications" view
+            setSelectedApplication(null); // Reset selected application
+            break;
+          case 'host':
+            setActiveTab('home'); // Load home page as a general "Programs" view
+            setSelectedProgram(null); // Reset selected program
+            setIsJudgingProgramSelected(false);
+            break;
+          case 'judge':
+            setActiveTab('program'); // Load program tab for judging
+            setSelectedProgram(null); // Reset selected program initially
+            setIsJudgingProgramSelected(true);
+            setActiveProgramTab('formResponses'); // Default to form responses for judging
+            break;
+          default:
+            break;
+        }
+      }
+
+      return newState;
+    });
+  };
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <div className="w-64 border-r border-gray-200 p-4 overflow-y-auto scrollbar-hide h-full">
         <div className="flex items-center gap-2 mb-6">
-        <CompanyLogo companyDetails={companyDetails} />
+          <CompanyLogo companyDetails={companyDetails} />
           <span className="font-medium truncate">
             {companyDetails?.name || 'Loading...'}
           </span>
@@ -2798,84 +2837,129 @@ const ApplicationHeader = ({ application }) => (
             active={activeTab === 'landing'} 
             onClick={() => setActiveTab('landing')} 
           />
-          <NavItem 
-            icon={faSearch}
-            label="Apply" 
-            active={activeTab === 'discover'} 
-            onClick={() => setActiveTab('discover')} 
-          />
-           <NavItem 
-            icon={faServer}
-            label="Host" 
-            active={activeTab === 'home'} 
-            onClick={() => setActiveTab('home')} 
-          />
-        </nav>
-
-        <div className="mt-8 border-t pt-4">
-          <div className="text-sm text-gray-500 mb-2">Programs</div>
-          <div className="ml-2">
-          {programmes.length > 0 ? (
-  programmes.map((programme) => (
-    <NavItem
-      key={programme.id}
-      icon={faFile}
-      label={
-        <>
-          {programme.name || 'Untitled Program'}
-          {programme.programStatus === 'draft' && (
-            <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Draft</span>
-          )}
-        </>
-      }
-      active={selectedProgram?.id === programme.id}
-      onClick={() => handleProgramClick(programme)}
-    />
-  ))
-) : (
-  <div className="text-gray-400 p-2">No programs available</div>
-)}
+          
+          {/* Apply Section (Applications) */}
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('apply')}
+              className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
+                activeTab === 'discover' || activeTab === 'application' ? 'bg-gray-200 font-medium' : ''
+              }`}
+            >
+              <FontAwesomeIcon icon={faSearch} />
+              <span>Apply</span>
+              <FontAwesomeIcon
+                icon={collapsedSections.apply ? faChevronRight : faChevronDown}
+                className="ml-auto"
+              />
+            </button>
+            {!collapsedSections.apply && (
+              <div className="ml-2 space-y-2">
+                <div className="text-sm text-gray-500 mt-2">Applications</div>
+                <div className="ml-4 space-y-1">
+                  {applications.length > 0 ? (
+                    applications.map((application) => (
+                      <NavItem
+                        key={application.id}
+                        icon={faFolder}
+                        label={application.title || 'Untitled Application'}
+                        active={selectedApplication?.id === application.id && activeTab === 'application'}
+                        onClick={() => handleApplicationClick(application)}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-gray-400 p-2 text-sm">No applications available</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-          <div className="mt-8 border-t pt-4">
-                  <div className="text-sm text-gray-500 mb-2">Applications</div>
-                  <div className="ml-2">
-                    {applications.length > 0 ? (
-                      applications.map((application) => (
+
+          {/* Host Section (Programs) */}
+          <div className="space-y-1">
+            <button
+              onClick={() => toggleSection('host')}
+              className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
+                activeTab === 'home' || (activeTab === 'program' && !isJudgingProgramSelected) ? 'bg-gray-200 font-medium' : ''
+              }`}
+            >
+              <FontAwesomeIcon icon={faServer} />
+              <span>Host</span>
+              <FontAwesomeIcon
+                icon={collapsedSections.host ? faChevronRight : faChevronDown}
+                className="ml-auto"
+              />
+            </button>
+            {!collapsedSections.host && (
+              <div className="ml-2 space-y-2">
+                <div className="text-sm text-gray-500 mt-2">Programs</div>
+                <div className="ml-4 space-y-1">
+                  {programmes.length > 0 ? (
+                    programmes.map((programme) => (
+                      <NavItem
+                        key={programme.id}
+                        icon={faFile}
+                        label={
+                          <>
+                            {programme.name || 'Untitled Program'}
+                            {programme.programStatus === 'draft' && (
+                              <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Draft</span>
+                            )}
+                          </>
+                        }
+                        active={selectedProgram?.id === programme.id && activeTab === 'program' && !isJudgingProgramSelected}
+                        onClick={() => handleProgramClick(programme)}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-gray-400 p-2 text-sm">No programs available</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Judge Section (Judging Programs) */}
+          {isJudge && (
+            <div className="space-y-1">
+              <button
+                onClick={() => toggleSection('judge')}
+                className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
+                  activeTab === 'program' && isJudgingProgramSelected ? 'bg-gray-200 font-medium' : ''
+                }`}
+              >
+                <FontAwesomeIcon icon={faGavel} />
+                <span>Judge</span>
+                <FontAwesomeIcon
+                  icon={collapsedSections.judge ? faChevronRight : faChevronDown}
+                  className="ml-auto"
+                />
+              </button>
+              {!collapsedSections.judge && (
+                <div className="ml-2 space-y-2">
+                  <div className="text-sm text-gray-500 mt-2">Judging Programs</div>
+                  <div className="ml-4 space-y-1">
+                    {judgingProgrammes.length > 0 ? (
+                      judgingProgrammes.map((programme) => (
                         <NavItem
-                          key={application.id}
-                          icon={faFolder}
-                          label={application.title || 'Untitled Application'}
-                          active={selectedApplication?.id === application.id}
-                          onClick={() => handleApplicationClick(application)}
+                          key={programme.id}
+                          icon={faFile}
+                          label={programme.name || 'Untitled Program'}
+                          active={selectedProgram?.id === programme.id && activeTab === 'program' && isJudgingProgramSelected}
+                          onClick={() => handleProgramClick(programme, true)}
                         />
                       ))
                     ) : (
-                      <div className="text-gray-400 p-2">No applications available</div>
+                      <div className="text-gray-400 p-2 text-sm">No judging programs assigned</div>
                     )}
                   </div>
                 </div>
-        {isJudge && (
-          <div className="mt-8 border-t pt-4">
-            <div className="text-sm text-gray-500 mb-2">Judging Programmes</div>
-            <div className="ml-2">
-              {judgingProgrammes.length > 0 ? (
-                judgingProgrammes.map((programme) => (
-                  <NavItem
-                    key={programme.id}
-                    icon={faFile}
-                    label={programme.name || 'Untitled Program'}
-                    active={selectedProgram?.id === programme.id && isJudgingProgramSelected}
-                    onClick={() => handleProgramClick(programme, true)}
-                  />
-                ))
-              ) : (
-                <div className="text-gray-400 p-2">No judging programs assigned</div>
               )}
             </div>
-          </div>
-        )}
-        {/* Product section */}
+          )}
+        </nav>
+
+        {/* Product, Help, Logout sections remain unchanged */}
         <div className="mt-8 border-t pt-4">
           <div className="text-sm text-gray-500 mb-2">Product</div>
           <nav className="space-y-1">
@@ -2887,7 +2971,6 @@ const ApplicationHeader = ({ application }) => (
           </nav>
         </div>
 
-        {/* Help section */}
         <div className="mt-8 border-t pt-4">
           <div className="text-sm text-gray-500 mb-2">Help</div>
           <nav className="space-y-1">
@@ -2898,7 +2981,6 @@ const ApplicationHeader = ({ application }) => (
           </nav>
         </div>
 
-        {/* Logout option */}
         <div className="mt-8 border-t pt-4">
           <NavItem 
             icon={faSignOutAlt}
@@ -2911,8 +2993,7 @@ const ApplicationHeader = ({ application }) => (
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        
-      <Header
+        <Header
           activeTab={activeTab}
           selectedApplication={selectedApplication}
           setActiveTab={setActiveTab}
@@ -2923,38 +3004,28 @@ const ApplicationHeader = ({ application }) => (
           setShowCreateEvent={setShowCreateEvent}
         />
         <main className="flex-1 overflow-y-auto">
-        {activeTab === 'home' && (
-  <HomePage
-    userStatus={userStatus}
-    programid={programid}
-    showCreateEvent={showCreateEvent}
-    setShowCreateEvent={setShowCreateEvent}
-    fetchProgrammes={fetchProgrammes}
-    currentStep={currentStep}
-    setCurrentStep={setCurrentStep}
-    onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
-    selectedProgram={selectedProgram}
-    programStats={programmes} // Pass the enriched programmes data
-  />
-)}
+          {activeTab === 'home' && (
+            <HomePage
+              userStatus={userStatus}
+              programid={programid}
+              showCreateEvent={showCreateEvent}
+ nominee             setShowCreateEvent={setShowCreateEvent}
+              fetchProgrammes={fetchProgrammes}
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+              onFormLaunchSuccess={() => fetchProgrammes(auth.currentUser)}
+              selectedProgram={selectedProgram}
+              programStats={programmes}
+            />
+          )}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full flex flex-col">
-             <ProgramHeader 
+              <ProgramHeader 
                 program={selectedProgram}
-                
                 onStatusChange={handleStatusChange}
               />
               <div className="flex-1 overflow-y-auto">
-                {/* {activeProgramTab === 'insights' && (
-                  <div className='md:px-36 overflow-none mt-8'>
-                    <h3 className="text-lg font-semibold mb-4">Program Insights</h3>
-                    
-                  </div>
-                )} */}
-                
                 {activeProgramTab === 'insights' && <ProgramInsights program={selectedProgram} />}
-
-
                 {activeProgramTab === 'formResponses' && (
                   <div className="h-full">
                     <div className="md:px-36 overflow-none mt-8">
@@ -2966,17 +3037,7 @@ const ApplicationHeader = ({ application }) => (
                     </div>
                   </div>
                 )}
-
-
-
-
-                {activeProgramTab === 'editProgram' &&  <FProgramEditPage programId={selectedProgram.id}/>
-                  // <div className="md:px-36 overflow-none mt-8">
-                  //   <h3 className="text-lg font-semibold mb-4">Edit Program</h3>
-                  //   {/* Add edit program form */}
-                  // </div>
-                }
-                
+                {activeProgramTab === 'editProgram' && <FProgramEditPage programId={selectedProgram.id} />}
                 {activeProgramTab === 'addJudges' && (
   <div className="md:px-36 overflow-none mt-8">
   <h3 className="text-lg font-semibold mb-4">Add Judges</h3>
@@ -3046,132 +3107,48 @@ const ApplicationHeader = ({ application }) => (
   </div>
 </div>
 )}
-
               </div>
             </div>
           )}
- {/* {activeTab === 'home' && (
-            <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
-              <Articles handleTabChange={handleTabChange} />
+          {activeTab === 'landing' && (
+            <div className="md:px-36 overflow-none mt-8">
+              {/* Landing content remains unchanged */}
+              <div className="flex justify-center pt-60">
+                <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+                    <div className="text-[#F99F31] text-3xl mb-4">📋</div>
+                    <h3 className="text-lg font-semibold mb-2">Application Management</h3>
+                    <p className="text-sm text-[#4B5563]">Track and manage investor applications effortlessly.</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+                    <div className="text-[#F99F31] text-3xl mb-4">💡</div>
+                    <h3 className="text-lg font-semibold mb-2">Program Creation</h3>
+                    <p className="text-sm text-[#4B5563]">Launch investor programs in minutes.</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
+                    <div className="text-[#F99F31] text-3xl mb-4">⚖️</div>
+                    <h3 className="text-lg font-semibold mb-2">Judge Management</h3>
+                    <p className="text-sm text-[#4B5563]">Organize and empower your judging panel.</p>
+                  </div>
+                </section>
+              </div>
             </div>
-          )} */}
-{activeTab === 'landing' && (
-  <div className="md:px-36 overflow-none mt-8">
-    {/* Hero Section */}
-    <section className="bg-gradient-to-r from-[#F99F31] to-[#FFFFFF] text-white py-12 rounded-lg shadow-lg">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Empower Your Investor Relations with Seco</h1>
-        <p className="text-lg mb-6">Streamline applications, create programs, and manage judges—all in one intelligent platform.</p>
-        <div className="flex justify-center gap-4">
-          <button className="bg-white text-[#F99F31] px-6 py-2 rounded-full font-semibold hover:bg-[#FFF3E6] transition">
-            Get Started
-          </button>
-          <button className="border border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-[#F99F31] transition">
-            Explore Dashboard
-          </button>
-        </div>
-        <div className="mt-6 text-sm opacity-75">
-          <p>Applications Processed Today: 47 | Active Programs: 12</p>
-        </div>
-      </div>
-    </section>
-
-    {/* Feature Highlights */}
-    <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
-        <div className="text-[#F99F31] text-3xl mb-4">📋</div> {/* Placeholder icon */}
-        <h3 className="text-lg font-semibold mb-2">Application Management</h3>
-        <p className="text-sm text-[#4B5563]">Track and manage investor applications effortlessly.</p>
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
-        <div className="text-[#F99F31] text-3xl mb-4">💡</div> {/* Placeholder icon */}
-        <h3 className="text-lg font-semibold mb-2">Program Creation</h3>
-        <p className="text-sm text-[#4B5563]">Launch investor programs in minutes.</p>
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition transform hover:scale-105 text-center">
-        <div className="text-[#F99F31] text-3xl mb-4">⚖️</div> {/* Placeholder icon */}
-        <h3 className="text-lg font-semibold mb-2">Judge Management</h3>
-        <p className="text-sm text-[#4B5563]">Organize and empower your judging panel.</p>
-      </div>
-    </section>
-
-    {/* Dashboard Preview */}
-    <section className="mt-12 bg-[#FFF3E6] p-8 rounded-lg shadow-inner">
-      <h2 className="text-2xl font-semibold mb-6 text-center">See Seco in Action</h2>
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Sidebar */}
-        <div className="w-full md:w-1/4 bg-white p-4 rounded-lg shadow">
-          <ul className="space-y-2">
-            <li className="p-2 bg-[#F99F31] text-white rounded">Applications</li>
-            <li className="p-2 hover:bg-[#FFF3E6] rounded">Programs</li>
-            <li className="p-2 hover:bg-[#FFF3E6] rounded">Judges</li>
-            <li className="p-2 hover:bg-[#FFF3E6] rounded">Analytics</li>
-          </ul>
-        </div>
-        {/* Main Panel */}
-        <div className="w-full md:w-2/4 bg-white p-4 rounded-lg shadow">
-          <h4 className="text-lg font-semibold mb-4">Application Overview</h4>
-          <div className="h-32 bg-gray-200 rounded mb-4 flex items-center justify-center">
-            <span className="text-[#4B5563]">[Chart Placeholder]</span>
-          </div>
-          <ul className="text-sm space-y-2">
-            <li className="flex justify-between">
-              <span>Review Judge Feedback</span>
-              <span className="text-[#F99F31]">Pending</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Approve Application #42</span>
-              <span className="text-[#F99F31]">In Progress</span>
-            </li>
-          </ul>
-        </div>
-        {/* Right Panel */}
-        <div className="w-full md:w-1/4 bg-white p-4 rounded-lg shadow">
-          <h4 className="text-lg font-semibold mb-4">Investor Snapshot</h4>
-          <p className="text-sm"><strong>Investor:</strong> Acme Corp</p>
-          <p className="text-sm"><strong>Status:</strong> Active</p>
-          <p className="text-sm"><strong>Last Update:</strong> Mar 10, 2025</p>
-        </div>
-      </div>
-      <div className="text-center mt-6">
-        <button className="bg-[#F99F31] text-white px-6 py-2 rounded-full font-semibold hover:bg-[#E68E2C] transition">
-          Take a Tour
-        </button>
-      </div>
-    </section>
-
-    {/* Footer CTA */}
-    <section className="mt-12 bg-gradient-to-r from-[#F99F31] to-[#FFFFFF] text-white py-8 rounded-lg text-center">
-      <h3 className="text-2xl font-semibold mb-4">Ready to Transform Your Investor Relations?</h3>
-      <div className="flex justify-center gap-4">
-        <button className="bg-white text-[#F99F31] px-6 py-2 rounded-full font-semibold hover:bg-[#FFF3E6] transition">
-          Sign Up Free
-        </button>
-        <button className="border border-white text-white px-6 py-2 rounded-full font-semibold hover:bg-white hover:text-[#F99F31] transition">
-          Request a Demo
-        </button>
-      </div>
-    </section>
-  </div>
-)}
-{activeTab === 'discover' && (
+          )}
+          {activeTab === 'discover' && (
             <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
               <Articles handleTabChange={handleTabChange} />
             </div>
           )}
-
           {activeTab === 'programdetailpage' && (
             <div className="h-[calc(100vh/1.16)] md:px-36 overflow-auto scrollbar-hide mt-8 mb-8">
               <FProgramDetailPages programId={selectedProgramId} handleTabChange={handleTabChange} />
             </div>
           )}
-
           {activeTab === 'applicationform' && (
             <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
               <Application programId={selectedProgramId} onFormSubmitSuccess={reloadApplications} />
             </div>
           )}
-
           {activeTab === 'application' && selectedApplication && (
             <div className="md:px-36 overflow-none mt-8 h-full">
               <ApplicationHeader application={selectedApplication} />
@@ -3203,30 +3180,13 @@ const ApplicationHeader = ({ application }) => (
               </div>
             </div>
           )}
-
           {activeTab === 'settings' && (
             <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
               <SettingsForm onProfileUpdate={reloadCompanyDetails} />
             </div>
           )}
-{/*  */}
-{/* <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
-{activeTab === 'settings' && renderSettingsForm()}
-
-</div> */}
-{activeTab === 'settings' && (
-      <div className="flex-1 overflow-y-auto p-8">
-        {renderSettingsForm()}
-      </div>
-    )}
         </main>
       </div>
-      {/* <div className="flex-1 overflow-hidden scrollbar-hide">
-        <Header activeTab={activeTab} selectedApplication={selectedApplication} eventDetails={eventDetails} setActiveTab={setActiveTab} openSettings={openSettings} />
-        <main className="h-full">
-         
-        </main>
-      </div> */}
       <button 
         className="fixed bottom-4 right-4 w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-gray-700"
         aria-label="Help"
