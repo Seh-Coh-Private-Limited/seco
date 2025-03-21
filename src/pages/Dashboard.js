@@ -352,9 +352,66 @@ const fetchCompanyDetails = useCallback(async (user) => {
     setLoading(false);
   }
 }, [db]);
-  
-  // Add reload function to handle manual reloads
+const reloadApplications = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
 
+    const usersRef = collection(db, 'users');
+    const userQuery = query(usersRef, where('uid', '==', user.uid));
+    const userSnapshot = await getDocs(userQuery);
+
+    if (!userSnapshot.empty) {
+      const userDocRef = userSnapshot.docs[0].ref;
+      const applicationsCollection = collection(userDocRef, 'applications');
+      const applicationsSnapshot = await getDocs(applicationsCollection);
+
+      const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        title: doc.data().programTitle
+      }));
+
+      setApplications(fetchedApplications);
+    }
+  } catch (error) {
+    console.error('Error reloading applications:', error);
+  }
+};
+  // Add reload function to handle manual reloads
+  const loadAllData = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      navigate('/signup');
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      // Fetch Company Details
+      await fetchCompanyDetails(user);
+  
+      // Fetch Programmes
+      await fetchProgrammes(user);
+  
+      // Fetch Applications
+      await reloadApplications();
+  
+      // Fetch Judging Programmes and Judge Status
+      await checkJudgeStatusAndFetchProgrammes(user);
+    } catch (error) {
+      console.error('Error loading all data:', error);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    auth,
+    navigate,
+    fetchCompanyDetails,
+    fetchProgrammes,
+    reloadApplications,
+    checkJudgeStatusAndFetchProgrammes,
+  ]);
 
   // Inside FounderDashboard component
 useEffect(() => {
@@ -367,68 +424,54 @@ useEffect(() => {
   };
   fetchData();
 }, [auth, fetchProgrammes]); // Add fetchProgrammes to dependencies
- useEffect(() => {
-    const checkSessionAndFetchData = async () => {
-      const sessionData = localStorage.getItem('sessionData');
-      
-      if (!sessionData) {
+
+useEffect(() => {
+  const checkSessionAndFetchData = async () => {
+    const sessionData = localStorage.getItem('sessionData');
+
+    if (!sessionData) {
+      navigate('/signup');
+      return;
+    }
+
+    try {
+      const { uid, expiresAt } = JSON.parse(sessionData);
+      const currentTime = new Date().getTime();
+      const expiration = new Date(expiresAt).getTime();
+
+      if (currentTime >= expiration) {
+        console.warn('Session is about to expire. Extending session.');
+        const extendedSessionData = {
+          ...JSON.parse(sessionData),
+          expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString(), // Extend by 24 hours
+        };
+        localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
+      }
+
+      const sessionRef = doc(db, 'sessions', uid);
+      const sessionDoc = await getDoc(sessionRef);
+
+      if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
         navigate('/signup');
         return;
       }
-  
-      try {
-        const { uid, expiresAt } = JSON.parse(sessionData);
-        const currentTime = new Date().getTime();
-        const expiration = new Date(expiresAt).getTime();
-        
-        // Extend session instead of logging out
-        if (currentTime >= expiration) {
-          console.warn('Session is about to expire. Extending session.');
-          // Optionally update expiration in localStorage
-          const extendedSessionData = {
-            ...JSON.parse(sessionData),
-            expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString() // Extend by 24 hours
-          };
-          localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
-        }
-  
-        // Verify the session in Firestore
-        const sessionRef = doc(db, 'sessions', uid);
-        const sessionDoc = await getDoc(sessionRef);
-        
-        if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
-          navigate('/signup');
-          return;
-        }
-  
-        // Fetch user and data
-        const user = auth.currentUser;
-        if (!user) {
-          navigate('/signup');
-          return;
-        }
-  fetchCompanyDetails(user);
-        fetchProgrammes(user);
-  
-      } catch (error) {
-        console.error('Session check and data fetch error:', error);
-        
-        // Fallback states
-       
-        
-        // Do not automatically log out on errors
-        console.warn('There was an issue checking your session. Please try again.');
-      }
-    };
-  
-    // Initial check and data fetch
-    checkSessionAndFetchData();
-    
-    // Periodic session checks
-    const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Check every 5 minutes
-    
-    return () => clearInterval(interval);
-  }, [navigate, auth, db]);
+
+      // Load all data after session validation
+      await loadAllData();
+    } catch (error) {
+      console.error('Session check and data fetch error:', error);
+      console.warn('There was an issue checking your session. Please try again.');
+    }
+  };
+
+  // Run on mount
+  checkSessionAndFetchData();
+
+  // Periodic session checks (optional)
+  const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Every 5 minutes
+
+  return () => clearInterval(interval);
+}, [loadAllData, navigate, auth, db]);
 // useEffect(() => {
 //   const fetchCompanyDetails = async () => {
 //     try {
@@ -588,63 +631,69 @@ useEffect(() => {
   //   return null;
   // };
   // Breadcrumb for navigation (original from second code block)
-const BreadcrumbNavigation = ({ activeTab, selectedApplication, selectedProgram, eventDetails, setActiveTab }) => {
-  const getBreadcrumbItems = () => {
-    const items = [];
-    switch (activeTab) {
-      case 'discover':
-        items.push({ label: 'Discover', onClick: () => setActiveTab('discover') });
-        break;
-      case 'programdetailpage':
-        items.push(
-          { label: 'Discover', onClick: () => setActiveTab('discover') },
-          { label: eventDetails?.name || 'Event', onClick: () => setActiveTab('programdetailpage') }
-        );
-        break;
-      case 'applicationform':
-        items.push(
-          { label: 'Discover', onClick: () => setActiveTab('discover') },
-          { label: eventDetails?.name || 'Event', onClick: () => { setActiveTab('programdetailpage'); setSelectedProgramId(eventDetails?.id); } },
-          { label: 'Application Form' }
-        );
-        break;
-      case 'application':
-        if (selectedApplication) {
-          items.push({ label: selectedApplication.title || 'Untitled Application', onClick: () => setActiveTab('application') });
-        }
-        break;
-      case 'settings':
-        items.push({ label: 'Settings' });
-        break;
-      default:
-        break;
-    }
-    return items;
+  const BreadcrumbNavigation = ({ activeTab, selectedApplication, selectedProgram, eventDetails, setActiveTab, selectedProgramId, setSelectedProgramId }) => {
+    const getBreadcrumbItems = () => {
+      const items = [];
+      switch (activeTab) {
+        case 'discover':
+          items.push({ label: 'Discover', onClick: () => setActiveTab('discover') });
+          break;
+        case 'programdetailpage':
+          items.push(
+            { label: 'Discover', onClick: () => setActiveTab('discover') },
+            { label: eventDetails?.name || 'Event', onClick: () => setActiveTab('programdetailpage') }
+          );
+          break;
+        case 'applicationform':
+          items.push(
+            { label: 'Discover', onClick: () => setActiveTab('discover') },
+            {
+              label: eventDetails?.name || 'Event',
+              onClick: () => {
+                setActiveTab('programdetailpage');
+                setSelectedProgramId(selectedProgramId); // Ensure the program ID persists
+              },
+            },
+            { label: 'Application Form' }
+          );
+          break;
+        case 'application':
+          if (selectedApplication) {
+            items.push({ label: selectedApplication.title || 'Untitled Application', onClick: () => setActiveTab('application') });
+          }
+          break;
+        case 'settings':
+          items.push({ label: 'Settings' });
+          break;
+        default:
+          break;
+      }
+      return items;
+    };
+  
+    const breadcrumbItems = getBreadcrumbItems();
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        {breadcrumbItems.length > 0 && (
+          <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+        )}
+        {breadcrumbItems.map((item, index) => (
+          <React.Fragment key={item.label}>
+            {index > 0 && (
+              <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+            )}
+            {item.onClick ? (
+              <a onClick={item.onClick} className="text-gray-900 hover:underline focus:outline-none cursor-pointer">
+                {item.label}
+              </a>
+            ) : (
+              <span className="text-gray-900">{item.label}</span>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
   };
-
-  const breadcrumbItems = getBreadcrumbItems();
-  return (
-    <div className="flex items-center gap-2 text-sm text-gray-600">
-      {breadcrumbItems.length > 0 && (
-        <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
-      )}
-      {breadcrumbItems.map((item, index) => (
-        <React.Fragment key={item.label}>
-          {index > 0 && (
-            <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
-          )}
-          {item.onClick ? (
-            <a onClick={item.onClick} className="text-gray-900 hover:underline focus:outline-none">
-              {item.label}
-            </a>
-          ) : (
-            <span className="text-gray-900">{item.label}</span>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
 
 // Breadcrumb for program creation (from first code block)
 const BreadcrumbProgramCreation = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
@@ -1380,7 +1429,7 @@ const HomePage = ({ userStatus,
     </div>
   );
 };
-const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, eventDetails }) => {
+const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, eventDetails, selectedProgramId, setSelectedProgramId, currentStep, setCurrentStep, showCreateEvent }) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 sticky top-0 bg-white border-b border-gray-200">
       <div className="flex items-center gap-4">
@@ -1403,6 +1452,8 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, ev
             selectedProgram={selectedProgram} 
             eventDetails={eventDetails} 
             setActiveTab={setActiveTab} 
+            selectedProgramId={selectedProgramId}
+            setSelectedProgramId={setSelectedProgramId}
           />
         )}
       </div>
@@ -1412,7 +1463,6 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, ev
     </div>
   );
 };
-
 // Card Components
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-lg shadow ${className}`}>
@@ -1733,7 +1783,26 @@ const useDebounce = (callback, delay) => {
       setIsSaving(false);
     }
   };
-
+  useEffect(() => {
+    const fetchEventDetails = async () => {
+      if (selectedProgramId) {
+        try {
+          const programmesQuery = query(
+            collection(db, 'programmes'),
+            where('id', '==', selectedProgramId)
+          );
+          const snapshot = await getDocs(programmesQuery);
+          if (!snapshot.empty) {
+            const programData = snapshot.docs[0].data();
+            setEventDetails(programData);
+          }
+        } catch (error) {
+          console.error('Error fetching event details:', error);
+        }
+      }
+    };
+    fetchEventDetails();
+  }, [selectedProgramId, db]);
   // Handle form submission
   const handleSubmit = async () => {
     console.log('Submitting with eventData:', eventData);
@@ -2731,9 +2800,24 @@ const handleTriggerEmails = async () => {
     setIsSendingEmails(false);
   }
 };
-const handleTabChange = (tab, programId) => {
+const handleTabChange = async (tab, programId) => {
   setActiveTab(tab);
   setSelectedProgramId(programId);
+
+  // Fetch and set eventDetails for the selected program
+  try {
+    const programmesQuery = query(
+      collection(db, 'programmes'),
+      where('id', '==', programId)
+    );
+    const snapshot = await getDocs(programmesQuery);
+    if (!snapshot.empty) {
+      const programData = snapshot.docs[0].data();
+      setEventDetails(programData);
+    }
+  } catch (error) {
+    console.error('Error fetching event details in handleTabChange:', error);
+  }
 };
 const handleApplicationClick = (application) => {
   setActiveTab('application');
@@ -2756,31 +2840,10 @@ const ApplicationHeader = ({ application }) => (
     </div>
   </div>
 );
-  const reloadApplications = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
 
-      const usersRef = collection(db, 'users');
-      const userQuery = query(usersRef, where('uid', '==', user.uid));
-      const userSnapshot = await getDocs(userQuery);
 
-      if (!userSnapshot.empty) {
-        const userDocRef = userSnapshot.docs[0].ref;
-        const applicationsCollection = collection(userDocRef, 'applications');
-        const applicationsSnapshot = await getDocs(applicationsCollection);
 
-        const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          title: doc.data().programTitle
-        }));
 
-        setApplications(fetchedApplications);
-      }
-    } catch (error) {
-      console.error('Error reloading applications:', error);
-    }
-  };
   const [collapsedSections, setCollapsedSections] = useState({
     apply: true, // Initially collapsed
     host: true,  // Initially collapsed
@@ -2993,16 +3056,19 @@ const ApplicationHeader = ({ application }) => (
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
-          activeTab={activeTab}
-          selectedApplication={selectedApplication}
-          setActiveTab={setActiveTab}
-          openSettings={openSettings}
-          currentStep={currentStep}
-          setCurrentStep={setCurrentStep}
-          showCreateEvent={showCreateEvent}
-          setShowCreateEvent={setShowCreateEvent}
-        />
+      <Header
+  activeTab={activeTab}
+  selectedApplication={selectedApplication}
+  setActiveTab={setActiveTab}
+  openSettings={openSettings}
+  currentStep={currentStep}
+  setCurrentStep={setCurrentStep}
+  showCreateEvent={showCreateEvent}
+  setShowCreateEvent={setShowCreateEvent}
+  eventDetails={eventDetails}
+  selectedProgramId={selectedProgramId}
+  setSelectedProgramId={setSelectedProgramId}
+/>
         <main className="flex-1 overflow-y-auto">
           {activeTab === 'home' && (
             <HomePage
