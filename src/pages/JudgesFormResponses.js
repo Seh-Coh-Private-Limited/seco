@@ -432,7 +432,7 @@ const JudgesFormResponses = ({ programId, loading = false, email ,name}) => {
      
         const programmeQuery = query(
           collection(db, 'programmes'),
-          where('id', '==', judgesProgramId)
+          where('id', '==', programId)
         );
         const programmeSnapshot = await getDocs(programmeQuery);
      
@@ -552,7 +552,7 @@ const JudgesFormResponses = ({ programId, loading = false, email ,name}) => {
 
   return (
     <div className="container mx-auto py-6 my-8">
-      <div className="mb-8 bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+      {/* <div className="mb-8 bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
         <h2 className="text-2xl font-bold text-gray-800">
           Hello {name || 'Judge'},
         </h2>
@@ -564,7 +564,7 @@ const JudgesFormResponses = ({ programId, loading = false, email ,name}) => {
           Below you'll find the list of startup applications assigned to you for review and scoring.
           Please evaluate each submission carefully and provide your scores and remarks.
         </p>
-      </div>
+      </div> */}
 
       <div className="flex justify-end mb-4">
         <input
@@ -791,46 +791,46 @@ const JudgesFormResponses = ({ programId, loading = false, email ,name}) => {
                       </div>
                     ) : (
                       <div className="mt-8">
-                        <h3 className="text-lg font-semibold mb-4">Form Responses</h3>
-                        {selectedRow.responses?.slice(1).map((response, index) => (
-                          <div key={index} className="flex items-start space-x-3 mb-4">
-                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
-                              {response.answer.includes('https://') ? (
-                                <Link className="w-5 h-5 text-white" />
-                              ) : (
-                                <MessageCircle className="w-5 h-5 text-white" />
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="font-medium text-gray-800">{response.question}</div>
-                                <div className="text-gray-600">
-                                  {response.answer.includes('https://') ? (
-                                    <div className="mt-2">
-                                      <div 
-                                        className="border rounded p-4 cursor-resize-v"
-                                        style={{ 
-                                          height: '300px',
-                                          overflow: 'auto',
-                                          resize: 'vertical'
-                                        }}
-                                      >
-                                        <iframe 
-                                          src={response.answer}
-                                          className="w-full h-full border-0"
-                                          title="URL Preview"
-                                        />
-                                      </div>
+                      <h3 className="text-lg font-semibold mb-4">Form Responses</h3>
+                      {selectedRow.responses?.map((response, index) => (
+                        <div key={index} className="flex items-start space-x-3 mb-4">
+                          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded shadow-md">
+                            {response.answer.includes('https://') ? (
+                              <Link className="w-5 h-5 text-white" />
+                            ) : (
+                              <MessageCircle className="w-5 h-5 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <div className="font-medium text-gray-800">{response.question}</div>
+                              <div className="text-gray-600">
+                                {response.answer.includes('https://') ? (
+                                  <div className="mt-2">
+                                    <div 
+                                      className="border rounded p-4 cursor-resize-v"
+                                      style={{ 
+                                        height: '300px',
+                                        overflow: 'auto',
+                                        resize: 'vertical'
+                                      }}
+                                    >
+                                      <iframe 
+                                        src={response.answer}
+                                        className="w-full h-full border-0"
+                                        title="URL Preview"
+                                      />
                                     </div>
-                                  ) : (
-                                    response.answer
-                                  )}
-                                </div>
+                                  </div>
+                                ) : (
+                                  response.answer
+                                )}
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
+                    </div>
                     )}
                   </div>
                 </div>

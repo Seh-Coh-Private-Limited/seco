@@ -75,9 +75,21 @@ const BotAvatar = () => (
   </div>
 );
 
-const QuestionOptions = memo(({ type, options, onSelect, disabled }) => {
+const QuestionOptions = memo(({ type, options, onSelect, disabled, selectedValue }) => {
   const [selectedOptions, setSelectedOptions] = useState(new Set());
-
+  useEffect(() => {
+    // Initialize with saved value if it exists
+    if (selectedValue) {
+      if (type === 'checkbox') {
+        const values = selectedValue.split(', ');
+        setSelectedOptions(new Set(values));
+      } else {
+        setSelectedOptions(new Set([selectedValue]));
+      }
+    } else {
+      setSelectedOptions(new Set());
+    }
+  }, [type, options, selectedValue]);
   useEffect(() => {
     setSelectedOptions(new Set());
   }, [type, options]);
@@ -205,7 +217,7 @@ const AISuggestions = memo(({ inputValue, onSuggestionAccept, onReset, questionT
   };
 
   const handleRephrase = () => {
-    if (inputValue && typeof inputValue === 'string' && inputValue.trim()) {
+    if (inputValue && typeof inputValue === 'string' && inputValue) {
       fetchSuggestion(originalInput); // Use original input for new rephrase
     }
   };
@@ -216,7 +228,7 @@ const AISuggestions = memo(({ inputValue, onSuggestionAccept, onReset, questionT
     setSuggestion('');
   };
 
-  if (!inputValue || typeof inputValue !== 'string' || !inputValue.trim() || 
+  if (!inputValue || typeof inputValue !== 'string' || !inputValue || 
       questionType === 'fileUpload' || !['shortText', 'longText'].includes(questionType) ||
       !currentQuestion) {
     return null;
@@ -263,22 +275,32 @@ const AISuggestions = memo(({ inputValue, onSuggestionAccept, onReset, questionT
     </div>
   );
 });
-const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questions, currentQuestion }) => {
+const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questions, currentQuestion,answers = {} }) => {
   const isRequired = questions[currentQuestion]?.required || false;
 
   const renderQuestionInput = () => {
     if (message.type !== 'bot') return null;
+
+    // Check if there's a saved answer for this question
+    const savedAnswer = questions[currentQuestion]?.id ? answers[questions[currentQuestion].id] : null;
 
     switch (message.questionType) {
       case 'multipleChoice':
       case 'checkbox':
         return message.options && message.options.length > 0 ? (
           <>
+           {savedAnswer && (
+              <div className="">
+                {/* <p className="text-sm text-gray-600">Previously entered:</p> */}
+                {/* <p className="text-sm">{savedAnswer}</p> */}
+              </div>
+            )}
             <QuestionOptions
               type={message.questionType}
               options={message.options}
               onSelect={onOptionSelect}
               disabled={isLoading}
+              selectedValue={savedAnswer} // Pass saved answer to QuestionOptions
             />
             {!isRequired && !hasSubmitted && (
               <button
@@ -296,6 +318,12 @@ const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questi
       case 'longText':
         return (
           <>
+            {savedAnswer && (
+              <div className="">
+                {/* <p className="text-sm text-gray-600">Previously entered:</p>
+                <p className="text-sm">{savedAnswer}</p> */}
+              </div>
+            )}
             <AISuggestions
               questionType={message.questionType}
               currentQuestion={{
@@ -322,6 +350,12 @@ const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questi
       case 'date':
         return (
           <div className="mt-4">
+            {savedAnswer && (
+              <div className="">
+                {/* <p className="text-sm text-gray-600">Previously entered:</p>
+                <p className="text-sm">{savedAnswer}</p> */}
+              </div>
+            )}
             <input
               type="date"
               onChange={(e) => onOptionSelect(e.target.value)}
@@ -343,6 +377,12 @@ const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questi
       case 'time':
         return (
           <div className="mt-4">
+            {savedAnswer && (
+              <div className="mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                {/* <p className="text-sm text-gray-600">Previously entered:</p>
+                <p className="text-sm">{savedAnswer}</p> */}
+              </div>
+            )}
             <input
               type="time"
               onChange={(e) => onOptionSelect(e.target.value)}
@@ -364,6 +404,12 @@ const Message = memo(({ message, onOptionSelect, isLoading, hasSubmitted, questi
       case 'rating':
         return (
           <div className="mt-4">
+            {savedAnswer && (
+              <div className="">
+                {/* <p className="text-sm text-gray-600">Previously entered:</p>
+                <p className="text-sm">{savedAnswer}</p> */}
+              </div>
+            )}
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((rating) => (
                 <button
@@ -485,45 +531,52 @@ const ChatInput = memo(({
   hasSubmitted,
   isRecording,
   currentQuestion,
-  questions
+  questions,
+  saveDraft ,// Add saveDraft as a pro
+  answers 
 }) => {
   const handleKeyPress = useCallback((e) => {
-    if (!isLoading && inputValue.trim() && hasSeenTypewriter && !hasSubmitted) {
+    if (!isLoading && inputValue && hasSeenTypewriter && !hasSubmitted) {
       handleSubmit(e);
     }
   }, [isLoading, inputValue, hasSeenTypewriter, hasSubmitted, handleSubmit]);
 
   const handleSuggestionAccept = (suggestion) => {
     setInputValue(suggestion);
+    const newAnswers = { ...answers, [questions[currentQuestion]?.id]: suggestion };
+    saveDraft(newAnswers); // Save draft when suggestion is accepted
   };
 
   const handleReset = (original) => {
     setInputValue(original);
+    const newAnswers = { ...answers, [questions[currentQuestion]?.id]: original };
+    saveDraft(newAnswers); // Save draft when reset
   };
 
-  console.log('ChatInput rendered');
-
+  const handleInputChange = (value) => {
+    setInputValue(value);
+    const newAnswers = { ...answers, [questions[currentQuestion]?.id]: value };
+    saveDraft(newAnswers); // Save draft on every input change
+  };
   return (
     <div className="p-4 border-t">
       <div className="flex flex-col gap-4">
         <div className="relative">
           <AutoResizeTextarea
             value={inputValue}
-            onChange={setInputValue}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             disabled={isLoading || !hasSeenTypewriter || hasSubmitted}
           />
         </div>
-        {currentQuestion > 0 && (
-          <AISuggestions
-            inputValue={inputValue}
-            onSuggestionAccept={handleSuggestionAccept}
-            onReset={handleReset}
-            questionType={getCurrentQuestionType()}
-            currentQuestion={currentQuestion >= 0 && questions[currentQuestion] ? questions[currentQuestion] : null}
-          />
-        )}
+        <AISuggestions
+          inputValue={inputValue}
+          onSuggestionAccept={handleSuggestionAccept}
+          onReset={handleReset}
+          questionType={getCurrentQuestionType()}
+          currentQuestion={currentQuestion >= 0 && questions[currentQuestion] ? questions[currentQuestion] : null}
+        />
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
             <button
@@ -554,8 +607,8 @@ const ChatInput = memo(({
           </div>
           <button
             onClick={handleSubmit}
-            disabled={isLoading || !inputValue.trim() || !hasSeenTypewriter || hasSubmitted}
-            className={`p-3 bg-white border rounded-lg transition-colors duration-200 ${!isLoading && inputValue.trim() && hasSeenTypewriter && !hasSubmitted ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}
+            disabled={isLoading || !inputValue || !hasSeenTypewriter || hasSubmitted}
+            className={`p-3 bg-white border rounded-lg transition-colors duration-200 ${!isLoading && inputValue && hasSeenTypewriter && !hasSubmitted ? 'hover:bg-gray-50' : 'opacity-50 cursor-not-allowed'}`}
           >
             <Send className="h-6 w-6" />
           </button>
@@ -573,7 +626,8 @@ const ChatInput = memo(({
     prevProps.isRecording === nextProps.isRecording &&
     prevProps.getCurrentQuestionType() === nextProps.getCurrentQuestionType() &&
     prevProps.currentQuestion === nextProps.currentQuestion &&
-    prevProps.questions === nextProps.questions
+    prevProps.questions === nextProps.questions &&
+    prevProps.answers === nextProps.answers 
   );
 });
 const QuestionTypeIcons = {
@@ -633,9 +687,11 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
   const [recognition, setRecognition] = useState(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
+  const [showToast, setShowToast] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const auth = getAuth();
   const [currentQuestion, setCurrentQuestion] = useState(-1);
+
   const getCurrentQuestionType = useCallback(() => {
     const activeQuestion = questions.find(q => q.id === activeQuestionId);
     return activeQuestion?.type || null;
@@ -643,29 +699,36 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
 
   const addMessage = useCallback((content, type, questionData = null) => {
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [...prev, { type, content, timestamp, ...(questionData && { questionId: questionData.id, questionType: questionData.type, options: questionData.options }) }]);
+    setMessages(prev => {
+      if (questionData && type === 'bot' && prev.some(m => m.questionId === questionData.id && m.type === 'bot')) {
+        return prev;
+      }
+      return [...prev, { type, content, timestamp, ...(questionData && { questionId: questionData.id, questionType: questionData.type, options: questionData.options }) }];
+    });
   }, []);
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (customAnswers) => {
     if (!auth.currentUser) return;
     const userId = auth.currentUser.uid;
-    const draftData = { userId, programId, answers, messages, inputValue, updatedAt: new Date().toISOString() };
+    const draftData = {
+      userId,
+      programId,
+      responses: customAnswers || answers, // Default to the full answers state
+      updatedAt: new Date().toISOString(),
+    };
     try {
-      await setDoc(doc(db, 'drafts', `${userId}_${programId}`), draftData);
+      await setDoc(doc(db, 'drafts', `${userId}_${programId}`), draftData, { merge: true });
     } catch (error) {
       console.error('Error saving draft:', error);
     }
-  }, [auth, programId, answers, messages, inputValue]);
+  }, [auth, programId, answers]);
 
   const loadDraft = useCallback(async (userId) => {
     try {
       const draftDoc = await getDoc(doc(db, 'drafts', `${userId}_${programId}`));
       if (draftDoc.exists()) {
         const draftData = draftDoc.data();
-        setAnswers(draftData.answers || {});
-        setMessages(draftData.messages || []);
-        setInputValue(draftData.inputValue || '');
-        setHasSeenTypewriter(true);
+        setAnswers(draftData.responses || {});
         setDraftLoaded(true);
         return true;
       }
@@ -675,126 +738,6 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       return false;
     }
   }, [programId]);
-
-  const submitFormResponses = useCallback(async () => {
-    if (!auth.currentUser) return;
-    setIsLoading(true);
-    try {
-      const userId = auth.currentUser.uid;
-      const userStartupData = await getUserStartupData(userId);
-      const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
-      const programSnapshot = await getDocs(programQuery);
-      const programData = programSnapshot.docs[0].data();
-
-      const questionMap = questions.reduce((acc, q) => { acc[q.id] = q.question; return acc; }, {});
-      const formResponses = Object.entries(answers).map(([questionId, answer]) => ({
-        questionId,
-        question: questionMap[questionId],
-        answer: uploadedFiles[questionId] || answer,
-        timestamp: new Date().toISOString(),
-      }));
-
-      const formData = {
-        userId,
-        startupName: answers.startupName || 'N/A',
-        responses: formResponses,
-        startupData: { ...userStartupData },
-        submittedAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, 'programmes', programSnapshot.docs[0].id, 'formResponses', userId), formData);
-      await deleteDoc(doc(db, 'drafts', `${userId}_${programId}`));
-      setHasSubmitted(true);
-      addMessage('You have already submitted this form. Check your dashboard for status.', 'bot');
-      if (onFormSubmitSuccess) onFormSubmitSuccess();
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      addMessage('Error submitting your application. Try again.', 'bot');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [auth, programId, answers, questions, uploadedFiles, addMessage, onFormSubmitSuccess]);
-
-  const moveToNextQuestion = useCallback(() => {
-    let nextIdx = nextQuestionIndex + 1;
-    while (nextIdx < questions.length && answers[questions[nextIdx].id] !== undefined) {
-      nextIdx++;
-    }
-    if (nextIdx < questions.length) {
-      setActiveQuestionId(questions[nextIdx].id);
-      setNextQuestionIndex(nextIdx);
-      const nextQuestion = questions[nextIdx];
-      if (!messages.some(m => m.questionId === nextQuestion.id && m.type === 'bot')) {
-        addMessage(nextQuestion.question, 'bot', nextQuestion);
-      }
-    } else {
-      setActiveQuestionId(null); // All questions answered
-    }
-    saveDraft();
-  }, [nextQuestionIndex, questions, answers, addMessage, saveDraft]);
-
-  const handleOptionSelect = useCallback((answer) => {
-    const activeQuestion = questions.find(q => q.id === activeQuestionId);
-    if (!activeQuestion) return;
-
-    setIsLoading(true);
-    if (answer === null && activeQuestion.required) {
-      addMessage("This question is required and cannot be skipped.", 'bot');
-      setIsLoading(false);
-      return;
-    }
-
-    const processedAnswer = Array.isArray(answer) ? answer.join(', ') : answer;
-    addMessage(processedAnswer || 'Skipped', 'user');
-    setAnswers(prev => ({ ...prev, [activeQuestion.id]: processedAnswer }));
-    setInputValue('');
-    setTimeout(() => {
-      moveToNextQuestion();
-      setIsLoading(false);
-    }, 500);
-  }, [activeQuestionId, questions, addMessage, moveToNextQuestion]);
-
-  const handleSubmit = useCallback((e) => {
-    if (e?.preventDefault) e.preventDefault();
-    if (hasSubmitted || !inputValue || isLoading || !hasSeenTypewriter || !activeQuestionId) return;
-
-    setIsLoading(true);
-    const userResponse = inputValue.trim();
-    addMessage(userResponse, 'user');
-    setInputValue('');
-
-    const activeQuestion = questions.find(q => q.id === activeQuestionId);
-    if (userResponse.toLowerCase() === 'skip' && activeQuestion.required) {
-      addMessage("This question is required and cannot be skipped.", 'bot');
-      setIsLoading(false);
-    } else {
-      setAnswers(prev => ({ ...prev, [activeQuestion.id]: userResponse.toLowerCase() === 'skip' ? null : userResponse }));
-      setTimeout(() => {
-        moveToNextQuestion();
-        setIsLoading(false);
-      }, 500);
-    }
-  }, [hasSubmitted, inputValue, isLoading, hasSeenTypewriter, activeQuestionId, questions, addMessage, moveToNextQuestion]);
-
-  const handleQuestionSelect = (questionId) => {
-    if (isLoading || hasSubmitted) return;
-    setActiveQuestionId(questionId);
-    setNextQuestionIndex(questions.findIndex(q => q.id === questionId));
-    const question = questions.find(q => q.id === questionId);
-    if (!messages.some(m => m.questionId === questionId && m.type === 'bot')) {
-      addMessage(question.question, 'bot', question);
-    }
-  };
-
-  const allQuestionsAnswered = questions.every(q => answers[q.id] !== undefined);
-
-  const handleTypewriterComplete = useCallback(() => {
-    setHasSeenTypewriter(true);
-    if (questions.length > 0) {
-      setActiveQuestionId(questions[0].id);
-      addMessage(questions[0].question, 'bot', questions[0]);
-    }
-  }, [questions, addMessage]);
 
   useEffect(() => {
     const fetchProgramData = async () => {
@@ -813,45 +756,46 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
           if (!submissionSnapshot.empty) {
             setHasSubmitted(true);
             setAnswers(submissionSnapshot.docs[0].data().responses.reduce((acc, r) => ({ ...acc, [r.questionId]: r.answer }), {}));
-            addMessage('You have already submitted this form. Check your dashboard for status.', 'bot');
             setHasSeenTypewriter(true);
             setIsInitializing(false);
             return;
           }
 
-          const hasDraft = await loadDraft(userId);
-          if (hasDraft) {
-            const nextIdx = questions.findIndex(q => answers[q.id] === undefined);
-            if (nextIdx !== -1) {
-              setNextQuestionIndex(nextIdx);
-              setActiveQuestionId(questions[nextIdx].id);
-              addMessage(questions[nextIdx].question, 'bot', questions[nextIdx]);
+          const fetchedQuestions = [];
+          const seenQuestions = new Set();
+          const questionsSnapshot = await getDocs(collection(db, 'programmes', programDoc.id, 'form'));
+          questionsSnapshot.forEach(doc => {
+            const questionData = doc.data();
+            if (Array.isArray(questionData.questions)) {
+              questionData.questions.forEach(q => {
+                const questionId = `${doc.id}_${q.title}`;
+                if (!seenQuestions.has(q.title)) {
+                  seenQuestions.add(q.title);
+                  fetchedQuestions.push({
+                    id: questionId,
+                    question: q.title,
+                    type: q.type || 'shortText',
+                    options: Array.isArray(q.options) ? q.options : [],
+                    required: q.required || false,
+                  });
+                }
+              });
             }
+          });
+          setQuestions(fetchedQuestions);
+
+          const hasDraft = await loadDraft(userId);
+          if (hasDraft && fetchedQuestions.length > 0) {
+            setHasSeenTypewriter(true);
             setIsInitializing(false);
             return;
           }
-        }
 
-        const fetchedQuestions = [];
-        const questionsSnapshot = await getDocs(collection(db, 'programmes', programDoc.id, 'form'));
-        questionsSnapshot.forEach(doc => {
-          const questionData = doc.data();
-          if (Array.isArray(questionData.questions)) {
-            questionData.questions.forEach(q => {
-              fetchedQuestions.push({
-                id: `${doc.id}_${q.title}`,
-                question: q.title,
-                type: q.type || 'shortText',
-                options: Array.isArray(q.options) ? q.options : [],
-                required: q.required || false,
-              });
-            });
+          if (fetchedQuestions.length > 0 && !hasSubmitted) {
+            setActiveQuestionId(fetchedQuestions[0].id);
+            setCurrentQuestion(0);
+            addMessage(fetchedQuestions[0].question, 'bot', fetchedQuestions[0]);
           }
-        });
-        setQuestions(fetchedQuestions);
-        if (fetchedQuestions.length > 0 && !hasSubmitted && !draftLoaded) {
-          setActiveQuestionId(fetchedQuestions[0].id);
-          addMessage(fetchedQuestions[0].question, 'bot', fetchedQuestions[0]);
         }
       } catch (error) {
         console.error('Error fetching program data:', error);
@@ -859,8 +803,173 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         setIsInitializing(false);
       }
     };
+
     fetchProgramData();
   }, [programId, auth.currentUser, addMessage, loadDraft]);
+
+  const handleQuestionSelect = useCallback((questionId) => {
+    if (isLoading || hasSubmitted) return;
+    
+    setActiveQuestionId(questionId);
+    const idx = questions.findIndex(q => q.id === questionId);
+    setNextQuestionIndex(idx);
+    setCurrentQuestion(idx);
+    const question = questions.find(q => q.id === questionId);
+  
+    const savedAnswer = answers[questionId];
+    setInputValue(savedAnswer !== undefined ? savedAnswer : '');
+  
+    if (!messages.some(m => m.questionId === questionId && m.type === 'bot')) {
+      addMessage(question.question, 'bot', question);
+    }
+    
+    saveDraft(answers); // Pass the full answers state explicitly
+  }, [isLoading, hasSubmitted, questions, answers, addMessage, saveDraft]);
+  useEffect(() => {
+    const handleBeforeUnload = () => saveDraft();
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveDraft]);
+ 
+  const submitFormResponses = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setIsLoading(true);
+    try {
+      const userId = auth.currentUser.uid;
+      const userStartupData = await getUserStartupData(userId);
+      const programQuery = query(collection(db, 'programmes'), where('id', '==', programId));
+      const programSnapshot = await getDocs(programQuery);
+      const programData = programSnapshot.docs[0].data();
+  
+      await saveDraft(answers);
+  
+      const questionMap = questions.reduce((acc, q) => { acc[q.id] = q.question; return acc; }, {});
+      const formResponses = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId,
+        question: questionMap[questionId],
+        answer: uploadedFiles[questionId] || answer,
+        timestamp: new Date().toISOString(),
+      }));
+  
+      const formData = {
+        userId,
+        startupName: answers.startupName || 'N/A',
+        responses: formResponses,
+        startupData: { ...userStartupData },
+        submittedAt: new Date().toISOString(),
+      };
+      const sessionEmail = auth.currentUser.email;
+      const usersCollection = collection(db, 'users');
+      const userQuery = query(usersCollection, where('email', '==', sessionEmail));
+      const userSnapshot = await getDocs(userQuery);
+  
+      if (!userSnapshot.empty) {
+        const userDocId = userSnapshot.docs[0].id;
+        const programIdStr = String(programId);
+        await setDoc(doc(db, 'users', userDocId, 'applications', programIdStr), {
+          programId: programIdStr,
+          programTitle: programData.name,
+          appliedAt: new Date().toISOString(),
+          status: 'submitted',
+        });
+        await setDoc(doc(db, 'users', userDocId, 'formResponses', programIdStr), formData);
+      }
+      await setDoc(doc(db, 'programmes', programSnapshot.docs[0].id, 'formResponses', userId), formData);
+      await deleteDoc(doc(db, 'drafts', `${userId}_${programId}`));
+      setHasSubmitted(true);
+      if (onFormSubmitSuccess) onFormSubmitSuccess();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      addMessage('Error submitting your application. Try again.', 'bot');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [auth, programId, answers, questions, uploadedFiles, addMessage, onFormSubmitSuccess]);
+
+  const moveToNextQuestion = useCallback(() => {
+    let nextIdx = nextQuestionIndex + 1;
+    while (nextIdx < questions.length && answers[questions[nextIdx].id] !== undefined) {
+      nextIdx++;
+    }
+  
+    if (nextIdx < questions.length) {
+      setActiveQuestionId(questions[nextIdx].id);
+      setNextQuestionIndex(nextIdx);
+      setCurrentQuestion(nextIdx);
+      const nextQuestion = questions[nextIdx];
+      if (!messages.some(m => m.questionId === nextQuestion.id && m.type === 'bot')) {
+        addMessage(nextQuestion.question, 'bot', nextQuestion);
+      }
+    } else {
+      setActiveQuestionId(null);
+    }
+  }, [nextQuestionIndex, questions, answers, addMessage, messages]);
+
+  const handleOptionSelect = useCallback((answer) => {
+    const activeQuestion = questions.find(q => q.id === activeQuestionId);
+    if (!activeQuestion) return;
+  
+    setIsLoading(true);
+    if (answer === null && activeQuestion.required) {
+      addMessage("This question is required and cannot be skipped.", 'bot', { id: activeQuestionId });
+      setIsLoading(false);
+      return;
+    }
+  
+    const processedAnswer = Array.isArray(answer) ? answer.join(', ') : answer;
+    addMessage(processedAnswer || 'Skipped', 'user', { id: activeQuestionId });
+  
+    const newAnswers = { ...answers, [activeQuestion.id]: processedAnswer };
+    setAnswers(newAnswers);
+    saveDraft(newAnswers);
+  
+    setInputValue('');
+    setTimeout(() => {
+      moveToNextQuestion();
+      setIsLoading(false);
+    }, 500);
+  }, [activeQuestionId, questions, addMessage, moveToNextQuestion, saveDraft, answers]);
+
+  const handleSubmit = useCallback((e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (hasSubmitted || !inputValue || isLoading || !hasSeenTypewriter || !activeQuestionId) return;
+  
+    setIsLoading(true);
+    const userResponse = inputValue;
+    addMessage(userResponse, 'user', { id: activeQuestionId });
+    setInputValue('');
+  
+    const activeQuestion = questions.find(q => q.id === activeQuestionId);
+    if (userResponse.toLowerCase() === 'skip' && activeQuestion.required) {
+      addMessage("This question is required and cannot be skipped.", 'bot', { id: activeQuestionId });
+      setIsLoading(false);
+    } else {
+      const newAnswer = userResponse.toLowerCase() === 'skip' ? null : userResponse;
+      const newAnswers = { ...answers, [activeQuestion.id]: newAnswer };
+      setAnswers(newAnswers);
+      saveDraft(newAnswers);
+  
+      setTimeout(() => {
+        if (answers[activeQuestionId] === undefined) {
+          moveToNextQuestion();
+        }
+        setIsLoading(false);
+      }, 500);
+    }
+  }, [hasSubmitted, inputValue, isLoading, hasSeenTypewriter, activeQuestionId, questions, addMessage, moveToNextQuestion, saveDraft, answers]);
+
+  const allQuestionsAnswered = questions.every(q => answers[q.id] !== undefined);
+
+  useEffect(() => {
+    if (allQuestionsAnswered && !hasSubmitted) {
+      setShowToast(true);
+    }
+  }, [allQuestionsAnswered, hasSubmitted]);
+
+  const handleTypewriterComplete = useCallback(() => {
+    setHasSeenTypewriter(true);
+  }, []);
+
   const getUserStartupData = useCallback(async (uid) => {
     try {
       const usersCollection = collection(db, 'users');
@@ -873,6 +982,7 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       throw error;
     }
   }, []);
+
   const handleVoiceRecord = useCallback(() => {
     if (!recognition) {
       console.error('Speech recognition not supported in this browser');
@@ -888,22 +998,42 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
         setIsRecording(true);
       } catch (err) {
         console.error('Error starting speech recognition:', err);
-        if (err.message.includes('already started')) recognition.stop();
       }
     }
   }, [recognition, isRecording]);
+  const CustomToast = ({ title, description, actionText = "OK", onAction, onClose }) => {
+    return (
+      <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-white p-4 rounded-xl shadow-lg z-50 min-w-[400px] flex flex-row items-center justify-between gap-4 animate-fade-in">
+        <div className="flex flex-col gap-1">
+          <div className="font-bold text-base">{title}</div>
+          <div className="text-sm">{description}</div>
+        </div>
+        <button 
+          className="text-white bg-black border-none px-4 py-2 rounded-full cursor-pointer font-bold w-fit"
+          onClick={() => {
+            onAction?.();
+            onClose();
+          }}
+        >
+          {actionText}
+        </button>
+      </div>
+    );
+  };
+  
   const uploadFileToStorage = useCallback(async (file, questionId) => {
     const storage = getStorage();
     const fileRef = ref(storage, `form-uploads/${auth.currentUser.uid}/${Date.now()}_${file.name}`);
     const snapshot = await uploadBytes(fileRef, file);
     return await getDownloadURL(snapshot.ref);
   }, [auth]);
+
   const handleFileUpload = useCallback(async (event) => {
     if (getCurrentQuestionType() !== 'fileUpload') return;
-  
+
     const file = event.target.files[0];
     if (!file) return;
-  
+
     setIsLoading(true);
     try {
       const currentQuestionData = questions[currentQuestion];
@@ -917,42 +1047,69 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       setIsLoading(false);
     }
   }, [getCurrentQuestionType, questions, currentQuestion, uploadFileToStorage, handleOptionSelect, addMessage]);
- 
+
   const QuestionSidebar = () => (
     <div className="w-80 border-l bg-gray-50 p-4 overflow-y-auto" style={{ height: '650px' }}>
       <h3 className="text-lg font-semibold mb-4">Application Questions</h3>
-      <div className="space-y-3">
-        {questions.map(q => {
-          const Icon = QuestionTypeIcons[q.type] || QuestionTypeIcons.shortText;
-          const isActive = q.id === activeQuestionId;
-          const isAnswered = answers[q.id] !== undefined;
-          return (
-            <div
-              key={q.id}
-              onClick={() => handleQuestionSelect(q.id)}
-              className={`p-3 rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-blue-100 border-blue-500' : isAnswered ? 'bg-green-50 border-green-500' : 'bg-white border-gray-200'} border`}
-            >
-              <div className="flex items-center gap-2">
-                <Icon />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{q.question}</p>
-                  <p className="text-xs text-gray-500 capitalize">{q.type.replace(/([A-Z])/g, ' $1').trim()}</p>
+      {questions.length > 0 ? (
+        <div className="space-y-3">
+          {questions.map(q => {
+            const Icon = QuestionTypeIcons[q.type] || QuestionTypeIcons.shortText;
+            const isActive = q.id === activeQuestionId;
+            const isAnswered = answers[q.id] !== undefined;
+            return (
+              <div
+                key={q.id}
+                onClick={() => handleQuestionSelect(q.id)}
+                className={`p-3 rounded-lg transition-colors cursor-pointer ${
+                  isActive ? 'bg-blue-100 border-blue-500' : 
+                  isAnswered ? 'bg-green-50 border-green-500' : 
+                  'bg-white border-gray-200'
+                } border`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{q.question}</p>
+                    <p className="text-xs text-gray-500 capitalize">{q.type.replace(/([A-Z])/g, ' $1').trim()}</p>
+                  </div>
+                  {isAnswered && (
+                    <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </div>
-                {isAnswered && <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-gray-500 text-sm">No questions available.</p>
+      )}
     </div>
   );
 
   if (isInitializing) return <div className="md:px-36 h-screen flex flex-col items-center justify-center"><LoadingDots /></div>;
 
-  const filteredMessages = activeQuestionId ? messages.filter(m => m.questionId === activeQuestionId || !m.questionId) : [];
+  // Generate messages for all questions and answers when all are answered
+  const allQuestionsMessages = allQuestionsAnswered && !hasSubmitted
+    ? questions.flatMap(q => {
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return [
+          { type: 'bot', content: q.question, timestamp, questionId: q.id, questionType: q.type, options: q.options },
+          { type: 'user', content: answers[q.id] || 'Skipped', timestamp, questionId: q.id }
+        ];
+      })
+    : [];
+
+  const filteredMessages = activeQuestionId
+    ? messages.filter(m => m.questionId === activeQuestionId || !m.questionId)
+    : allQuestionsAnswered && !hasSubmitted
+    ? allQuestionsMessages
+    : [];
 
   return (
-    <div className="md:px-36 h-screen flex flex-col">
+    <div className="md:px-36 h-screen flex flex-col relative">
       <div className="text-left mb-8">
         <h1 className="text-4xl font-bold font-sans-serif mb-8">{programTitle}</h1>
         <div className="flex border-b border-gray-300 justify-left mt-4" />
@@ -960,32 +1117,67 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
       <div className="mb-8">
         {!hasSeenTypewriter ? <Typewriter text="" speed={20} onComplete={handleTypewriterComplete} /> : <div className="min-h-[2em] flex items-center"><h2 className="text-xl font-semibold"></h2></div>}
       </div>
-      <div className="flex-1 flex gap-4">
+      <div className="flex-1 flex gap-4 relative">
         <div className="flex-1 h-[650px] border rounded-lg shadow-lg flex flex-col bg-white scrollbar-hide">
-          <div className="flex-1 overflow-y-auto p-4">
-            {!hasSeenTypewriter ? (
-              <div className="flex justify-start"><div className="flex items-start gap-2 max-w-[80%]"><BotAvatar /><div className="bg-gray-100 rounded-lg"><LoadingDots /></div></div></div>
-            ) : activeQuestionId ? (
-              filteredMessages.length > 0 ? (
-                filteredMessages.map((message, index) => (
-                  <Message
-                    key={index}
-                    message={message}
-                    onOptionSelect={handleOptionSelect}
-                    isLoading={isLoading}
-                    hasSubmitted={hasSubmitted}
-                    questions={questions}
-                    currentQuestion={questions.findIndex(q => q.id === activeQuestionId)}
-                  />
-                ))
-              ) : (
-                <div className="text-gray-500 text-center">No messages for this question yet.</div>
-              )
-            ) : (
-              <div className="text-gray-500 text-center">{allQuestionsAnswered ? "All questions completed! Submit or edit." : "Select a question from the sidebar."}</div>
-            )}
-            {isLoading && <div className="flex justify-start"><div className="flex items-start gap-2 max-w-[80%]"><BotAvatar /><div className="bg-gray-100 rounded-lg"><LoadingDots /></div></div></div>}
-          </div>
+          {/* Chat Area */}
+         <div className="flex-1 overflow-y-auto p-4">
+         {!hasSeenTypewriter ? (
+  <div className="flex justify-start">
+    <div className="flex items-start gap-2 max-w-[80%]">
+      <BotAvatar />
+      <div className="bg-gray-100 rounded-lg">
+        <LoadingDots />
+      </div>
+    </div>
+  </div>
+) : activeQuestionId || (allQuestionsAnswered && !hasSubmitted) ? (
+  <>
+    {allQuestionsAnswered && !hasSubmitted && showToast && (
+      <CustomToast
+        title="All questions answered"
+        description="You can submit your responses or edit them by clicking on a question in the sidebar."
+        actionText="Got it"
+        onAction={() => {}}
+        onClose={() => setShowToast(false)}
+      />
+    )}
+    {filteredMessages.length > 0 ? (
+      filteredMessages.map((message, index) => (
+        <Message
+          key={index}
+          message={message}
+          onOptionSelect={handleOptionSelect}
+          isLoading={isLoading}
+          hasSubmitted={hasSubmitted}
+          questions={questions}
+          currentQuestion={questions.findIndex(q => q.id === (message.questionId || activeQuestionId))}
+          answers={answers}
+        />
+      ))
+    ) : (
+      <div className="text-gray-500 text-center">
+        No messages for this question yet.
+      </div>
+    )}
+  </>
+) : (
+  <div className="text-gray-500 text-center">
+    Select a question from the sidebar to continue.
+  </div>
+)}
+
+  {isLoading && (
+    <div className="flex justify-start">
+      <div className="flex items-start gap-2 max-w-[80%]">
+        <BotAvatar />
+        <div className="bg-gray-100 rounded-lg">
+          <LoadingDots />
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
           <div className="border-t p-0 bg-white rounded-b-lg">
             <ChatInput
               inputValue={inputValue}
@@ -1001,6 +1193,8 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
               isRecording={isRecording}
               currentQuestion={questions.findIndex(q => q.id === activeQuestionId)}
               questions={questions}
+              saveDraft={saveDraft}
+              answers={answers}
             />
             {allQuestionsAnswered && !hasSubmitted && (
               <div className="p-4">
@@ -1016,11 +1210,27 @@ const Application = ({ programId, onFormSubmitSuccess }) => {
           </div>
         </div>
         <QuestionSidebar />
+        {hasSubmitted && (
+          <div
+            className="absolute top-0 left-0 right-0 bottom-0 bg-gray-900 bg-opacity-50 flex items-center justify-center rounded-lg z-10"
+            style={{ height: '650px' }}
+          >
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+              <svg className="w-12 h-12 text-green-500 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Form Submitted</h2>
+              <p className="text-gray-600">
+                Your application has been successfully submitted. You can view it in the{' '}
+                <a className="text-blue-500 hover:underline">Applications section</a>.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-
-
 export default Application;
+

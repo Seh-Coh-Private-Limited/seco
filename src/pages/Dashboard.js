@@ -29,9 +29,13 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import ProgramInsights from '../components/ProgramInsights';
 import { getAuth, signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, query, updateDoc, where,deleteDoc,setDoc,serverTimestamp } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Plus, Trash2 } from 'lucide-react';
+import { storage } from './firebase';
 import React, { useEffect, useState,useCallback ,useRef} from 'react';
 import ReactQuill from "react-quill";
+import IncJudgesFormResponses from './IncJudgeformRresponses';
+
 import "react-quill/dist/quill.snow.css"; // Import Quill styles
 import './Dashboard.css';
 import FormBuilder from './FormBuilder';
@@ -63,6 +67,7 @@ const FounderDashboard = () => {
   const [isAdding, setIsAdding] = useState(false);
 const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [activeTab, setActiveTab] = useState('landing');
+  const [isRemoving, setIsRemoving] = useState(false);
   const [activeProgramTab, setActiveProgramTab] = useState('insights');
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -72,7 +77,7 @@ const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [isJudgingProgramSelected, setIsJudgingProgramSelected] = useState(false);
   const [userStatus, setUserStatus] = useState(null);
   const [programid, setprogramid] = useState(null);
-
+  const [userid, setUserid] = useState(null); // Add this to your state declarations at the top
   const [currentStep, setCurrentStep] = useState(1);
     const [selectedProgramId, setSelectedProgramId] = useState(null);
     const [activeApplicationTab, setActiveApplicationTab] = useState('application');
@@ -263,44 +268,58 @@ const fetchCompanyDetails = useCallback(async (user) => {
   
   // Function to fetch programmes
   // Check if user is a judge and fetch judging programmes
-  const checkJudgeStatusAndFetchProgrammes = useCallback(async (user) => {
+ const checkJudgeStatusAndFetchProgrammes = useCallback(async (user) => {
     try {
       const judgesQuery = query(
-        collection(db, 'judges'),
-        where('email', '==', user.email)
+        collection(db, "judges"),
+        where("email", "==", user.email)
       );
       const judgesSnapshot = await getDocs(judgesQuery);
-
+  
       if (!judgesSnapshot.empty) {
         setIsJudge(true);
         const judgeData = judgesSnapshot.docs[0].data();
-        const programId = judgeData.programId;
-
+        
+        const userid = judgeData.id; // This is the judge's ID
+        console.log(userid);
+      setUserid(userid); // Store the judge's ID in state
+        const programIds = judgeData.programId; // Now an array
+  
+        if (!Array.isArray(programIds) || programIds.length === 0) {
+          setJudgingProgrammes([]);
+          return;
+        }
+  
+        // Fetch multiple programs where id is in programIds array
         const programmesQuery = query(
-          collection(db, 'programmes'),
-          where('id', '==', programId)
+          collection(db, "programmes"),
+          where("id", "in", programIds.slice(0, 10)) // Firestore 'in' supports max 10 values
         );
         const programmesSnapshot = await getDocs(programmesQuery);
-
-        const fetchedJudgingProgrammes = programmesSnapshot.docs.map(doc => ({
+  
+        const fetchedJudgingProgrammes = programmesSnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
+  
         setJudgingProgrammes(fetchedJudgingProgrammes);
       } else {
         setIsJudge(false);
         setJudgingProgrammes([]);
       }
     } catch (error) {
-      console.error('Error checking judge status or fetching judging programmes:', error);
-      setError('Failed to check judge status or load judging programmes');
+      console.error(
+        "Error checking judge status or fetching judging programmes:",
+        error
+      );
+      setError("Failed to check judge status or load judging programmes");
     }
   }, [db]);
  // Inside FounderDashboard component
  const fetchProgrammes = useCallback(async (user) => {
   try {
     setLoading(true);
-    console.log('Fetching programmes for user:', user.uid);
+    // console.log('Fetching programmes for user:', user.uid);
 
     const programmesQuery = await getDocs(
       query(
@@ -310,7 +329,7 @@ const fetchCompanyDetails = useCallback(async (user) => {
       )
     );
 
-    console.log('Programmes query snapshot:', programmesQuery);
+    // console.log('Programmes query snapshot:', programmesQuery);
 
     const fetchedProgrammes = programmesQuery.docs.length > 0
       ? programmesQuery.docs.map((doc) => {
@@ -325,14 +344,14 @@ const fetchCompanyDetails = useCallback(async (user) => {
         })
       : [];
 
-    console.log('Fetched programmes:', fetchedProgrammes);
+    // console.log('Fetched programmes:', fetchedProgrammes);
 
     const statsPromises = fetchedProgrammes.map(async (program) => {
-      console.log('Fetching responses for program with docId:', program.docId);
+      // console.log('Fetching responses for program with docId:', program.docId);
       const responsesQuery = await getDocs(
         collection(db, 'programmes', program.docId, 'formResponses')
       );
-      console.log('Responses query size for', program.docId, ':', responsesQuery.size);
+      // console.log('Responses query size for', program.docId, ':', responsesQuery.size);
       return {
         id: program.id,
         name: program.name || 'Untitled Program',
@@ -352,6 +371,9 @@ const fetchCompanyDetails = useCallback(async (user) => {
     setLoading(false);
   }
 }, [db]);
+  
+  // Add reload function to handle manual reloads
+
 const reloadApplications = async () => {
   try {
     const user = auth.currentUser;
@@ -412,7 +434,6 @@ const reloadApplications = async () => {
     reloadApplications,
     checkJudgeStatusAndFetchProgrammes,
   ]);
-
   // Inside FounderDashboard component
 useEffect(() => {
   const fetchData = async () => {
@@ -424,54 +445,70 @@ useEffect(() => {
   };
   fetchData();
 }, [auth, fetchProgrammes]); // Add fetchProgrammes to dependencies
-
-useEffect(() => {
-  const checkSessionAndFetchData = async () => {
-    const sessionData = localStorage.getItem('sessionData');
-
-    if (!sessionData) {
-      navigate('/signup');
-      return;
-    }
-
-    try {
-      const { uid, expiresAt } = JSON.parse(sessionData);
-      const currentTime = new Date().getTime();
-      const expiration = new Date(expiresAt).getTime();
-
-      if (currentTime >= expiration) {
-        console.warn('Session is about to expire. Extending session.');
-        const extendedSessionData = {
-          ...JSON.parse(sessionData),
-          expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString(), // Extend by 24 hours
-        };
-        localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
-      }
-
-      const sessionRef = doc(db, 'sessions', uid);
-      const sessionDoc = await getDoc(sessionRef);
-
-      if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
+ useEffect(() => {
+    const checkSessionAndFetchData = async () => {
+      const sessionData = localStorage.getItem('sessionData');
+      
+      if (!sessionData) {
         navigate('/signup');
         return;
       }
-
-      // Load all data after session validation
-      await loadAllData();
-    } catch (error) {
-      console.error('Session check and data fetch error:', error);
-      console.warn('There was an issue checking your session. Please try again.');
-    }
-  };
-
-  // Run on mount
-  checkSessionAndFetchData();
-
-  // Periodic session checks (optional)
-  const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Every 5 minutes
-
-  return () => clearInterval(interval);
-}, [loadAllData, navigate, auth, db]);
+  
+      try {
+        const { uid, expiresAt } = JSON.parse(sessionData);
+        const currentTime = new Date().getTime();
+        const expiration = new Date(expiresAt).getTime();
+        
+        // Extend session instead of logging out
+        if (currentTime >= expiration) {
+          console.warn('Session is about to expire. Extending session.');
+          // Optionally update expiration in localStorage
+          const extendedSessionData = {
+            ...JSON.parse(sessionData),
+            expiresAt: new Date(currentTime + 24 * 60 * 60 * 1000).toISOString() // Extend by 24 hours
+          };
+          localStorage.setItem('sessionData', JSON.stringify(extendedSessionData));
+        }
+  
+        // Verify the session in Firestore
+        const sessionRef = doc(db, 'sessions', uid);
+        const sessionDoc = await getDoc(sessionRef);
+        
+        if (!sessionDoc.exists() || sessionDoc.data().isActive === false) {
+          navigate('/signup');
+          return;
+        }
+  
+        // Fetch user and data
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/signup');
+          return;
+        }
+  fetchCompanyDetails(user);
+        fetchProgrammes(user);
+        reloadApplications();
+        checkJudgeStatusAndFetchProgrammes(user);
+  
+      } catch (error) {
+        console.error('Session check and data fetch error:', error);
+        
+        // Fallback states
+       
+        
+        // Do not automatically log out on errors
+        console.warn('There was an issue checking your session. Please try again.');
+      }
+    };
+  
+    // Initial check and data fetch
+    checkSessionAndFetchData();
+    
+    // Periodic session checks
+    const interval = setInterval(checkSessionAndFetchData, 5 * 60 * 1000); // Check every 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [navigate, auth, db]);
 // useEffect(() => {
 //   const fetchCompanyDetails = async () => {
 //     try {
@@ -631,19 +668,19 @@ useEffect(() => {
   //   return null;
   // };
   // Breadcrumb for navigation (original from second code block)
-  const BreadcrumbNavigation = ({ activeTab, selectedApplication, selectedProgram, eventDetails, setActiveTab, selectedProgramId, setSelectedProgramId }) => {
-    const getBreadcrumbItems = () => {
-      const items = [];
-      switch (activeTab) {
-        case 'discover':
-          items.push({ label: 'Discover', onClick: () => setActiveTab('discover') });
-          break;
-        case 'programdetailpage':
-          items.push(
-            { label: 'Discover', onClick: () => setActiveTab('discover') },
-            { label: eventDetails?.name || 'Event', onClick: () => setActiveTab('programdetailpage') }
-          );
-          break;
+const BreadcrumbNavigation = ({ activeTab, selectedApplication, selectedProgram, eventDetails, setActiveTab }) => {
+  const getBreadcrumbItems = () => {
+    const items = [];
+    switch (activeTab) {
+      case 'discover':
+        items.push({ label: 'Discover', onClick: () => setActiveTab('discover') });
+        break;
+      case 'programdetailpage':
+        items.push(
+          { label: 'Discover', onClick: () => setActiveTab('discover') },
+          { label: eventDetails?.name || 'Event', onClick: () => setActiveTab('programdetailpage') }
+        );
+        break;
         case 'applicationform':
           items.push(
             { label: 'Discover', onClick: () => setActiveTab('discover') },
@@ -656,44 +693,44 @@ useEffect(() => {
             },
             { label: 'Application Form' }
           );
-          break;
-        case 'application':
-          if (selectedApplication) {
-            items.push({ label: selectedApplication.title || 'Untitled Application', onClick: () => setActiveTab('application') });
-          }
-          break;
-        case 'settings':
-          items.push({ label: 'Settings' });
-          break;
-        default:
-          break;
-      }
-      return items;
-    };
-  
-    const breadcrumbItems = getBreadcrumbItems();
-    return (
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        {breadcrumbItems.length > 0 && (
-          <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
-        )}
-        {breadcrumbItems.map((item, index) => (
-          <React.Fragment key={item.label}>
-            {index > 0 && (
-              <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
-            )}
-            {item.onClick ? (
-              <a onClick={item.onClick} className="text-gray-900 hover:underline focus:outline-none cursor-pointer">
-                {item.label}
-              </a>
-            ) : (
-              <span className="text-gray-900">{item.label}</span>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    );
+        break;
+      case 'application':
+        if (selectedApplication) {
+          items.push({ label: selectedApplication.title || 'Untitled Application', onClick: () => setActiveTab('application') });
+        }
+        break;
+      case 'settings':
+        items.push({ label: 'Settings' });
+        break;
+      default:
+        break;
+    }
+    return items;
   };
+
+  const breadcrumbItems = getBreadcrumbItems();
+  return (
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      {breadcrumbItems.length > 0 && (
+        <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+      )}
+      {breadcrumbItems.map((item, index) => (
+        <React.Fragment key={item.label}>
+          {index > 0 && (
+            <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 w-3 h-3" />
+          )}
+          {item.onClick ? (
+            <a onClick={item.onClick} className="text-gray-900 hover:underline focus:outline-none">
+              {item.label}
+            </a>
+          ) : (
+            <span className="text-gray-900">{item.label}</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 
 // Breadcrumb for program creation (from first code block)
 const BreadcrumbProgramCreation = ({ currentStep, showCreateEvent, activeTab, setCurrentStep }) => {
@@ -1463,6 +1500,7 @@ const Header = ({ activeTab, selectedApplication, setActiveTab, openSettings, ev
     </div>
   );
 };
+
 // Card Components
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-lg shadow ${className}`}>
@@ -1686,9 +1724,9 @@ const useDebounce = (callback, delay) => {
   }, [programId, setEventData, isNewProgram, db]);
 
   // Check current step
-  useEffect(() => {
-    console.log('Current Step:', currentStep);
-  }, [currentStep]);
+  // useEffect(() => {
+  //   console.log('Current Step:', currentStep);
+  // }, [currentStep]);
 
   // Handle initial data
   useEffect(() => {
@@ -1782,30 +1820,30 @@ const useDebounce = (callback, delay) => {
      finally {
       setIsSaving(false);
     }
-  };
-  useEffect(() => {
-    const fetchEventDetails = async () => {
-      if (selectedProgramId) {
-        try {
-          const programmesQuery = query(
-            collection(db, 'programmes'),
-            where('id', '==', selectedProgramId)
-          );
-          const snapshot = await getDocs(programmesQuery);
-          if (!snapshot.empty) {
-            const programData = snapshot.docs[0].data();
-            setEventDetails(programData);
+  };useEffect(() => {
+      const fetchEventDetails = async () => {
+        if (selectedProgramId) {
+          try {
+            const programmesQuery = query(
+              collection(db, 'programmes'),
+              where('id', '==', selectedProgramId)
+            );
+            const snapshot = await getDocs(programmesQuery);
+            if (!snapshot.empty) {
+              const programData = snapshot.docs[0].data();
+              setEventDetails(programData);
+            }
+          } catch (error) {
+            console.error('Error fetching event details:', error);
           }
-        } catch (error) {
-          console.error('Error fetching event details:', error);
         }
-      }
-    };
-    fetchEventDetails();
-  }, [selectedProgramId, db]);
+      };
+      fetchEventDetails();
+    }, [selectedProgramId, db]);
+
   // Handle form submission
   const handleSubmit = async () => {
-    console.log('Submitting with eventData:', eventData);
+    // console.log('Submitting with eventData:', eventData);
     console.log('programId:', programId);
 
     if (!eventData.name || !eventData.startDate || !eventData.endDate) {
@@ -1966,8 +2004,7 @@ const handleNext = async () => {
     if (!eventData.image) missingFields.push('Image');
     if (!eventData.description) missingFields.push('Description');
     if (!eventData.location) missingFields.push('Location');
-    // Modified category check to validate if array exists and has items
-    if (!eventData.categories || eventData.categories.length === 0) {
+    if (!eventData.categories || !Array.isArray(eventData.categories) || eventData.categories.length === 0) {
       missingFields.push('Sector');
     }
 
@@ -1975,9 +2012,31 @@ const handleNext = async () => {
       throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
     }
 
-    // Rest of your existing code...
+    if (!auth.currentUser) {
+      throw new Error('User is not authenticated');
+    }
+
+    // Determine if image is a data URL or already a Firebase Storage URL
+    let imageUrl = eventData.image;
+    const isDataUrl = imageUrl && imageUrl.startsWith('data:');
+
+    if (isDataUrl) {
+      // Upload image to Firebase Storage only if it's a data URL
+      const imageRef = ref(
+        storage,
+        `programmes/${auth.currentUser.uid}/${programId || generatedId || Date.now()}.png`
+      );
+      await uploadString(imageRef, eventData.image, 'data_url');
+      imageUrl = await getDownloadURL(imageRef);
+    } else if (!imageUrl) {
+      throw new Error('No image provided');
+    }
+    // If imageUrl is already a URL (e.g., from Firebase Storage), use it as-is
+
+    // Prepare data without the large image string
     const dataToSave = {
       ...eventData,
+      image: imageUrl, // Use the URL (either newly uploaded or existing)
       uid: auth.currentUser.uid,
       programStatus: 'draft',
       updatedAt: serverTimestamp(),
@@ -1990,6 +2049,8 @@ const handleNext = async () => {
       if (!querySnapshot.empty) {
         const docRef = doc(db, 'programmes', querySnapshot.docs[0].id);
         await updateDoc(docRef, dataToSave);
+      } else {
+        throw new Error(`Program with ID ${programId} not found`);
       }
     } else {
       newProgramId = generatedId;
@@ -2011,14 +2072,14 @@ const handleNext = async () => {
     await fetchProgrammes(auth.currentUser);
     setCurrentStep(2);
   } catch (error) {
-    console.error('Error in handleNext:', error);
+    console.error('Error in handleNext:', error.message, error.code);
     createToast({
-      title: "Uh oh! Something went wrong.",
+      title: 'Uh oh! Something went wrong.',
       description: error.message,
-      actionText: "Ok",
+      actionText: 'Ok',
       actionCallback: () => {
-        console.log("Try again clicked");
-      }
+        console.log('Try again clicked');
+      },
     });
   } finally {
     setIsProcessing(false);
@@ -2526,7 +2587,8 @@ const debouncedFetchSuggestions = useDebounce((query) => {
 
   const ProgramHeader = ({ 
     program, 
-    onStatusChange 
+    onStatusChange ,
+    isJudgingApplicationSelected
   }) => {
     const handleToggle = () => {
       const newStatus = program.programStatus === 'completed' ? 'ddraft' : 'completed';
@@ -2557,52 +2619,56 @@ const debouncedFetchSuggestions = useDebounce((query) => {
     };
   
     return (
-      <div className="md:px-36 overflow-none mt-8">
-        <div className="border-b border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-4xl font-bold">{program.name || 'Untitled Program'}</h2>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
-                  {program.programStatus === 'completed' ? 'Active' : 'Inactive'}
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={program.programStatus === 'completed'}
-                    onChange={handleToggle}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                </label>
+          <div className="md:px-36 overflow-none mt-8">
+            <div className="border-b border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-4xl font-bold">{program.name || 'Untitled Program'}</h2>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">
+                      {program.programStatus === 'completed' ? 'Active' : 'Inactive'}
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={program.programStatus === 'completed'}
+                        onChange={handleToggle}
+                        disabled={isJudgingApplicationSelected} // Disable checkbox when isJudgingApplicationSelected is true
+                      />
+                      <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${
+                        isJudgingApplicationSelected ? 'opacity-50 cursor-not-allowed' : 'peer-checked:bg-blue-500'
+                      }`}></div>
+                    </label>
+                  </div>
+                  <button
+                    onClick={handleShare}
+                    className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2 text-sm"
+                  >
+                    <FontAwesomeIcon icon={faShareAlt} /> {/* Add faShareAlt to your imports */}
+                    Share
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={handleShare}
-                className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2 text-sm"
-              >
-                <FontAwesomeIcon icon={faShareAlt} /> {/* Add faShareAlt to your imports */}
-                Share
-              </button>
+              <div className="flex space-x-6">
+                {['insights', 'formResponses', 'editProgram', 'addJudges'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => !isJudgingApplicationSelected && setActiveProgramTab(tab)} // Disable tab click when isJudgingApplicationSelected is true
+                    className={`text-sm font-medium pb-2 transition-colors duration-200 ${
+                      activeProgramTab === tab
+                        ? 'border-b-2 border-blue-500 text-blue-500 hover:bg-transparent hover:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    } ${isJudgingApplicationSelected ? 'opacity-50 cursor-not-allowed' : ''}`} // Add visual feedback for disabled state
+                    disabled={isJudgingApplicationSelected} // Disable button when isJudgingApplicationSelected is true
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex space-x-6">
-            {['insights', 'formResponses', 'editProgram', 'addJudges'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveProgramTab(tab)}
-                className={`text-sm font-medium pb-2 transition-colors duration-200 ${
-                  activeProgramTab === tab
-                    ? 'border-b-2 border-blue-500 text-blue-500 hover:bg-transparent hover:text-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([A-Z])/g, ' $1')}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+        );
   };
   const [judges, setJudges] = useState([]);
   const [formData, setFormData] = useState({
@@ -2614,8 +2680,10 @@ const debouncedFetchSuggestions = useDebounce((query) => {
   useEffect(() => {
     if (selectedProgram?.id) {
       fetchJudges();
+    } else {
+      setJudges([]); // Clear judges if no program is selected
     }
-  }, [selectedProgram?.id]); // This will re-run whenever selectedProgram.id changes
+  }, [selectedProgram?.id]);
 
   const fetchProgramDocument = async () => {
     try {
@@ -2636,28 +2704,34 @@ const debouncedFetchSuggestions = useDebounce((query) => {
     }
   };
   
-  const fetchJudges = async () => {
-    try {
-      const programDoc = await fetchProgramDocument();
-      if (!programDoc) {
-        console.error('Program document not found');
-        return;
-      }
-  
-      // Query the judges collection directly with program filter
-      const judgesRef = collection(db, 'judges');
-      const q = query(judgesRef, where('programId', '==', selectedProgram.id));
-      const snapshot = await getDocs(q);
-      
-      const judgesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setJudges(judgesList);
-    } catch (error) {
-      console.error('Error fetching judges:', error);
-    }
-  };
+ const fetchJudges = async () => {
+     try {
+       const programDoc = await fetchProgramDocument();
+       if (!programDoc) {
+         console.error("Program document not found");
+         setJudges([]);
+         return;
+       }
+   
+       const judgesRef = collection(db, "judges");
+       const snapshot = await getDocs(judgesRef);
+   
+       // Filter only judges where selectedProgram.id exists in the programId array
+       const judgesList = snapshot.docs
+         .map((doc) => ({
+           id: doc.id,
+           ...doc.data(),
+         }))
+         .filter((judge) => judge.programId?.includes(selectedProgram.id)); // <-- Updated filtering logic
+   
+       console.log("Fetched judges:", judgesList);
+       setJudges(judgesList);
+     } catch (error) {
+       console.error("Error fetching judges:", error);
+       setJudges([]);
+     }
+   };
+   
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -2667,89 +2741,137 @@ const debouncedFetchSuggestions = useDebounce((query) => {
     }));
   };
   
-  const handleAddJudge = async () => {
-    if (!formData.name || !formData.email) {
-     
-      createToast({
-        title: "Error Adding:",
-        description: "Please fill in both name and email"
-      });
-      return;
-    }
+ const handleAddJudge = async () => {
+     if (!formData.name || !formData.email) {
+       createToast({
+         title: "Error Adding:",
+         description: "Please fill in both name and email",
+       });
+       return;
+     }
+   
+     setIsAdding(true);
+     try {
+       const programDoc = await fetchProgramDocument();
+       if (!programDoc) {
+         console.error("Program document not found");
+         return;
+       }
+   
+       // Check if a judge with the same email already exists
+       const judgesRef = collection(db, "judges");
+       const q = query(judgesRef, where("email", "==", formData.email));
+       const existingJudges = await getDocs(q);
+   
+       let judgeId;
+       let updatedProgramIds = [selectedProgram.id];
+   
+       if (!existingJudges.empty) {
+         // If judge exists, get the existing judge data
+         const existingJudge = existingJudges.docs[0]; // Get the first matching document
+         const judgeData = existingJudge.data();
+         judgeId = existingJudge.id;
+   
+         // Ensure programId is an array and add the new programId if not already present
+         if (Array.isArray(judgeData.programId)) {
+           if (!judgeData.programId.includes(selectedProgram.id)) {
+             updatedProgramIds = [...judgeData.programId, selectedProgram.id];
+           } else {
+             updatedProgramIds = judgeData.programId; // Keep it unchanged
+           }
+         } else if (judgeData.programId !== selectedProgram.id) {
+           updatedProgramIds = [judgeData.programId, selectedProgram.id]; // Convert to array
+         }
+       } else {
+         // If judge does not exist, generate a new ID
+         judgeId = doc(collection(db, "judges")).id;
+       }
+   
+       // Add judge under the specific program
+       await setDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId), {
+         id: judgeId,
+         name: formData.name,
+         email: formData.email,
+         createdAt: serverTimestamp(),
+       });
+   
+       // Create or update the judge's document in the main `judges` collection
+       await setDoc(
+         doc(db, "judges", judgeId),
+         {
+           id: judgeId,
+           name: formData.name,
+           email: formData.email,
+           programId: updatedProgramIds,
+           createdAt: serverTimestamp(),
+         },
+         { merge: true } // Merge to avoid overwriting existing data
+       );
+   
+       setFormData({ name: "", email: "" });
+       fetchJudges();
+     } catch (error) {
+       console.error("Error adding judge:", error);
+       createToast({
+         title: "Error adding judge:",
+         description: "Please try again",
+       });
+     } finally {
+       setIsAdding(false);
+     }
+   };
   
-    setLoading(true);
-    try {
-      const programDoc = await fetchProgramDocument();
-      if (!programDoc) {
-        console.error('Program document not found');
-        return;
-      }
-  
-      // Generate a unique ID that will be used in both collections
-      const judgeId = doc(collection(db, 'judges')).id;
-  
-      // Add to programmes/{programDoc.id}/judges subcollection
-      await setDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId), {
-        id: judgeId,
-        name: formData.name,
-        email: formData.email,
-        createdAt: serverTimestamp()
-      });
-  
-      // Add to separate judges collection
-      await setDoc(doc(db, 'judges', judgeId), {
-        id: judgeId,
-        name: formData.name,
-        email: formData.email,
-        programId: selectedProgram.id,
-        createdAt: serverTimestamp()
-      });
-  
-      // Reset form and refresh judges list
-      setFormData({ name: '', email: '' });
-      fetchJudges();
-    } catch (error) {
-      console.error('Error adding judge:', error);
-
-      // alert(' Please try again.');
-      createToast({
-        title: "Error adding judge:",
-        description: "Please try again" // Remove the `+` before error.message
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleRemoveJudge = async (judgeId) => {
-    if (window.confirm('Are you sure you want to remove this judge?')) {
-      setLoading(true);
-      try {
-        const programDoc = await fetchProgramDocument();
-        if (!programDoc) {
-          console.error('Program document not found');
-          return;
-        }
-  
-        // Remove from programmes/{programDoc.id}/judges subcollection
-        await deleteDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId));
-  
-        // Remove from separate judges collection using the same ID
-        await deleteDoc(doc(db, 'judges', judgeId));
-  
-        fetchJudges();
-      } catch (error) {
-        console.error('Error removing judge:', error);
-        createToast({
-          title: "Error removing judge:",
-          description: "Please try again" // Remove the `+` before error.message
-        });
-        // alert('. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+   
+   const handleRemoveJudge = async (judgeId) => {
+     if (window.confirm("Are you sure you want to remove this judge?")) {
+       setIsRemoving(true);
+       try {
+         const programDoc = await fetchProgramDocument();
+         if (!programDoc) {
+           console.error("Program document not found");
+           return;
+         }
+   
+         // Remove the judge from the current program's subcollection
+         await deleteDoc(doc(db, `programmes/${programDoc.id}/judges`, judgeId));
+   
+         // Fetch the judge document
+         const judgeRef = doc(db, "judges", judgeId);
+         const judgeSnap = await getDoc(judgeRef);
+   
+         if (judgeSnap.exists()) {
+           const judgeData = judgeSnap.data();
+           let updatedProgramIds = judgeData.programId;
+   
+           if (Array.isArray(updatedProgramIds)) {
+             updatedProgramIds = updatedProgramIds.filter(id => id !== selectedProgram.id);
+           }
+   
+           if (updatedProgramIds.length > 0) {
+             // Update judge document if they still belong to other programs
+             await setDoc(judgeRef, { programId: updatedProgramIds }, { merge: true });
+           } else {
+             // Delete the judge document if they are no longer part of any programs
+             await deleteDoc(judgeRef);
+           }
+         }
+   
+         fetchJudges();
+         createToast({
+           title: "Success",
+           description: "Judge removed successfully",
+         });
+       } catch (error) {
+         console.error("Error removing judge:", error);
+         createToast({
+           title: "Error removing judge:",
+           description: "Please try again",
+         });
+       } finally {
+         setIsRemoving(false);
+       }
+     }
+   };
 
  // In FounderDashboard.js
 
@@ -2840,10 +2962,31 @@ const ApplicationHeader = ({ application }) => (
     </div>
   </div>
 );
+  // const reloadApplications = async () => {
+  //   try {
+  //     const user = auth.currentUser;
+  //     if (!user) return;
 
+  //     const usersRef = collection(db, 'users');
+  //     const userQuery = query(usersRef, where('uid', '==', user.uid));
+  //     const userSnapshot = await getDocs(userQuery);
 
+  //     if (!userSnapshot.empty) {
+  //       const userDocRef = userSnapshot.docs[0].ref;
+  //       const applicationsCollection = collection(userDocRef, 'applications');
+  //       const applicationsSnapshot = await getDocs(applicationsCollection);
 
+  //       const fetchedApplications = applicationsSnapshot.docs.map(doc => ({
+  //         id: doc.id,
+  //         title: doc.data().programTitle
+  //       }));
 
+  //       setApplications(fetchedApplications);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error reloading applications:', error);
+  //   }
+  // };
   const [collapsedSections, setCollapsedSections] = useState({
     apply: true, // Initially collapsed
     host: true,  // Initially collapsed
@@ -2984,42 +3127,30 @@ const ApplicationHeader = ({ application }) => (
 
           {/* Judge Section (Judging Programs) */}
           {isJudge && (
-            <div className="space-y-1">
-              <button
-                onClick={() => toggleSection('judge')}
-                className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
-                  activeTab === 'program' && isJudgingProgramSelected ? 'bg-gray-200 font-medium' : ''
-                }`}
-              >
-                <FontAwesomeIcon icon={faGavel} />
-                <span>Judge</span>
-                <FontAwesomeIcon
-                  icon={collapsedSections.judge ? faChevronRight : faChevronDown}
-                  className="ml-auto"
-                />
-              </button>
-              {!collapsedSections.judge && (
-                <div className="ml-2 space-y-2">
-                  <div className="text-sm text-gray-500 mt-2">Judging Programs</div>
-                  <div className="ml-4 space-y-1">
-                    {judgingProgrammes.length > 0 ? (
-                      judgingProgrammes.map((programme) => (
-                        <NavItem
-                          key={programme.id}
-                          icon={faFile}
-                          label={programme.name || 'Untitled Program'}
-                          active={selectedProgram?.id === programme.id && activeTab === 'program' && isJudgingProgramSelected}
-                          onClick={() => handleProgramClick(programme, true)}
-                        />
-                      ))
-                    ) : (
-                      <div className="text-gray-400 p-2 text-sm">No judging programs assigned</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+  <div className="space-y-1">
+    <button
+      onClick={() => {
+        toggleSection('judge');
+        if (collapsedSections.judge) { // If currently collapsed, expand and show content
+          setActiveTab('judge'); // Set to a new 'judge' tab
+          setSelectedProgram(null); // Reset selected program
+          setIsJudgingProgramSelected(true); // Maintain judging context
+        }
+      }}
+      className={`flex w-full items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
+        activeTab === 'judge' ? 'bg-gray-200 font-medium' : ''
+      }`}
+    >
+      <FontAwesomeIcon icon={faGavel} />
+      <span>Judge</span>
+      <FontAwesomeIcon
+        icon={collapsedSections.judge ? faChevronRight : faChevronDown}
+        className="ml-auto"
+ steps />
+    </button>
+    {/* No nested program list anymore */}
+  </div>
+)}
         </nav>
 
         {/* Product, Help, Logout sections remain unchanged */}
@@ -3086,20 +3217,43 @@ const ApplicationHeader = ({ application }) => (
           )}
           {activeTab === 'program' && selectedProgram && (
             <div className="h-full flex flex-col">
-              <ProgramHeader 
-                program={selectedProgram}
-                onStatusChange={handleStatusChange}
-              />
+            {!isJudgingProgramSelected && (
+  <ProgramHeader 
+    program={selectedProgram}
+    onStatusChange={handleStatusChange}
+    isJudgingApplicationSelected={isJudgingProgramSelected}
+  />
+)}
+
               <div className="flex-1 overflow-y-auto">
                 {activeProgramTab === 'insights' && <ProgramInsights program={selectedProgram} />}
                 {activeProgramTab === 'formResponses' && (
                   <div className="h-full">
                     <div className="md:px-36 overflow-none mt-8">
-                      {isJudgingProgramSelected ? (
-                        <JudgesFormResponses programId={selectedProgram.id} />
-                      ) : (
-                        <FormResponses programId={selectedProgram.id} />
-                      )}
+                    <div>
+  {isJudgingProgramSelected ? (
+    <>
+      <div className="mb-8 bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Hello {'Judge'},
+        </h2>
+        <p className="mt-2 text-gray-600">
+          You have been invited to the judging panel of{' '}
+          <span className="font-semibold text-blue-600">
+            {'this program'}
+          </span>.
+        </p>
+        <p className="mt-1 text-gray-600">
+          Below you'll find the list of startup applications assigned to you for review and scoring.
+          Please evaluate each submission carefully and provide your scores and remarks.
+        </p>
+      </div>
+      <JudgesFormResponses programId={selectedProgram.id} />
+    </>
+  ) : (
+    <FormResponses programId={selectedProgram.id} />
+  )}
+</div>
                     </div>
                   </div>
                 )}
@@ -3162,10 +3316,10 @@ const ApplicationHeader = ({ application }) => (
           <button
             type="button"
             onClick={() => handleRemoveJudge(judge.id)}
-            disabled={loading}
+            disabled={isRemoving}
             className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 disabled:bg-red-300"
           >
-            Remove
+           {isRemoving ? 'Removing...' : 'Remove'}
           </button>
         </li>
       ))}
@@ -3200,6 +3354,10 @@ const ApplicationHeader = ({ application }) => (
               </div>
             </div>
           )}
+         {activeTab === 'judge' && (
+  <IncJudgesFormResponses userid={userid} />
+)}
+
           {activeTab === 'discover' && (
             <div className="h-[calc(100vh/1.16)] overflow-auto scrollbar-hide mt-8 mb-8">
               <Articles handleTabChange={handleTabChange} />

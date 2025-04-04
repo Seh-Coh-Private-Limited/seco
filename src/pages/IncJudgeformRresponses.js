@@ -6,11 +6,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import JudgesFormResponses from './JudgesFormResponses';
 import './Dashboard.css';
 
-const JudgeDashboard = () => {
+const IncJudgeDashboard = ({ userid }) => { // Accept userid as a prop
   const [companyDetails, setCompanyDetails] = useState(null);
   const [logoError, setLogoError] = useState(false);
-  const [programs, setPrograms] = useState([]); // Changed to array of programs
-  const [selectedProgramId, setSelectedProgramId] = useState(null); // Track selected program ID
+  const [programs, setPrograms] = useState([]);
+  const [selectedProgramId, setSelectedProgramId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [judges, setJudges] = useState([]);
@@ -19,7 +19,6 @@ const JudgeDashboard = () => {
   const [judgeName, setJudgeName] = useState('');
 
   const navigate = useNavigate();
-  const { uid } = useParams();
   const db = getFirestore();
 
   useEffect(() => {
@@ -40,12 +39,17 @@ const JudgeDashboard = () => {
       }
     };
 
-    loadData();
-  }, [uid]);
+    if (userid) { // Use userid instead of uid
+      loadData();
+    } else {
+      setError('No judge ID provided');
+      setLoading(false);
+    }
+  }, [userid]); // Dependency on userid
 
   const fetchCompanyDetails = async () => {
     try {
-      const q = query(collection(db, 'judges'), where('uid', '==', uid));
+      const q = query(collection(db, 'judges'), where('id', '==', userid)); // Use userid
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
@@ -55,8 +59,12 @@ const JudgeDashboard = () => {
           name: userData.name || 'Company Name',
           logo: userData.logoUrl || null
         });
+        setJudgeEmail(userData.email || '');
+        setJudgeName(userData.name || '');
       } else {
         setCompanyDetails({ name: 'Company Name', logo: null });
+        setJudgeEmail('');
+        setJudgeName('');
       }
     } catch (error) {
       console.error('Error fetching company details:', error);
@@ -66,11 +74,11 @@ const JudgeDashboard = () => {
 
   const fetchPrograms = async () => {
     try {
-      const judgesQuery = query(collection(db, 'judges'), where('id', '==', uid));
+      const judgesQuery = query(collection(db, 'judges'), where('id', '==', userid)); // Use userid
       const judgesSnapshot = await getDocs(judgesQuery);
       
       if (judgesSnapshot.empty) {
-        setError('No judge found');
+        setError('No judge found with this ID');
         setPrograms([]);
         return;
       }
@@ -78,7 +86,7 @@ const JudgeDashboard = () => {
       const judgeData = judgesSnapshot.docs[0].data();
       setJudgeEmail(judgeData.email);
       setJudgeName(judgeData.name);
-      const programIds = judgeData.programId; // Array of program IDs
+      const programIds = judgeData.programId;
 
       if (!programIds || !Array.isArray(programIds) || programIds.length === 0) {
         setPrograms([]);
@@ -94,8 +102,10 @@ const JudgeDashboard = () => {
           ...doc.data()
         }));
         setPrograms(programsList);
-        setSelectedProgramId(programsList[0].id); // Default to first program
-        fetchJudges(programsList[0].id); // Fetch judges for the default program
+        setSelectedProgramId(programsList[0]?.id || null);
+        fetchJudges(programsList[0]?.id);
+      } else {
+        setPrograms([]);
       }
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -111,6 +121,7 @@ const JudgeDashboard = () => {
       setJudges(judgesList);
     } catch (error) {
       console.error('Error fetching judges:', error);
+      setJudges([]);
     }
   };
 
@@ -120,6 +131,7 @@ const JudgeDashboard = () => {
         <h6 className="text-black font-bold text-2xl" style={{ fontFamily: 'CustomFont' }}>
           seco
         </h6>
+        <span className="text-gray-600">Judge Dashboard - {judgeName || 'Judge'}</span>
       </div>
     </div>
   );
@@ -193,7 +205,7 @@ const JudgeDashboard = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <Header />
+      {/* <Header /> */}
       <main className="overflow-auto p-4">
         {loading ? (
           <div>Loading...</div>
@@ -201,7 +213,6 @@ const JudgeDashboard = () => {
           <div className="text-red-500">{error}</div>
         ) : programs.length > 0 ? (
           <div className="mx-auto w-full p-10">
-            {/* Welcome Block */}
             <div className="mb-8 bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
               <h2 className="text-2xl font-bold text-gray-800">
                 Hello, {judgeName || 'Judge'}
@@ -211,43 +222,40 @@ const JudgeDashboard = () => {
                 Below you'll find the list of startup applications assigned to you for review and scoring.
               </p>
             </div>
-  
-            {/* Tab Navigation */}
             <div className="mb-4">
-  <div className="flex border-b border-gray-200">
-    {programs.map(program => (
-      <button
-        key={program.id}
-        onClick={() => handleTabSelect(program.id)}
-        className={`px-4 py-2 -mb-px text-sm font-medium transition-colors duration-200 ${
-          selectedProgramId === program.id
-            ? 'border-b-2 border-blue-500 text-blue-600 bg-transparent'
-            : 'text-gray-600 hover:text-blue-500 bg-transparent hover:bg-gray-100'
-        }`}
-      >
-        {program.name || 'Untitled Program'}
-      </button>
-    ))}
-  </div>
-</div>
-  
-            {/* Tab Content */}
+              <div className="flex border-b border-gray-200">
+                {programs.map(program => (
+                  <button
+                    key={program.id}
+                    onClick={() => handleTabSelect(program.id)}
+                    className={`px-4 py-2 -mb-px text-sm font-medium ${
+                      selectedProgramId === program.id
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {program.name || 'Untitled Program'}
+                  </button>
+                ))}
+              </div>
+            </div>
             {selectedProgramId && (
               <div className="mb-8">
                 <JudgesFormResponses
-                  key={selectedProgramId}
+                  key={selectedProgramId} // Ensure re-render on tab switch
                   programId={selectedProgramId}
                   email={judgeEmail}
                   name={judgeName}
+                  judgeId={userid} // Pass the judge's user ID (uid) to JudgesFormResponses
                 />
               </div>
             )}
           </div>
         ) : (
-          <div>No programs found</div>
+          <div>No programs assigned to this judge</div>
         )}
       </main>
-  
+
       <button
         className="fixed bottom-4 right-4 w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center hover:bg-gray-700"
         aria-label="Help"
@@ -258,4 +266,4 @@ const JudgeDashboard = () => {
   );
 };
 
-export default JudgeDashboard;
+export default IncJudgeDashboard;
